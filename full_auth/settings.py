@@ -159,7 +159,8 @@ if DEVELOPMENT_MODE == 'True':
 else:
     AWS_S3_ACCESS_KEY_ID = getenv('AWS_S3_ACCESS_KEY_ID')
     AWS_S3_SECRET_ACCESS_KEY = getenv('AWS_S3_SECRET_ACCESS_KEY')
-    AWS_S3_REGION_NAME = getenv('AWS_S3_ACCESS_REGION_NAME')
+    AWS_STORAGE_BUCKET_NAME = getenv('AWS_STORAGE_BUCKET_NAME')
+    AWS_S3_REGION_NAME = getenv('AWS_S3_REGION_NAME')
     AWS_S3_ENDPOINT_URL = f'https://{AWS_S3_REGION_NAME}.digitaloceanspaces.com'
     AWS_S3_OBJECT_PARAMETERS = {
         'CacheControl': 'max_age=86400'
@@ -173,7 +174,7 @@ else:
             'BACKEND': 'storages.backends.s3.S3Storage'
         },
         'staticfiles': {
-            'BACKEND': 'storages.backends.s3.S3Storage'
+            'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage'
         },
     }
 
