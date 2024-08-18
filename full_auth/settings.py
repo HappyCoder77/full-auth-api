@@ -115,7 +115,7 @@ AWS_SES_REGION_ENDPOINT = f'email.{AWS_SES_REGION_NAME}.amazonaws.com'
 AWS_SES_FROM_EMAIL = getenv('AWS_SES_FROM_EMAIL')
 
 DOMAIN = getenv('DOMAIN')
-SITE_NAME = 'Full Auth'
+SITE_NAME = 'Mis Barajitas'
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
@@ -138,9 +138,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'es-ES'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Caracas'
 
 USE_I18N = True
 
@@ -168,7 +168,7 @@ else:
     AWS_LOCATION = 'static'
     AWS_MEDIA_LOCATION = 'media'
     AWS_S3_CUSTOM_DOMAIN = getenv('AWS_S3_CUSTOM_DOMAIN')
-    
+
     STORAGES = {
         'default': {
             'BACKEND': 'custom_storages.CustomS3Storage'
@@ -194,6 +194,9 @@ REST_FRAMEWORK = {
 }
 
 DJOSER = {
+    'EMAIL': {
+        'activation': 'users.email.ActivationEmail'
+    },
     'PASSWORD_RESET_CONFIRM_URL': 'password-reset/{uid}/{token}',
     'SEND_ACTIVATION_EMAIL': True,
     'ACTIVATION_URL': 'activation/{uid}/{token}',
