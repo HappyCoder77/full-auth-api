@@ -204,7 +204,8 @@ REST_FRAMEWORK = {
 
 DJOSER = {
     'EMAIL': {
-        'activation': 'users.email.ActivationEmail'
+        'activation': 'users.email.ActivationEmail',
+        'password_reset': 'users.email.PasswordResetEmail',
     },
     'PASSWORD_RESET_CONFIRM_URL': 'password-reset/{uid}/{token}',
     'SEND_ACTIVATION_EMAIL': True,
