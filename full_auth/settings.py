@@ -105,14 +105,23 @@ elif len(sys.argv) > 0 and sys.argv[1] != 'collectstatic':
         'default': dj_database_url.parse(getenv('DATABASE_URL')),
     }
 
-EMAIL_BACKEND = 'django_ses.SESBackend'
-DEFAULT_FROM_EMAIL = getenv('AWS_SES_FROM_EMAIL')
-AWS_SES_ACCESS_KEY_ID = getenv('AWS_SES_ACCESS_KEY_ID')
-AWS_SES_SECRET_ACCESS_KEY = getenv('AWS_SES_SECRET_ACCESS_KEY')
-USE_SES_V2 = True
-AWS_SES_REGION_NAME = getenv('AWS_SES_REGION_NAME')
-AWS_SES_REGION_ENDPOINT = f'email.{AWS_SES_REGION_NAME}.amazonaws.com'
-AWS_SES_FROM_EMAIL = getenv('AWS_SES_FROM_EMAIL')
+# EMAIL_BACKEND = 'django_ses.SESBackend'
+# DEFAULT_FROM_EMAIL = getenv('AWS_SES_FROM_EMAIL')
+# AWS_SES_ACCESS_KEY_ID = getenv('AWS_SES_ACCESS_KEY_ID')
+# AWS_SES_SECRET_ACCESS_KEY = getenv('AWS_SES_SECRET_ACCESS_KEY')
+# USE_SES_V2 = True
+# AWS_SES_REGION_NAME = getenv('AWS_SES_REGION_NAME')
+# AWS_SES_REGION_ENDPOINT = f'email.{AWS_SES_REGION_NAME}.amazonaws.com'
+# AWS_SES_FROM_EMAIL = getenv('AWS_SES_FROM_EMAIL')
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.privateemail.com'
+EMAIL_PORT = 465
+EMAIL_HOST_USER = 'cuentas@misbarajitas.xyz'
+EMAIL_HOST_PASSWORD = getenv('EMAIL_PASSWORD')
+EMAIL_USE_SSL = True
+DEFAULT_FROM_EMAIL = 'Equipo de cuentas Mis Barajitas <cuentas@misbarajitas.xyz>'
+
 
 DOMAIN = getenv('DOMAIN')
 SITE_NAME = 'Mis Barajitas'
