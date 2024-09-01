@@ -15,6 +15,7 @@ import dj_database_url
 from os import getenv, path
 from pathlib import Path
 from django.core.management.utils import get_random_secret_key
+from django.contrib.auth import password_validation
 import dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -213,7 +214,8 @@ DJOSER = {
     'USER_CREATE_PASSWORD_RETYPE': True,
     'PASSWORD_RESET_CONFIRM_RETYPE': True,
     'TOKEN_MODEL': None,
-    'SOCIAL_AUTH_ALLOWED_REDIRECT_URIS': getenv('REDIRECT_URLS').split(',')
+    'SOCIAL_AUTH_ALLOWED_REDIRECT_URIS': getenv('REDIRECT_URLS').split(','),
+    'PASSWORD_VALIDATORS': [password_validation.validate_password]
 }
 
 AUTH_COOKIE = 'access'
