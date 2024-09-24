@@ -1,7 +1,7 @@
 from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, viewsets
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -9,6 +9,9 @@ from rest_framework_simplejwt.views import (
 )
 
 from djoser.social.views import ProviderAuthView
+from .models import RegionalManager
+from .serializers import RegionalManagerSerializer
+from .permissions import IsSuperUser
 
 
 class CustomProviderAuthView(ProviderAuthView):
@@ -115,3 +118,14 @@ class LogoutView(APIView):
         response.delete_cookie('refresh')
 
         return response
+
+
+class RegionalManagerViewSet(viewsets.ModelViewSet):
+    """
+    Vista para crear RegionalManagers.
+    """
+    # evitar borrado o actualizacion del registro
+    http_method_names = ['get', 'post']
+    queryset = RegionalManager.objects.all()
+    serializer_class = RegionalManagerSerializer
+    permission_classes = [IsSuperUser]
