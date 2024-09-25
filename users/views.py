@@ -129,3 +129,6 @@ class RegionalManagerViewSet(viewsets.ModelViewSet):
     queryset = RegionalManager.objects.all()
     serializer_class = RegionalManagerSerializer
     permission_classes = [IsSuperUser]
+
+    def perform_create(self, serializer):
+        serializer.save(user=None, created_by=self.request.user)
