@@ -71,7 +71,7 @@ class BaseProfile(models.Model):
     middle_name = models.CharField(max_length=50, null=True, blank=True)
     first_last_name = models.CharField(max_length=50)
     second_last_name = models.CharField(max_length=50, null=True, blank=True)
-    sex = models.CharField(max_length=10, choices=GENERO_CHOICES)
+    gender = models.CharField(max_length=10, choices=GENERO_CHOICES)
     birthdate = models.DateField(null=True, blank=True)
 
 
