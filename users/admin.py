@@ -3,7 +3,7 @@ from .models import UserAccount, RegionalManager
 
 
 class RegionalManagerAdmin(admin.ModelAdmin):
-    fields = ['email', 'first_name', 'middle_name', 'first_last_name',
+    fields = ['email', 'first_name', 'middle_name', 'last_name',
               'second_last_name', 'gender', 'birthdate', 'created_by']
 
 
