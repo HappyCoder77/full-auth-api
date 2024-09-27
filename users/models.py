@@ -67,18 +67,18 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
 class BaseProfile(models.Model):
     # TODO: add address field
     # TODO: añadir validacion a la fecha de nacimiento para que usuarios distintos de coleccionistas deban ser mayores de edad
+    user = models.OneToOneField(
+        UserAccount, on_delete=models.CASCADE, null=True)
     first_name = models.CharField(max_length=50)
     middle_name = models.CharField(max_length=50, null=True, blank=True)
     first_last_name = models.CharField(max_length=50)
     second_last_name = models.CharField(max_length=50, null=True, blank=True)
     gender = models.CharField(max_length=10, choices=GENERO_CHOICES)
     birthdate = models.DateField(null=True, blank=True)
+    email = models.EmailField(_("Email field"), unique=True)
 
 
 class RegionalManager(BaseProfile):
-    user = models.OneToOneField(
-        UserAccount, on_delete=models.CASCADE, null=True)
-    email = models.EmailField(_("Email field"), unique=True)
     created_by = models.ForeignKey(
         UserAccount, on_delete=models.SET_NULL, null=True, related_name='created_profiles')
 
