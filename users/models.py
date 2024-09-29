@@ -51,6 +51,7 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
+    is_collector = models.BooleanField(default=False)
 
     objects = UserAccountManager()
 
@@ -83,4 +84,4 @@ class RegionalManager(BaseProfile):
         UserAccount, on_delete=models.SET_NULL, null=True, related_name='created_profiles')
 
     def __str__(self) -> str:
-        return self.first_name + " " + self.first_last_name
+        return self.first_name + " " + self.last_name
