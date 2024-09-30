@@ -7,7 +7,11 @@ from djoser.serializers import UserSerializer as BaseUserSerializer
 
 class UserSerializer(BaseUserSerializer):
     class Meta(BaseUserSerializer.Meta):
-        fields = BaseUserSerializer.Meta.fields + ('is_superuser',)
+        fields = BaseUserSerializer.Meta.fields + \
+            ('is_superuser', 'is_regionalmanager')
+
+    def get_is_regionalmanager(self, obj):
+        return obj.is_regionalmanager()
 
 
 class RegionalManagerSerializer(serializers.ModelSerializer):

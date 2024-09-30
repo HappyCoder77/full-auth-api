@@ -15,7 +15,7 @@ class UserAccountAdmin(UserAdmin):
         ("Datos Personales", {
          "fields": ("email",)}),
         ("Permissions", {"fields": ("is_staff",
-         "is_active", "is_collector", "is_superuser", "groups", "user_permissions")}),
+         "is_active", "is_collector", "is_superuser", "groups", "user_permissions",)}),
         ("Dates", {"fields": ("last_login",)}),
     )
 
@@ -34,7 +34,7 @@ class UserAccountAdmin(UserAdmin):
 
 class RegionalManagerAdmin(admin.ModelAdmin):
     fields = ["user", 'email', 'first_name', 'middle_name', 'last_name',
-              'second_last_name', 'gender', 'birthdate', 'created_by']
+              'second_last_name', 'gender', 'birthdate', 'created_by',]
     readonly_fields = ["user", "created_by"]
 
     def save_model(self, request, obj, form, change):
