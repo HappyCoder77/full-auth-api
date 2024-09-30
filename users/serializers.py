@@ -2,6 +2,13 @@ from rest_framework import serializers
 
 from .models import RegionalManager, LocalManager
 
+from djoser.serializers import UserSerializer as BaseUserSerializer
+
+
+class UserSerializer(BaseUserSerializer):
+    class Meta(BaseUserSerializer.Meta):
+        fields = BaseUserSerializer.Meta.fields + ('is_superuser',)
+
 
 class RegionalManagerSerializer(serializers.ModelSerializer):
     class Meta:

@@ -65,7 +65,7 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
         return hasattr(self, 'regionalmanager')
 
     def is_localmanager(self):
-        return hasattr(self, 'regionalmanager')
+        return hasattr(self, 'localmanager')
 
 
 # TODO: add Address model
