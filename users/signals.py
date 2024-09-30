@@ -12,7 +12,7 @@ def link_profile(sender, instance, created, **kwargs):
 
 
 def link_user_to_profile(user):
-    profile_models = ["RegionalManager"]
+    profile_models = ["RegionalManager", "LocalManager"]
 
     for model_name in profile_models:
         ProfileModel = apps.get_model("users", model_name)

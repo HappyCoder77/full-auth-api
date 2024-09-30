@@ -61,6 +61,12 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email
 
+    def is_regionalmanager(self):
+        return hasattr(self, 'regionalmanager')
+
+    def is_localmanager(self):
+        return hasattr(self, 'regionalmanager')
+
 
 # TODO: add Address model
 
@@ -81,7 +87,15 @@ class BaseProfile(models.Model):
 
 class RegionalManager(BaseProfile):
     created_by = models.ForeignKey(
-        UserAccount, on_delete=models.SET_NULL, null=True, related_name='created_profiles')
+        UserAccount, on_delete=models.SET_NULL, null=True, related_name='created_regionalmanagers')
+
+    def __str__(self) -> str:
+        return self.first_name + " " + self.last_name
+
+
+class LocalManager(BaseProfile):
+    created_by = models.ForeignKey(
+        UserAccount, on_delete=models.SET_NULL, null=True, related_name='created_localmanagers')
 
     def __str__(self) -> str:
         return self.first_name + " " + self.last_name

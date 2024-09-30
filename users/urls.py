@@ -11,6 +11,8 @@ from rest_framework.routers import DefaultRouter
 router = DefaultRouter()
 router.register(r'regional-manager-profile', views.RegionalManagerViewSet,
                 basename='regional-manager-profile')
+router.register(r'local-manager-profile', views.LocalManagerViewSet,
+                basename='local-manager-profile')
 
 urlpatterns = [
     path('register/', include(router.urls)),
