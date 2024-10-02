@@ -13,6 +13,8 @@ router.register(r'regional-manager-profile', views.RegionalManagerViewSet,
                 basename='regional-manager-profile')
 router.register(r'local-manager-profile', views.LocalManagerViewSet,
                 basename='local-manager-profile')
+router.register(r'sponsor-profile', views.LocalManagerViewSet,
+                basename='sponsor-profile')
 
 urlpatterns = [
     path('register/', include(router.urls)),

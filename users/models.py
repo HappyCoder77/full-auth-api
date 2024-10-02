@@ -67,8 +67,13 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     def is_localmanager(self):
         return hasattr(self, 'localmanager')
 
+    def is_sponsor(self):
+        return hasattr(self, 'localmanager')
+
 
 # TODO: add Address model
+# TODO: add region Model
+# TODO: add locality model
 
 
 class BaseProfile(models.Model):
@@ -96,6 +101,14 @@ class RegionalManager(BaseProfile):
 class LocalManager(BaseProfile):
     created_by = models.ForeignKey(
         UserAccount, on_delete=models.SET_NULL, null=True, related_name='created_localmanagers')
+
+    def __str__(self) -> str:
+        return self.first_name + " " + self.last_name
+
+
+class Sponsor(BaseProfile):
+    created_by = models.ForeignKey(
+        UserAccount, on_delete=models.SET_NULL, null=True, related_name='created_sponsors')
 
     def __str__(self) -> str:
         return self.first_name + " " + self.last_name

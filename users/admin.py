@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
 from .forms import UserAccountChangeForm, UserAccountCreationForm
-from .models import UserAccount, RegionalManager, LocalManager
+from .models import UserAccount, RegionalManager, LocalManager, Sponsor
 
 
 class UserAccountAdmin(UserAdmin):
@@ -54,6 +54,18 @@ class LocalManagerAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
+class SponsorAdmin(admin.ModelAdmin):
+    fields = ["user", 'email', 'first_name', 'middle_name', 'last_name',
+              'second_last_name', 'gender', 'birthdate', 'created_by']
+    readonly_fields = ["user", "created_by"]
+
+    def save_model(self, request, obj, form, change):
+        if not obj.pk:  # Solo para nuevos registros
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+
 admin.site.register(UserAccount, UserAccountAdmin)
 admin.site.register(RegionalManager, RegionalManagerAdmin)
 admin.site.register(LocalManager, LocalManagerAdmin)
+admin.site.register(Sponsor, SponsorAdmin)

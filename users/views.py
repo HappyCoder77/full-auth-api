@@ -9,9 +9,10 @@ from rest_framework_simplejwt.views import (
 )
 
 from djoser.social.views import ProviderAuthView
-from .models import RegionalManager, LocalManager
-from .serializers import RegionalManagerSerializer, LocalManagerSerializer
-from .permissions import IsSuperUser, IsRegionalManager
+from .models import RegionalManager, LocalManager, Sponsor
+from .serializers import (RegionalManagerSerializer,
+                          LocalManagerSerializer, SponsorSerializer)
+from .permissions import IsSuperUser, IsRegionalManager, IsLocalManager
 
 
 class CustomProviderAuthView(ProviderAuthView):
@@ -143,6 +144,20 @@ class LocalManagerViewSet(viewsets.ModelViewSet):
     queryset = LocalManager.objects.all()
     serializer_class = LocalManagerSerializer
     permission_classes = [IsRegionalManager]
+
+    def perform_create(self, serializer):
+        serializer.save(user=None, created_by=self.request.user)
+
+
+class SponsorViewSet(viewsets.ModelViewSet):
+    """
+    Vista para crear LocalManagers.
+    """
+    # evitar borrado o actualizacion del registro
+    http_method_names = ['get', 'post']
+    queryset = Sponsor.objects.all()
+    serializer_class = SponsorSerializer
+    permission_classes = [IsLocalManager]
 
     def perform_create(self, serializer):
         serializer.save(user=None, created_by=self.request.user)
