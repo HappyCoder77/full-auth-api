@@ -65,10 +65,10 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
         return hasattr(self, 'baseprofile') and hasattr(self.baseprofile, 'regionalmanager')
 
     def is_localmanager(self):
-        return hasattr(self, 'localmanager')
+        return hasattr(self, 'baseprofile') and hasattr(self.baseprofile, 'localmanager')
 
     def is_sponsor(self):
-        return hasattr(self, 'localmanager')
+        return hasattr(self, 'baseprofile') and hasattr(self.baseprofile, 'sponsor')
 
 
 # TODO: add Address model
