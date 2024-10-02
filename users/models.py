@@ -70,6 +70,8 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     def is_sponsor(self):
         return hasattr(self, 'baseprofile') and hasattr(self.baseprofile, 'sponsor')
 
+    def is_dealer(self):
+        return hasattr(self, 'baseprofile') and hasattr(self.baseprofile, 'dealer')
 
 # TODO: add Address model
 # TODO: add region Model
@@ -109,6 +111,14 @@ class LocalManager(BaseProfile):
 class Sponsor(BaseProfile):
     created_by = models.ForeignKey(
         UserAccount, on_delete=models.SET_NULL, null=True, related_name='created_sponsors')
+
+    def __str__(self) -> str:
+        return self.first_name + " " + self.last_name
+
+
+class Dealer(BaseProfile):
+    created_by = models.ForeignKey(
+        UserAccount, on_delete=models.SET_NULL, null=True, related_name='created_dealers')
 
     def __str__(self) -> str:
         return self.first_name + " " + self.last_name

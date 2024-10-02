@@ -15,6 +15,8 @@ router.register(r'local-manager-profile', views.LocalManagerViewSet,
                 basename='local-manager-profile')
 router.register(r'sponsor-profile', views.SponsorViewSet,
                 basename='sponsor-profile')
+router.register(r'dealer-profile', views.DealerViewSet,
+                basename='dealer-profile')
 
 urlpatterns = [
     path('register/', include(router.urls)),
