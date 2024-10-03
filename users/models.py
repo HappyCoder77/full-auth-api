@@ -73,6 +73,9 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     def is_dealer(self):
         return hasattr(self, 'baseprofile') and hasattr(self.baseprofile, 'dealer')
 
+    def has_profile(self):
+        return hasattr(self, 'baseprofile')
+
 # TODO: add Address model
 # TODO: add region Model
 # TODO: add locality model

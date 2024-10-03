@@ -2,6 +2,8 @@ from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -9,10 +11,13 @@ from rest_framework_simplejwt.views import (
 )
 
 from djoser.social.views import ProviderAuthView
-from .models import RegionalManager, LocalManager, Sponsor, Dealer
+from .models import (RegionalManager, LocalManager,
+                     Sponsor, Dealer, BaseProfile)
 from .serializers import (RegionalManagerSerializer,
-                          LocalManagerSerializer, SponsorSerializer, DealerSerializer)
-from .permissions import IsSuperUser, IsRegionalManager, IsLocalManager, IsSponsor
+                          LocalManagerSerializer, SponsorSerializer,
+                          DealerSerializer, BaseProfileSerializer)
+from .permissions import (IsSuperUser, IsRegionalManager,
+                          IsLocalManager, IsSponsor, IsCollector)
 
 
 class CustomProviderAuthView(ProviderAuthView):
@@ -175,3 +180,70 @@ class DealerViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=None, created_by=self.request.user)
+
+
+class CollectorViewSet(viewsets.ModelViewSet):
+    """
+    Vista para manejar perfiles de Coleccionistas.
+    """
+    queryset = BaseProfile.objects.all()
+    serializer_class = BaseProfileSerializer
+    permission_classes = [IsCollector]
+
+    def get_queryset(self):
+        # Filtrar para que un coleccionista solo pueda ver su propio perfil
+        return BaseProfile.objects.filter(user=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        # Verificar si el usuario ya tiene un perfil
+        if BaseProfile.objects.filter(user=request.user).exists():
+            return Response(
+                {"detail": "Ya tienes un perfil creado. Usa el método PUT para actualizarlo."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        request.data['email'] = request.user.email
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+
+        # Asegurarse de que el usuario solo pueda actualizar su propio perfil
+        if instance.user != request.user:
+            return Response(
+                {"detail": "No tienes permiso para editar este perfil."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = self.get_serializer(
+            instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def me(self, request):
+        profile = get_object_or_404(BaseProfile, user=request.user)
+        serializer = self.get_serializer(profile)
+        return Response(serializer.data)
+
+    # Sobrescribir estos métodos para prevenir su uso
+    def destroy(self, request, *args, **kwargs):
+        return Response(
+            {"detail": "No se permite eliminar perfiles de coleccionistas."},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+
+    def list(self, request, *args, **kwargs):
+        return Response(
+            {"detail": "No se permite listar todos los perfiles. Usa la acción 'me' para ver tu perfil."},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )

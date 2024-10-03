@@ -45,3 +45,12 @@ class IsSponsor(permissions.BasePermission):
 
     def has_permission(self, request, view):
         return request.user.is_authenticated and request.user.is_sponsor
+
+
+class IsCollector(permissions.BasePermission):
+    """
+    Permite el acceso solo a los coleccionistas.
+    """
+
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.is_collector

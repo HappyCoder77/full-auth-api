@@ -26,7 +26,7 @@ def link_user_to_profile(user):
             return
         except ProfileModel.DoesNotExist:
             continue
-    # TODO: agregar baseprofile para collector
+
     try:
         user.is_collector = True
         user.save()
