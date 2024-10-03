@@ -91,6 +91,8 @@ class BaseProfile(models.Model):
     birthdate = models.DateField(null=True, blank=True)
     email = models.EmailField(_("Email field"), unique=True)
 
+# TODO: refactor __str__ method in baseprofile
+
 
 class RegionalManager(BaseProfile):
     created_by = models.ForeignKey(
