@@ -20,6 +20,7 @@ router.register(r'dealer-profile', views.DealerViewSet,
 router.register(r'collector-profile', views.CollectorViewSet,
                 basename='collector-profile')
 
+# TODO: refactor urls
 urlpatterns = [
     path('register/', include(router.urls)),
     re_path(

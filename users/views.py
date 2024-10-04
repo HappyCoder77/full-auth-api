@@ -174,6 +174,11 @@ class SponsorViewSet(viewsets.ModelViewSet):
     serializer_class = SponsorSerializer
     permission_classes = [IsLocalManager]
 
+    @action(detail=False, methods=['get'], permission_classes=[IsSuperUser])
+    def count(self, request):
+        total = self.queryset.count()
+        return Response({'total': total})
+
     def perform_create(self, serializer):
         serializer.save(user=None, created_by=self.request.user)
 
@@ -187,6 +192,11 @@ class DealerViewSet(viewsets.ModelViewSet):
     queryset = Dealer.objects.all()
     serializer_class = DealerSerializer
     permission_classes = [IsSponsor]
+
+    @action(detail=False, methods=['get'], permission_classes=[IsSuperUser])
+    def count(self, request):
+        total = self.queryset.count()
+        return Response({'total': total})
 
     def perform_create(self, serializer):
         serializer.save(user=None, created_by=self.request.user)
