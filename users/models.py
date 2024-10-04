@@ -94,36 +94,25 @@ class BaseProfile(models.Model):
     birthdate = models.DateField(null=True, blank=True)
     email = models.EmailField(_("Email field"), unique=True)
 
-# TODO: refactor __str__ method in baseprofile
+    def __str__(self) -> str:
+        return self.first_name + " " + self.last_name
 
 
 class RegionalManager(BaseProfile):
     created_by = models.ForeignKey(
         UserAccount, on_delete=models.SET_NULL, null=True, related_name='created_regionalmanagers')
 
-    def __str__(self) -> str:
-        return self.first_name + " " + self.last_name
-
 
 class LocalManager(BaseProfile):
     created_by = models.ForeignKey(
         UserAccount, on_delete=models.SET_NULL, null=True, related_name='created_localmanagers')
-
-    def __str__(self) -> str:
-        return self.first_name + " " + self.last_name
 
 
 class Sponsor(BaseProfile):
     created_by = models.ForeignKey(
         UserAccount, on_delete=models.SET_NULL, null=True, related_name='created_sponsors')
 
-    def __str__(self) -> str:
-        return self.first_name + " " + self.last_name
-
 
 class Dealer(BaseProfile):
     created_by = models.ForeignKey(
         UserAccount, on_delete=models.SET_NULL, null=True, related_name='created_dealers')
-
-    def __str__(self) -> str:
-        return self.first_name + " " + self.last_name
