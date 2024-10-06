@@ -12,6 +12,10 @@ def link_profile(sender, instance, created, **kwargs):
 
 
 def link_user_to_profile(user):
+
+    if user.is_superuser:
+        return
+
     profile_models = ["RegionalManager", "LocalManager", "Sponsor", "Dealer"]
 
     for model_name in profile_models:
@@ -22,7 +26,6 @@ def link_user_to_profile(user):
                 email=user.email, user__isnull=True)
             profile.user = user
             profile.save()
-            user_linked = True
             return
         except ProfileModel.DoesNotExist:
             continue

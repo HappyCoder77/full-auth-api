@@ -11,7 +11,7 @@ GENERO_CHOICES = [
 
 
 class UserAccountManager(BaseUserManager):
-    def create_user(self, email, password=None, **kwargs):
+    def create_user(self, email, password, **kwargs):
 
         if not email:
             raise ValueError(
@@ -32,7 +32,7 @@ class UserAccountManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, email, password=None, **kwargs):
+    def create_superuser(self, email, password, **kwargs):
         user = self.create_user(
             email,
             password=password,
@@ -40,6 +40,7 @@ class UserAccountManager(BaseUserManager):
         )
         user.is_staff = True
         user.is_superuser = True
+        user.is_collector = False
 
         user.save(using=self._db)
         return user
