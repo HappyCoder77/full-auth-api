@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import (
     BaseUserManager, AbstractBaseUser, PermissionsMixin)
 from django.utils.translation import gettext_lazy as _
-
+from django.core.exceptions import ValidationError
 
 GENERO_CHOICES = [
     ("M", "Masculino"),
@@ -86,12 +86,13 @@ class BaseProfile(models.Model):
     # TODO: add address field
     # TODO: añadir validacion a la fecha de nacimiento para que usuarios distintos de coleccionistas deban ser mayores de edad
     user = models.OneToOneField(
-        UserAccount, on_delete=models.CASCADE, null=True)
+        UserAccount, on_delete=models.CASCADE, null=True, blank=True)
     first_name = models.CharField(max_length=50)
     middle_name = models.CharField(max_length=50, null=True, blank=True)
     last_name = models.CharField(max_length=50)
     second_last_name = models.CharField(max_length=50, null=True, blank=True)
     gender = models.CharField(max_length=10, choices=GENERO_CHOICES)
+    # TODO: este campo no deberia ser opcional
     birthdate = models.DateField(null=True, blank=True)
     email = models.EmailField(_("Email field"), unique=True)
 
