@@ -6,21 +6,18 @@ from .models import UserAccount
 
 @receiver(post_save, sender=UserAccount)
 def link_profile(sender, instance, created, **kwargs):
+    if not created or instance.is_superuser:
+        return
 
     if created:
         link_user_to_profile(instance)
 
 
 def link_user_to_profile(user):
-
-    if user.is_superuser:
-        return
-
     profile_models = ["RegionalManager", "LocalManager", "Sponsor", "Dealer"]
 
     for model_name in profile_models:
         ProfileModel = apps.get_model("users", model_name)
-
         try:
             profile = ProfileModel.objects.get(
                 email=user.email, user__isnull=True)
