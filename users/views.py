@@ -214,6 +214,14 @@ class DealerViewSet(viewsets.ModelViewSet):
         total = self.queryset.count()
         return Response({'total': total})
 
+    @action(detail=False,
+            methods=['get'],
+            url_path="count-by-creator/(?P<creator_id>\d+)",
+            permission_classes=[IsSponsor])
+    def count_by_creator(self, request, creator_id=None):
+        total = self.queryset.filter(created_by_id=creator_id).count()
+        return Response({'total': total})
+
     def perform_create(self, serializer):
         serializer.save(user=None, created_by=self.request.user)
 
