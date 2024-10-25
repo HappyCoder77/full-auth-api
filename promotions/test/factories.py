@@ -1,7 +1,7 @@
 import factory
 from datetime import timedelta
 from django.utils import timezone
-from ..models import Promotion
+from ..models import Promotion, Collection
 
 
 class PromotionFactory(factory.django.DjangoModelFactory):
@@ -21,3 +21,11 @@ class PromotionFactory(factory.django.DjangoModelFactory):
             start_date=now + timedelta(days=2),
             end_date=now + timedelta(days=2),
         )
+
+
+class CollectionFactory(factory.django.DjangoModelFactory):
+
+    class Meta:
+        model = Collection
+
+    name = 'Minecraft'

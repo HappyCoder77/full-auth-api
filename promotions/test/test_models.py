@@ -6,13 +6,13 @@ from freezegun import freeze_time
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
-from .factories import PromotionFactory
+from .factories import PromotionFactory, CollectionFactory
 from ..models import Promotion
 
 NOW = timezone.now()
 
 
-class PromotionTest(TestCase):
+class PromotionTestCase(TestCase):
     def setUp(self):
         """Clean up any existing promotions before each test."""
         Promotion.objects.all().delete()
@@ -224,7 +224,7 @@ class PromotionTest(TestCase):
         self.check_remainig_time(promotion_september)
 
 
-class PromotionValidationTest(TestCase):
+class PromotionValidationTestCase(TestCase):
 
     def setUp(self):
         """Clean up any existing promotions before each test."""
@@ -278,3 +278,55 @@ class PromotionValidationTest(TestCase):
             promotion.full_clean()
         except ValidationError:
             self.fail("clean() raised ValidationError unexpectedly!")
+
+
+class CollectionTestCase(TestCase):
+
+    def test_collection_data(self):
+        collection = CollectionFactory()
+        self.assertEqual(str(collection), 'Minecraft')
+        self.assertEqual(collection.coordinates.count(), 25)
+        standard_coordinates = collection.coordinates.exclude(page=99).count()
+        self.assertEqual(standard_coordinates, 24)
+        prize_coordinate = collection.coordinates.get(page=99)
+        self.assertEqual(prize_coordinate.slot, 99)
+        self.assertEqual(prize_coordinate.ordinal, 0)
+        self.assertEqual(float(prize_coordinate.rarity_factor),
+                         collection.PRIZE_STICKER_RARITY)
+        # self.assertEqual(collection.get_absolute_url(), reverse(
+        #     'collection_detail', kwargs={'pk': collection.pk}))
+        counter = 1
+        current_page = 1
+
+        while current_page <= collection.PAGES:
+            coordinates = iter(collection.coordinates.filter(
+                page=current_page).order_by('slot'))
+            current_slot = 1
+
+            while True:
+                coordinate = next(coordinates, 'fin_de_archivo')
+
+                if coordinate != 'fin_de_archivo':
+                    self.assertEqual(coordinate.page, current_page)
+                    self.assertEqual(coordinate.slot, current_slot)
+                    self.assertEqual(coordinate.number, counter)
+                    self.assertEqual(str(coordinate), str(counter))
+                    current_slot += 1
+                    counter += 1
+                else:
+                    break
+
+            current_page += 1
+
+        for counter in range(1, collection.PAGES + 1):
+            standard_prize = collection.standard_prizes.get(page=counter)
+            self.assertEqual(standard_prize.collection, collection)
+            self.assertEqual(standard_prize.description,
+                             'descripción de premio standard')
+
+        for counter in range(1, collection.SURPRISE_PRIZE_OPTIONS + 1):
+            surprise_prize = collection.surprise_prizes.get(number=counter)
+            self.assertEqual(surprise_prize.description,
+                             'descripción de premio sorpresa')
+            self.assertEqual(str(surprise_prize),
+                             'descripción de premio sorpresa')
