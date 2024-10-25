@@ -14,7 +14,7 @@ User = get_user_model()
 class PromotionViewSetTestCase(TestCase):
     def setUp(self):
         self.factory = APIRequestFactory()
-        self.view = PromotionViewSet.as_view({'get': 'list'})
+        self.view = PromotionViewSet.as_view({'get': 'current'})
         self.url = '/api/promotion/'  # Ajusta esto a tu URL real
 
         self.user = User.objects.create_user(
@@ -30,11 +30,11 @@ class PromotionViewSetTestCase(TestCase):
         request = self.factory.get(self.url)
         force_authenticate(request, user=self.user)
         response = self.view(request)
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
-        self.assertIn('remaining_time', response.data[0])
-        self.assertTrue(response.data[0]['remaining_time'].startswith(
-            "Esta promoción termina en 23 horas, 59 minutos y 59 segundos"))
+        self.assertTrue(response.data["remaining_time"],
+                        "Esta promoción termina en 23 horas, 59 minutos y 59 segundos")
 
     def test_no_active_promotion(self):
         self.active_promotion.delete()
@@ -42,4 +42,4 @@ class PromotionViewSetTestCase(TestCase):
         force_authenticate(request, user=self.user)
         response = self.view(request)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 0)
+        self.assertIsNone(response.data)

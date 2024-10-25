@@ -2,11 +2,14 @@ from django.core.exceptions import ValidationError
 import datetime
 from dateutil import tz
 from dateutil.relativedelta import relativedelta
+from freezegun import freeze_time
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 from .factories import PromotionFactory
 from ..models import Promotion
+
+NOW = timezone.now()
 
 
 class PromotionTest(TestCase):
@@ -20,14 +23,18 @@ class PromotionTest(TestCase):
 
     def check_remainig_time(self, promotion):
         period = relativedelta(
-            promotion.end_date, timezone.now())
+            promotion.end_date, NOW)
 
-        if period.months < 1 and period.days < 1:
+        if period.seconds < 0:
+            self.assertEqual(
+                promotion.remaining_time,
+                f'Esta promoción ha terminado.'
+            )
+        elif period.months < 1 and period.days < 1:
             self.assertEqual(
                 promotion.remaining_time,
                 f'Esta promoción termina en {period.hours} horas, {period.minutes} minutos y {period.seconds} segundos.'
-            )
-
+            ),
         elif period.months < 1:
             self.assertEqual(
                 promotion.remaining_time,
@@ -37,46 +44,57 @@ class PromotionTest(TestCase):
         else:
             self.assertEqual(
                 promotion.remaining_time,
-                f'Esta promoción termina en {period.months} meses y {period.days} días'
+                f'Esta promoción termina en {period.months} meses y {period.days} días.'
             )
 
     def test_Promotion_today_data(self):
         now = timezone.now()
-        promotion_today = PromotionFactory(start_date=now)
+        promotion_today = PromotionFactory(
+            start_date=now, current_time=now)
         promotion_today2 = PromotionFactory(
-            duration=29
+            start_date=now,
+            duration=29,
+            current_time=now
         )
 
         promotion_today3 = PromotionFactory(
             start_date=now,
-            duration=0.5,
-            envelope_cost=1.5
+            duration=90,
+            current_time=now
         )
 
         time_range = relativedelta(days=+ promotion_today.duration)
         end_date = promotion_today.start_date + time_range
-        self.assertEqual(promotion_today.start_date, now)
-        self.assertEqual(promotion_today.end_date,
-                         end_date)
-        self.assertEqual(promotion_today.duration, 90)
+
+        self.assertEqual(promotion_today.start_date.strftime(
+            "%m/%d/%Y"), NOW.strftime(
+            "%m/%d/%Y"))
+        self.assertEqual(promotion_today.end_date, end_date)
+        self.assertEqual(promotion_today.duration, 1)
+        self.assertEqual(promotion_today2.duration, 29)
+        self.assertEqual(promotion_today3.duration, 90)
         self.assertEqual(promotion_today.envelope_cost, 1.5)
         self.check_remainig_time(promotion_today)
         self.check_remainig_time(promotion_today2)
-        self.check_remainig_time(promotion_today2)
+        self.check_remainig_time(promotion_today3)
 
     def test_promotion_january_data(self):
         promotion_january = PromotionFactory(
-            start_date=datetime.datetime(2022, 1, 5, 0, 0, tzinfo=tz.UTC),
+            start_date=datetime.datetime(
+                2022, 1, 5, 0, 0, tzinfo=tz.gettz('America/Caracas')),
+            duration=90
         )
 
         self.assertEqual(
             promotion_january.start_date,
-            datetime.datetime(2022, 1, 5, 0, 0, tzinfo=tz.UTC)
+            datetime.datetime(2022, 1, 5, 0, 0,
+                              tzinfo=tz.gettz('America/Caracas'))
         )
 
         self.assertEqual(
             promotion_january.end_date,
-            datetime.datetime(2022, 4, 5, 0, 0, tzinfo=tz.UTC)
+            datetime.datetime(2022, 4, 5, 0, 0,
+                              tzinfo=tz.gettz('America/Caracas'))
         )
 
         self.assertEqual(promotion_january.duration, 90)
@@ -88,7 +106,8 @@ class PromotionTest(TestCase):
     def test_promotion_february_data(self):
         promotion_february = PromotionFactory(
             start_date=datetime.datetime(
-                2022, 2, 28, 0, 0, tzinfo=tz.gettz('America/Caracas'))
+                2022, 2, 28, 0, 0, tzinfo=tz.gettz('America/Caracas')),
+            duration=90
         )
 
         self.assertEqual(
@@ -110,7 +129,9 @@ class PromotionTest(TestCase):
     def test_promotion_march_data(self):
         promotion_march = PromotionFactory(
             start_date=datetime.datetime(
-                2022, 3, 19, 0, 0, tzinfo=tz.gettz('America/Caracas'))
+                2022, 3, 19, 0, 0, tzinfo=tz.gettz('America/Caracas')
+            ),
+            duration=90
         )
 
         self.assertEqual(promotion_march.start_date,
@@ -131,7 +152,9 @@ class PromotionTest(TestCase):
     def test_promotion_july_data(self):
         promotion_july = PromotionFactory(
             start_date=datetime.datetime(
-                2022, 7, 24, 0, 0, tzinfo=tz.gettz('America/Caracas'))
+                2022, 7, 24, 0, 0, tzinfo=tz.gettz('America/Caracas')
+            ),
+            duration=90
         )
 
         self.assertEqual(
@@ -151,9 +174,12 @@ class PromotionTest(TestCase):
         self.check_remainig_time(promotion_july)
 
     def test_promotion_august_data(self):
+
         promotion_august = PromotionFactory(
             start_date=datetime.datetime(
-                2022, 8, 10, 0, 0, tzinfo=tz.gettz('America/Caracas'))
+                2022, 8, 10, 0, 0, tzinfo=tz.gettz('America/Caracas')
+            ),
+            duration=90
         )
 
         self.assertEqual(
@@ -176,7 +202,9 @@ class PromotionTest(TestCase):
     def test_promotion_september_data(self):
         promotion_september = PromotionFactory(
             start_date=datetime.datetime(
-                2022, 9, 9, 0, 0, tzinfo=tz.gettz('America/Caracas'))
+                2022, 9, 9, 0, 0, tzinfo=tz.gettz('America/Caracas')
+            ),
+            duration=90
         )
 
         self.assertEqual(
@@ -218,7 +246,7 @@ class PromotionValidationTest(TestCase):
     def test_overlapping_promotion(self):
         """Test to ensure ValidationError is raised for overlapping promotions."""
         # Create an initial promotion
-        promotion = PromotionFactory()
+        promotion = PromotionFactory(duration=16)
 
         # Try to create an overlapping promotion
         overlapping_promotion = PromotionFactory(

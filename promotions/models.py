@@ -16,7 +16,19 @@ from django.utils import timezone
 User = get_user_model()
 
 
-class Promotion(models.Model):  # periodo de tiempo válido para la venta de una colección
+class Promotion(models.Model):
+    """
+    Representa una promoción con una fecha de inicio y fin.
+    Una promocion es un período valido para participar en el llenado de una coleccion.
+    Esta clase permite la inyección de un tiempo actual personalizado para
+    facilitar las pruebas y la manipulación del tiempo en diferentes escenarios.
+
+    Attributes:
+        start_date (DateTimeField): La fecha y hora de inicio de la promoción.
+        duration (PositiveSmallIntegerField): La duración de la promoción en días.
+        end_date (DateTimeField): La fecha y hora de finalización de la promoción.
+        envelope_cost (DecimalField): El costo unitario del sobre para esta promoción.
+    """
     start_date = models.DateTimeField(
         "Fecha de Inicio", default=timezone.now, editable=False)
     duration = models.PositiveSmallIntegerField(
@@ -28,7 +40,33 @@ class Promotion(models.Model):  # periodo de tiempo válido para la venta de una
                                         default=0
                                         )
 
+    def __init__(self, *args, **kwargs):
+        """
+        Inicializa una nueva instancia de Promotion.
+
+        Args:
+            *args: Argumentos posicionales para el modelo.
+            **kwargs: Argumentos de palabra clave para el modelo.
+                current_time (datetime, optional): Tiempo personalizado para usar
+                    en cálculos de tiempo restante. Si no se proporciona, se usa
+                    el tiempo actual del sistema.
+        """
+        self._current_time = kwargs.pop('current_time', None)
+        super().__init__(*args, **kwargs)
+
+    @property
+    def current_time(self):
+        """
+        Devuelve el tiempo actual para cálculos de tiempo restante.
+
+        Returns:
+            datetime: El tiempo personalizado si se proporcionó, de lo contrario
+                      el tiempo actual del sistema.
+        """
+        return self._current_time or timezone.now()
+
     def calculate_end_date(self):
+        # Calcula la fecha de finalización basada en la duración
         return self.start_date + relativedelta(days=self.duration)
 
     def translate_month(self, value):
@@ -62,10 +100,23 @@ class Promotion(models.Model):  # periodo de tiempo válido para la venta de una
         return f"{start_full_date} / {end_full_date}"
 
     @property
-    def remaining_time(self):  # Muestra mensaje con el tiempo restante de una promoción
-        now = timezone.now()
+    def remaining_time(self):
+        """
+        Calcula y devuelve el tiempo restante de la promoción.
+
+        Este método usa el tiempo actual (que puede ser personalizado) para
+        calcular cuánto tiempo queda hasta que termine la promoción.
+
+        Returns:
+            str: Un mensaje describiendo el tiempo restante o indicando que
+                 la promoción ha terminado.
+        """
+        now = self.current_time
         period = relativedelta(self.end_date, now)
-        if period.months < 1 and period.days < 1:
+
+        if period.seconds < 0:
+            mensaje = "Esta promoción ha terminado."
+        elif period.months < 1 and period.days < 1:
             mensaje = (
                 f'Esta promoción termina en {period.hours} horas, {period.minutes} minutos y {period.seconds} segundos.')
         elif period.months < 1:
@@ -73,7 +124,8 @@ class Promotion(models.Model):  # periodo de tiempo válido para la venta de una
                 f'Esta promoción termina en {period.days} días y {period.hours} horas.')
         else:
             mensaje = (
-                f'Esta promoción termina en {period.months} meses y {period.days} días')
+                f'Esta promoción termina en {period.months} meses y {period.days} días.')
+
         return mensaje
 
     class Meta:
@@ -105,5 +157,7 @@ class Promotion(models.Model):  # periodo de tiempo válido para la venta de una
         # self.reiniciar_opciones_de_rescate()
         date = self.calculate_end_date()
         date.replace(tzinfo=tz.gettz('America/Caracas'))
+        # Nota: current_time no afecta el cálculo de end_date, solo se usa
+        # para calcular el tiempo restante en el método remaining_time
         self.end_date = date
         super(Promotion, self).save(*args, **kwargs)
