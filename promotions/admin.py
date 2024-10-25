@@ -6,7 +6,6 @@ from .models import Promotion
 class PromotionAdmin(admin.ModelAdmin):
     list_display = ('__str__', 'start_date', 'end_date',
                     'remaining_time', 'envelope_cost')
-    fields = ('duration', 'end_date',)
     ordering = ('-start_date',)
     exclude = ('end_date', )
     search_fields = ('name',)

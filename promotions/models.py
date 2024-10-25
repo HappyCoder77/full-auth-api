@@ -86,8 +86,9 @@ class Promotion(models.Model):  # periodo de tiempo válido para la venta de una
             raise ValidationError(
                 'El costo del sobre no puede ser una cantidad negativa')
         # Validación de solapamiento de fechas
+        end_date = self.calculate_end_date()
         overlapping_promotions = self.__class__.objects.filter(
-            models.Q(start_date__lt=self.end_date) & models.Q(
+            models.Q(start_date__lt=end_date) & models.Q(
                 end_date__gt=self.start_date)
         ).exclude(pk=self.pk)
 

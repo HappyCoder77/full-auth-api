@@ -21,8 +21,3 @@ class PromotionFactory(factory.django.DjangoModelFactory):
             start_date=now + timedelta(days=2),
             end_date=now + timedelta(days=2),
         )
-
-        one_hour_before_and_after = factory.Trait(
-            start_date=now - timedelta(hours=1),
-            end_date=now + timedelta(hours=1),
-        )
