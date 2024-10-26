@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from django.utils import timezone
 from rest_framework import viewsets
 from .models import Promotion
+from users.permissions import IsSuperUser
 
 
 class PromotionViewSet(viewsets.ModelViewSet):
@@ -13,6 +14,14 @@ class PromotionViewSet(viewsets.ModelViewSet):
     # evitar borrado o actualizacion del registro
     queryset = Promotion.objects.all()
     serializer_class = PromotionSerializer
+
+    def get_permissions(self):
+        if self.action in ['list']:
+            permission_classes = [IsSuperUser]
+        else:
+            permission_classes = []
+
+        return [permission() for permission in permission_classes]
 
     def get_current_promotion(self):
         now = timezone.now()
