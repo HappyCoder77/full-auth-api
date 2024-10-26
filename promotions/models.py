@@ -19,7 +19,7 @@ User = get_user_model()
 class Promotion(models.Model):
     """
     Representa una promoción con una fecha de inicio y fin.
-    Una promocion es un período valido para participar en el llenado de una Collection.
+    Una promoción es un período valido para participar en el llenado de una colección.
     Esta clase permite la inyección de un tiempo actual personalizado para
     facilitar las pruebas y la manipulación del tiempo en diferentes escenarios.
 
@@ -190,7 +190,7 @@ class Collection(models.Model):
 
     class Meta:
         verbose_name = "colección"
-        verbose_name_plural = "Collectiones"
+        verbose_name_plural = "Colecciones"
 
     @transaction.atomic
     def save(self, *args, **kwargs):

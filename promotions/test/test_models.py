@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 from .factories import PromotionFactory, CollectionFactory
-from ..models import Promotion
+from ..models import Promotion, Collection, Coordinate, StandardPrize, SurprisePrize
 
 NOW = timezone.now()
 
@@ -281,14 +281,37 @@ class PromotionValidationTestCase(TestCase):
 
 
 class CollectionTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        """Set up initial data for the whole TestCase."""
+        cls.cleanup()
+
+    def setUp(self):
+        """Set up clean data before each test method."""
+        self.cleanup()
+
+    def tearDown(self):
+        """Clean up data after each test method."""
+        self.cleanup()
+
+    @classmethod
+    def cleanup(cls):
+        Collection.objects.all().delete()
+        Coordinate.objects.all().delete()
+        StandardPrize.objects.all().delete()
+        SurprisePrize.objects.all().delete()
 
     def test_collection_data(self):
         collection = CollectionFactory()
+        standard_coordinates = collection.coordinates.exclude(page=99).count()
+        prize_coordinate = collection.coordinates.get(page=99)
+
         self.assertEqual(str(collection), 'Minecraft')
         self.assertEqual(collection.coordinates.count(), 25)
-        standard_coordinates = collection.coordinates.exclude(page=99).count()
+        self.assertEqual(collection.standard_prizes.count(), collection.PAGES)
+        self.assertEqual(collection.surprise_prizes.count(),
+                         collection.SURPRISE_PRIZE_OPTIONS)
         self.assertEqual(standard_coordinates, 24)
-        prize_coordinate = collection.coordinates.get(page=99)
         self.assertEqual(prize_coordinate.slot, 99)
         self.assertEqual(prize_coordinate.ordinal, 0)
         self.assertEqual(float(prize_coordinate.rarity_factor),
@@ -322,6 +345,8 @@ class CollectionTestCase(TestCase):
             standard_prize = collection.standard_prizes.get(page=counter)
             self.assertEqual(standard_prize.collection, collection)
             self.assertEqual(standard_prize.description,
+                             'descripción de premio standard')
+            self.assertEqual(standard_prize.__str__(),
                              'descripción de premio standard')
 
         for counter in range(1, collection.SURPRISE_PRIZE_OPTIONS + 1):
