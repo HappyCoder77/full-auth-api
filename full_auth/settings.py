@@ -37,7 +37,7 @@ SECRET_KEY = getenv("DJANGO_SECRET_KEY", get_random_secret_key())
 DEBUG = getenv("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = getenv("DJANGO_ALLOWED_HOSTS",
-                       "127.0.0.1,localhost").split(",")
+                       "127.0.0.1,localhost,192.168.0.118").split(",")
 
 
 # Application definition
@@ -249,7 +249,8 @@ SOCIAL_AUTH_FACEBOOK_PROFILE_EXTRA_PARAMS = {
 
 
 CORS_ALLOWED_ORIGINS = getenv(
-    'CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:8000').split(',')
+    'CORS_ALLOWED_ORIGINS',
+    'http://localhost:3000,http://127.0.0.1:8000,http://192.168.0.118:8000').split(',')
 
 CORS_ALLOW_CREDENTIALS = True
 # Default primary key field type

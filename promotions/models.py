@@ -173,10 +173,10 @@ class Collection(models.Model):
     RARITY_1 = 3
     RARITY_2 = 2
     RARITY_3 = 1
-    RARITY_4 = 1  # 0.02
-    RARITY_5 = 1  # 0.01
-    RARITY_6 = 1  # 0.006
-    RARITY_7 = 1  # 0.004
+    RARITY_4 = 0.02
+    RARITY_5 = 0.01
+    RARITY_6 = 0.006
+    RARITY_7 = 0.004
     PRIZE_STICKER_RARITY = float(0.301)
     name = models.CharField("Tema de la colección",
                             max_length=50, unique=True)
@@ -270,22 +270,23 @@ class Collection(models.Model):
         coordinates_list = []
         # asigno los factores de rareza comun en función del número de barajita
         for each_coordinate in self.coordinates.all():
+
             if each_coordinate.slot == 1 or each_coordinate.slot == 2:
-                each_coordinate.factor_de_rareza = self.RARITY_1
+                each_coordinate.rarity_factor = self.RARITY_1
             elif each_coordinate.slot == 3 or each_coordinate.slot == 4:
-                each_coordinate.factor_de_rareza = self.RARITY_2
+                each_coordinate.rarity_factor = self.RARITY_2
             elif each_coordinate.slot == 5:
-                each_coordinate.factor_de_rareza = self.RARITY_3
+                each_coordinate.rarity_factor = self.RARITY_3
             elif each_coordinate.slot == 6:  # asigno los factores de rareza mas elevados a una unica barajita por página
 
                 if each_coordinate.page == 1:
-                    each_coordinate.factor_de_rareza = self.RARITY_4
+                    each_coordinate.rarity_factor = self.RARITY_4
                 if each_coordinate.page == 2:
-                    each_coordinate.factor_de_rareza = self.RARITY_5
+                    each_coordinate.rarity_factor = self.RARITY_5
                 if each_coordinate.page == 3:
-                    each_coordinate.factor_de_rareza = self.RARITY_6
+                    each_coordinate.rarity_factor = self.RARITY_6
                 if each_coordinate.page == 4:
-                    each_coordinate.factor_de_rareza = self.RARITY_7
+                    each_coordinate.rarity_factor = self.RARITY_7
 
             coordinates_list.append(each_coordinate)
 

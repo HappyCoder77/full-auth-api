@@ -281,48 +281,60 @@ class PromotionValidationTestCase(TestCase):
 
 
 class CollectionTestCase(TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        """Set up initial data for the whole TestCase."""
-        cls.cleanup()
+    COLLECTION_NAME = "Minecraft"
 
     def setUp(self):
-        """Set up clean data before each test method."""
-        self.cleanup()
+        self.collection = CollectionFactory()
 
     def tearDown(self):
         """Clean up data after each test method."""
-        self.cleanup()
-
-    @classmethod
-    def cleanup(cls):
         Collection.objects.all().delete()
-        Coordinate.objects.all().delete()
-        StandardPrize.objects.all().delete()
-        SurprisePrize.objects.all().delete()
 
     def test_collection_data(self):
-        collection = CollectionFactory()
-        standard_coordinates = collection.coordinates.exclude(page=99).count()
-        prize_coordinate = collection.coordinates.get(page=99)
+        standard_coordinates = self.collection.coordinates.exclude(
+            page=99).count()
 
-        self.assertEqual(str(collection), 'Minecraft')
-        self.assertEqual(collection.coordinates.count(), 25)
-        self.assertEqual(collection.standard_prizes.count(), collection.PAGES)
-        self.assertEqual(collection.surprise_prizes.count(),
-                         collection.SURPRISE_PRIZE_OPTIONS)
         self.assertEqual(standard_coordinates, 24)
-        self.assertEqual(prize_coordinate.slot, 99)
-        self.assertEqual(prize_coordinate.ordinal, 0)
+        self.assertEqual(self.collection.name, self.COLLECTION_NAME)
+        self.assertEqual(str(self.collection), 'Minecraft')
+        self.assertEqual(self.collection.coordinates.count(), 25)
+        self.assertEqual(
+            self.collection.coordinates.filter(rarity_factor=self.collection.RARITY_1).count(), 8)
+        self.assertEqual(
+            self.collection.coordinates.filter(rarity_factor=self.collection.RARITY_2).count(), 8)
+        self.assertEqual(
+            self.collection.coordinates.filter(rarity_factor=self.collection.RARITY_3).count(), 4)
+        self.assertEqual(
+            self.collection.coordinates.filter(rarity_factor=self.collection.RARITY_4).count(), 1)
+        self.assertEqual(
+            self.collection.coordinates.filter(rarity_factor=self.collection.RARITY_5).count(), 1)
+        self.assertEqual(
+            self.collection.coordinates.filter(rarity_factor=self.collection.RARITY_6).count(), 1)
+        self.assertEqual(
+            self.collection.coordinates.filter(rarity_factor=self.collection.RARITY_7).count(), 1)
+        self.assertEqual(
+            self.collection.coordinates.filter(rarity_factor=self.collection.PRIZE_STICKER_RARITY).count(), 1)
+        self.assertEqual(
+            self.collection.standard_prizes.count(), self.collection.PAGES)
+        self.assertEqual(self.collection.surprise_prizes.count(),
+                         self.collection.SURPRISE_PRIZE_OPTIONS)
+
+    def test_prize_coordinate_data(self):
+        prize_coordinate = self.collection.coordinates.get(page=99)
+
+        self.assertEqual(prize_coordinate.slot,
+                         self.collection.PRIZE_STICKER_COORDINATE)
         self.assertEqual(float(prize_coordinate.rarity_factor),
-                         collection.PRIZE_STICKER_RARITY)
-        # self.assertEqual(collection.get_absolute_url(), reverse(
-        #     'collection_detail', kwargs={'pk': collection.pk}))
+                         self.collection.PRIZE_STICKER_RARITY)
+        self.assertEqual(prize_coordinate.ordinal, 0)
+
+    def test_coordinates_data(self):
+
         counter = 1
         current_page = 1
 
-        while current_page <= collection.PAGES:
-            coordinates = iter(collection.coordinates.filter(
+        while current_page <= self.collection.PAGES:
+            coordinates = iter(self.collection.coordinates.filter(
                 page=current_page).order_by('slot'))
             current_slot = 1
 
@@ -341,16 +353,19 @@ class CollectionTestCase(TestCase):
 
             current_page += 1
 
-        for counter in range(1, collection.PAGES + 1):
-            standard_prize = collection.standard_prizes.get(page=counter)
-            self.assertEqual(standard_prize.collection, collection)
+    def test_standard_prizes_data(self):
+        for counter in range(1, self.collection.PAGES + 1):
+            standard_prize = self.collection.standard_prizes.get(page=counter)
+            self.assertEqual(standard_prize.collection, self.collection)
             self.assertEqual(standard_prize.description,
                              'descripción de premio standard')
             self.assertEqual(standard_prize.__str__(),
                              'descripción de premio standard')
 
-        for counter in range(1, collection.SURPRISE_PRIZE_OPTIONS + 1):
-            surprise_prize = collection.surprise_prizes.get(number=counter)
+    def test_surprise_prizes_data(self):
+        for counter in range(1, self.collection.SURPRISE_PRIZE_OPTIONS + 1):
+            surprise_prize = self.collection.surprise_prizes.get(
+                number=counter)
             self.assertEqual(surprise_prize.description,
                              'descripción de premio sorpresa')
             self.assertEqual(str(surprise_prize),
