@@ -6,8 +6,8 @@ from freezegun import freeze_time
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
-from .factories import PromotionFactory, CollectionFactory
-from ..models import Promotion, Collection, Coordinate, StandardPrize, SurprisePrize
+from .factories import PromotionFactory, CollectionFactory, EditionFactory
+from ..models import (Promotion, Collection, Box, Pack, Sticker)
 
 NOW = timezone.now()
 
@@ -241,7 +241,7 @@ class PromotionValidationTestCase(TestCase):
             promotion.full_clean()
         error_messages = context.exception.messages
         self.assertIn(
-            'El costo del sobre no puede ser una cantidad negativa', error_messages)
+            'El costo del pack no puede ser una cantidad negativa', error_messages)
 
     def test_overlapping_promotion(self):
         """Test to ensure ValidationError is raised for overlapping promotions."""
@@ -370,3 +370,69 @@ class CollectionTestCase(TestCase):
                              'descripción de premio sorpresa')
             self.assertEqual(str(surprise_prize),
                              'descripción de premio sorpresa')
+
+
+class EditionTestCase(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.edition = EditionFactory(circulation=250)
+
+    def test_edition_data(self):
+        boxes = Box.objects.filter(edition=self.edition).order_by('pk')
+        packs = Pack.objects.filter(box__edition=self.edition)
+
+        self.assertEqual(str(self.edition), 'Minecraft')
+        self.assertEqual(boxes.count(), 37)
+        self.assertEqual(packs.count(), 3695)
+
+    def test_rarity_distribution(self):
+        stickers = Sticker.objects.all()
+
+        rarity_1_total = Sticker.objects.filter(
+            coordinate__rarity_factor=self.edition.collection.RARITY_1).count()
+
+        rarity_2_total = Sticker.objects.filter(
+            coordinate__rarity_factor=self.edition.collection.RARITY_2).count()
+
+        rarity_3_total = Sticker.objects.filter(
+            coordinate__rarity_factor=self.edition.collection.RARITY_3).count()
+
+        rarity_4_total = Sticker.objects.filter(
+            coordinate__rarity_factor=self.edition.collection.RARITY_4).count()
+
+        rarity_5_total = Sticker.objects.filter(
+            coordinate__rarity_factor=self.edition.collection.RARITY_5).count()
+
+        rarity_6_total = Sticker.objects.filter(
+            coordinate__rarity_factor=self.edition.collection.RARITY_6).count()
+
+        rarity_7_total = Sticker.objects.filter(
+            coordinate__rarity_factor=self.edition.collection.RARITY_7).count()
+
+        surprize_prize_total = Sticker.objects.filter(
+            coordinate__rarity_factor=self.edition.collection.PRIZE_STICKER_RARITY).count()
+
+        total_stickers = rarity_1_total + rarity_2_total + rarity_3_total + \
+            rarity_4_total + rarity_5_total+rarity_6_total + \
+            rarity_7_total+surprize_prize_total
+
+        self.assertEqual(rarity_1_total, 6000)
+        self.assertEqual(rarity_2_total, 4000)
+        self.assertEqual(rarity_3_total, 1000)
+        self.assertEqual(rarity_4_total, 5)
+        self.assertEqual(rarity_5_total, 2)
+        self.assertEqual(rarity_6_total, 1)
+        self.assertEqual(rarity_7_total, 1)
+        self.assertEqual(surprize_prize_total, 76)
+        self.assertEqual(stickers.count(), total_stickers)
+
+    def test_boxes_content(self):
+        boxes = Box.objects.filter(edition=self.edition).order_by('pk')
+
+        # self.assertIn(boxes[0].packs.count(), [100, 48])
+        # self.assertIn(boxes[1].packs.count(), [100, 48])
+
+        for each_box in boxes:
+            self.assertEqual(str(
+                each_box), f'Box N°: {each_box.id}, ordinal: {each_box.ordinal}')

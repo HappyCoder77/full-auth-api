@@ -1,11 +1,11 @@
 import factory
 from datetime import timedelta
 from django.utils import timezone
-from ..models import Promotion, Collection
+from ..models import Promotion, Collection, Edition
 
 
 class PromotionFactory(factory.django.DjangoModelFactory):
-    envelope_cost = 1.5
+    pack_cost = 1.5
 
     class Meta:
         model = Promotion
@@ -29,3 +29,13 @@ class CollectionFactory(factory.django.DjangoModelFactory):
         model = Collection
 
     name = 'Minecraft'
+
+
+class EditionFactory(factory.django.DjangoModelFactory):
+
+    class Meta:
+        model = Edition
+
+    promotion = factory.SubFactory(PromotionFactory)
+    collection = factory.SubFactory(CollectionFactory)
+    circulation = 1
