@@ -742,6 +742,10 @@ class Sticker(models.Model):  # instancia ejemplares de cada sticker definida en
     def rarity(self):
         return self.coordinate.rarity_factor
 
+    @property
+    def box(self):
+        return self.pack.box
+
     def stick(self, album_pk):
         slot = Slot.objects.get(
             page__album_id=album_pk,
@@ -808,13 +812,13 @@ class Album(models.Model):
     @property
     def missing_stickers(self):
         slots = Slot.objects.filter(
-            page__album=self, sticker__isnull=True).count
+            page__album=self, sticker__isnull=True).count()
         return slots
 
     @property
     def collected_stickers(self):
         slots = Slot.objects.filter(
-            page__album=self, sticker__isnull=False).count
+            page__album=self, sticker__isnull=False).count()
         return slots
 
     @transaction.atomic
@@ -863,8 +867,8 @@ class Page(models.Model):
     @property
     def prize_was_claimed(self):
         try:
-            award = StandardAward.objects.get(page=self)
-        except StandardAward.DoesNotExist:
+            award = PagePrize.objects.get(page=self)
+        except PagePrize.DoesNotExist:
             award = None
 
         if award == None:
@@ -992,7 +996,7 @@ class Sale(models.Model):
         self.collector.save(update_fields=['rescue_options'])
 
 
-class StandardAward(models.Model):
+class PagePrize(models.Model):
     page = models.OneToOneField(Page, on_delete=models.CASCADE, null=True)
     prize = models.ForeignKey(
         'StandardPrize', on_delete=models.CASCADE, null=True)
@@ -1001,4 +1005,4 @@ class StandardAward(models.Model):
         return str(self.prize)
 
     class Meta:
-        verbose_name_plural = 'premiaciones standard'
+        verbose_name_plural = 'page prizes'

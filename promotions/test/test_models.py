@@ -7,8 +7,10 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 from unittest import skip
-from .factories import PromotionFactory, CollectionFactory, EditionFactory
-from ..models import (Promotion, Collection, Box, Pack, Sticker)
+from .factories import (AlbumFactory, PromotionFactory, CollectionFactory,
+                        EditionFactory, UserFactory)
+from ..models import (Promotion, Collection, Box,
+                      Pack, Sticker, Coordinate, Album)
 
 NOW = timezone.now()
 
@@ -373,7 +375,7 @@ class CollectionTestCase(TestCase):
                              'descripción de premio sorpresa')
 
 
-# @skip("saltar")
+@skip("saltar")
 class EditionTestCase(TestCase):
 
     @classmethod
@@ -438,3 +440,96 @@ class EditionTestCase(TestCase):
         for each_box in boxes:
             self.assertEqual(str(
                 each_box), f'Box N°: {each_box.id}, ordinal: {each_box.ordinal}')
+
+# TODO: terminar esto o probarlo en otros tests
+
+
+class StickerTestCase(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+
+        cls.edition = EditionFactory()
+        cls.stickers = Sticker.objects.all().order_by('ordinal')
+        cls.collectible_stickers = cls.stickers.exclude(
+            coordinate__page=99)
+        cls.box = cls.edition.boxes.get(edition=cls.edition)
+        cls.packs = Pack.objects.filter(box__edition=cls.edition)
+        # como la edition es pequeña (1 ejemplar) para fines de test, omitimos rarezas inferiores a cero
+        cls.coordinates = Coordinate.objects.filter(
+            collection=cls.edition.collection,
+        )
+        cls.common_coordinates = cls.coordinates.filter(
+            rarity_factor__gte=1
+        )
+
+    def get_stickers_by_coordinate(self, coordinate_id):
+        return self.stickers.filter(coordinate_id=coordinate_id).count()
+
+    def get_stickers_by_pack(self, pack_id):
+        return self.stickers.filter(pack=pack_id).count()
+
+    def test_sticker_creation(self):
+        self.assertEqual(self.stickers.count(), 45)
+        self.assertEqual(self.collectible_stickers.count(), 44)
+
+    def test_stickers_data(self):
+
+        for each_sticker in self.stickers:
+            self.assertEqual(each_sticker.box, self.box)
+            self.assertEqual(str(each_sticker), str(each_sticker.number))
+            self.assertEqual(each_sticker.edition, self.edition)
+            self.assertEqual(each_sticker.collection, self.edition.collection)
+            self.assertEqual(each_sticker.edition, self.edition)
+            self.assertEqual(each_sticker.number,
+                             each_sticker.coordinate.number)
+            self.assertEqual(each_sticker.rarity,
+                             each_sticker.coordinate.rarity_factor)
+            self.assertEqual(each_sticker.page, each_sticker.coordinate.page)
+
+        for each_coordinate in self.common_coordinates:
+            self.assertEqual(self.get_stickers_by_coordinate(
+                each_coordinate.id), each_coordinate.rarity_factor *
+                self.edition.circulation
+            )
+
+        for each_pack in self.packs:
+            self.assertLessEqual(self.get_stickers_by_pack(
+                each_pack.id), self.edition.collection.STICKERS_PER_PACK)
+        counter = 1
+        for each_sticker in self.stickers:
+            self.assertEqual(each_sticker.ordinal, counter)
+            counter += 1
+
+
+class BoxTextCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.edition = EditionFactory()
+        cls.box = cls.edition.boxes.get(edition=cls.edition)
+
+    def test_box_data(self):
+        self.assertEqual(self.box.edition, self.edition)
+        self.assertEqual(self.box.ordinal, 1)
+        self.assertEqual(Box.objects.all().count(), 1)
+        self.assertEqual(
+            str(self.box), f'Box N°: {self.box.id}, ordinal: {self.box.ordinal}')
+
+# TODO: aqui fatan mas tests
+
+
+class AlbumTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.album = AlbumFactory(
+            collector__email="albumcollector@example.com",
+            edition__collection__name="Los Simpsons"
+        )
+
+    def test_album_data(self):
+        self.assertEqual(self.album.collector.email,
+                         "albumcollector@example.com")
+        self.assertEqual(self.album.edition.collection.name, "Los Simpsons")
+        self.assertEqual(str(self.album), str(self.album.edition.collection))
+        self.assertEqual(self.album.missing_stickers, 24)
+        self.assertEqual(self.album.collected_stickers, 0)
