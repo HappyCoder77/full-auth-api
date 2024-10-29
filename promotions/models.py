@@ -14,6 +14,11 @@ from django.utils import timezone
 
 getcontext().prec = 6
 User = get_user_model()
+"""TODO: Explorar una mecanica de creacion mas eficiente y menos propensa a errores.
+Podria ser creando pack y boxes
+sobre la marcha,consolidando el atributo edition en un solo lugar, 
+Se podria crear un clase diagramado o algo asi para contener la configuracion del album
+crear rama para este trabajo exclusivamente"""
 
 
 class Promotion(models.Model):
@@ -136,7 +141,7 @@ class Promotion(models.Model):
 
         if self.pack_cost < 0:
             raise ValidationError(
-                'El costo del pack no puede ser una quantity negativa')
+                'El costo del pack no puede ser una cantidad negativa')
         # Validación de solapamiento de dates
         end_date = self.calculate_end_date()
         overlapping_promotions = self.__class__.objects.filter(
@@ -145,7 +150,7 @@ class Promotion(models.Model):
         ).exclude(pk=self.pk)
 
         if overlapping_promotions.exists():
-            raise ValidationError('Ya hay una promotion en curso')
+            raise ValidationError('Ya hay una promoción en curso')
 
     # TODO:revisar si esto es viable aqui
     # def reiniciar_rescue_options(self):
@@ -298,14 +303,14 @@ class Collection(models.Model):
 
         for page in pages:
             StandardPrize.objects.create(
-                collection_id=self.id, description='descripción de prize standard', page=page)
+                collection_id=self.id, description='descripción de premio standard', page=page)
 
     def create_surprise_prizes(self):
         range_options = range(1, self.SURPRISE_PRIZE_OPTIONS + 1)
 
         for counter in range_options:
             SurprisePrize.objects.create(
-                collection_id=self.id, description='descripción de prize sorpresa', number=counter)
+                collection_id=self.id, description='descripción de premio sorpresa', number=counter)
 
 
 class Coordinate(models.Model):
@@ -395,14 +400,14 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
             else:
                 standard_prize = self.collection.standard_prizes.first()
 
-                if standard_prize.description == 'descripción de prize standard':
+                if standard_prize.description == 'descripción de premio standard':
                     raise ValidationError(
                         '''La edition a la que se hace referencia parece no tener definidos los prizes 
                         standard. Revise e intente de nuevo guardar el registro''')
 
                 surprise_prize = self.collection.surprise_prizes.first()
 
-                if surprise_prize.description == 'descripción de prize sorpresa':
+                if surprise_prize.description == 'descripción de premio sorpresa':
                     raise ValidationError(
                         '''La edition a la que se hace referencia parece no tener definidos los prizes 
                         sorpresa. Revise e intente de nuevo guardar el registro''')
@@ -461,9 +466,9 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
                 ordinal += 1
 
             Sticker.objects.bulk_create(sticker_list)
-            current_total = Sticker.objects.all().count()
 
     # aplica orden aleatorio a los valores del atributo ordinal de los stickers
+
     def shuffle_stickers(self):
         stickers = Sticker.objects.filter(pack__isnull=True).only('ordinal')
         list = []
@@ -484,14 +489,23 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
             counter += 1
 
     def create_packs(self):  # crea los packs de la edición
+        pack_list = []
         stickers = Sticker.objects.filter(pack__isnull=True).count()
         limit = math.ceil(stickers / self.collection.STICKERS_PER_PACK)
         counter = 1
 
         while counter <= limit:
             pack = Pack(ordinal=counter)
-            pack.save()
+            pack_list.append(pack)
+
+            if len(pack_list) >= 1000:
+                Pack.objects.bulk_create(pack_list)
+                pack_list = []
+
             counter += 1
+
+        Pack.objects.bulk_create(pack_list)
+        current_total = Pack.objects.all().count()
 
     def fill_packs(self):  # asigna los stickers a los  packs
         sticker_list = []
