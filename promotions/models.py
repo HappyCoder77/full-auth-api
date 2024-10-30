@@ -382,8 +382,9 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
 
         if last_promotion == None or last_promotion.end_date < timezone.now():
             raise ValidationError(
-                '''No hay ninguna promoción en curso.
-                    Por lo tanto, debe crearla primero y luego intentar de nuevo agregar este registro'''
+                '''No hay ninguna promoción en curso. 
+            Por lo tanto, debe crearla primero y luego
+            intentar de nuevo agregar este registro'''
             )
         else:
             try:  # verifica que no exista otra collection con el mismo name

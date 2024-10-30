@@ -9,8 +9,8 @@ from django.utils import timezone
 from unittest import skip
 from .factories import (AlbumFactory, PromotionFactory, CollectionFactory,
                         EditionFactory, UserFactory)
-from ..models import (Promotion, Collection, Box,
-                      Pack, Sticker, Coordinate, Album)
+from ..models import (Promotion, Collection, Box, Edition,
+                      Pack, Sticker, Coordinate)
 
 NOW = timezone.now()
 
@@ -375,7 +375,7 @@ class CollectionTestCase(TestCase):
                              'descripción de premio sorpresa')
 
 
-@skip("saltar")
+# @skip("saltar")
 class EditionTestCase(TestCase):
 
     @classmethod
@@ -441,12 +441,54 @@ class EditionTestCase(TestCase):
             self.assertEqual(str(
                 each_box), f'Box N°: {each_box.id}, ordinal: {each_box.ordinal}')
 
-# TODO: terminar esto o probarlo en otros tests
 
-
-class StickerTestCase(TestCase):
+class EditionValidationTestCase(TestCase):
 
     @classmethod
+    def setUpTestData(cls):
+        cls.edition = EditionFactory.build(promotion=None)
+
+    def test_no_promotion_at_all(self):
+        with self.assertRaises(ValidationError) as context:
+            self.edition.full_clean()
+        error_messages = context.exception.messages
+        self.assertTrue(any(
+            'No hay ninguna promoción en curso.' in message for message in error_messages))
+
+    def test_no_current_promotion(self):
+        promotion = PromotionFactory(
+            start_date=timezone.now() - datetime.timedelta(days=30), duration=29)
+        collection = CollectionFactory(name="Angela")
+        edition = EditionFactory.build(
+            promotion=promotion, collection=collection)
+
+        with self.assertRaises(ValidationError) as context:
+            edition.full_clean()
+        error_messages = context.exception.messages
+        self.assertIn(
+            '''No hay ninguna promoción en curso. 
+            Por lo tanto, debe crearla primero y luego
+            intentar de nuevo agregar este registro''',
+            error_messages
+        )
+
+    def test_collection_belongs_to_other_edition(self):
+        edition = EditionFactory()
+        edition2 = EditionFactory.build(
+            collection=edition.collection, promotion=edition.promotion)
+
+        with self.assertRaises(ValidationError) as context:
+            edition.full_clean()
+        error_messages = context.exception.messages
+        self.assertTrue(any(
+            'Ya existe una edición con la misma colección'
+            in message for message in error_messages))
+
+
+# TODO: terminar esto o probarlo en otros tests
+class StickerTestCase(TestCase):
+
+    @ classmethod
     def setUpTestData(cls):
 
         cls.edition = EditionFactory()
@@ -503,7 +545,7 @@ class StickerTestCase(TestCase):
 
 
 class BoxTextCase(TestCase):
-    @classmethod
+    @ classmethod
     def setUpTestData(cls):
         cls.edition = EditionFactory()
         cls.box = cls.edition.boxes.get(edition=cls.edition)
@@ -515,11 +557,10 @@ class BoxTextCase(TestCase):
         self.assertEqual(
             str(self.box), f'Box N°: {self.box.id}, ordinal: {self.box.ordinal}')
 
+
 # TODO: aqui fatan mas tests
-
-
 class AlbumTestCase(TestCase):
-    @classmethod
+    @ classmethod
     def setUpTestData(cls):
         cls.album = AlbumFactory(
             collector__email="albumcollector@example.com",
