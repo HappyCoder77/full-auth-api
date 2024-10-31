@@ -458,7 +458,8 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
                 )
 
                 sticker_list.append(sticker)
-                if len(sticker_list) >= 1000:
+
+                if len(sticker_list) >= 500:
                     Sticker.objects.bulk_create(sticker_list)
                     sticker_list = []
                 circulation_counter += 1
@@ -557,7 +558,7 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
             counter += 1
 
     def create_boxes(self):  # crea los boxes correspondientes a la edition
-        list_boxes = []
+        box_list = []
         total_packs = Pack.objects.filter(box__isnull=True).count()
         limit = math.ceil(total_packs / self.collection.PACKS_PER_BOX)
         counter = 1
@@ -567,15 +568,16 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
                 edition=self,
                 ordinal=counter,
             )
-            list_boxes.append(box)
+            box_list.append(box)
             counter += 1
 
-        Box.objects.bulk_create(list_boxes)
+        Box.objects.bulk_create(box_list)
 
     def fill_boxes(self):  # asigna los packs a los boxes
         pack_list = []
-        boxes = iter(self.boxes.all())
-        standard_packs = iter(
+        boxes = list(self.boxes.all())
+        print("available boxes: ", len(boxes))
+        standard_packs = list(
             Pack.objects.filter(
                 box__isnull=True
             ).annotate(
@@ -584,8 +586,8 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
                 stickers__coordinate__page=99
             ).order_by('ordinal')
         )
-
-        prize_packs = iter(
+        print("standars packs: ", len(standard_packs))
+        prize_packs = list(
             Pack.objects.filter(
                 box__isnull=True
             ).annotate(
@@ -594,95 +596,170 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
                 stickers__coordinate__page=99
             ).order_by('ordinal')
         )
-
+        print("prize packs: ", len(prize_packs))
         random_number_1 = random.randrange(
             1, self.collection.PACKS_PER_BOX)
         pack_counter = 1
+
         random_number_2 = 0
 
         while True:
             # determina la posicion en el box del segundo pack premiado
             random_number_2 = random.randrange(
                 1, self.collection.PACKS_PER_BOX)
-            # se suma uno debido a que al fill_boxes un pack premiado se empaqueta el siguiente pack standard dentro de
-            # mismo ciclo del bucle por lo tanto hay que evitar aleatorios contiguos
-            if (random_number_2 != random_number_1
-                    and random_number_2 != (random_number_1 + 1)):
+            """Como en el ciclo de llenado de los boxes al agregar un prize pack sea agrega
+            un standar pack inmediatamente, se deben evitar aletorios contiuos hacia arriba o
+            hacia abajo"""
+            if (random_number_2 != random_number_1 and
+                random_number_2 != (random_number_1 + 1) and
+                    random_number_2 != (random_number_1 - 1)):
                 break
 
-        while True:
-            # iteracion pack cada box
-            box = next(boxes, 'end_of_file')
+        standard_packs_iter = iter(standard_packs)
+        prize_packs_iter = iter(prize_packs)
+        prize_counter = 0  # solo para us en prints
+        for box in boxes:
+            print("box: ", box)
+            while True:
+                # iteración pack cada pack
+                standar_pack = next(standard_packs_iter, 'end_of_file')
 
-            if box != 'end_of_file':
+                if standar_pack != 'end_of_file':
 
-                while True:
-                    # iteración pack cada pack
-                    standar_pack = next(standard_packs, 'end_of_file')
+                    if pack_counter == random_number_1 or pack_counter == random_number_2:
+                        print("colocando prize pack en posicion: ", pack_counter)
+                        prize_pack = next(
+                            prize_packs_iter, 'end_of_file')
 
-                    if standar_pack != 'end_of_file':
-
-                        if pack_counter == random_number_1 or pack_counter == random_number_2:
-
-                            prize_pack = next(
-                                prize_packs, 'end_of_file')
-
-                            if prize_pack != 'end_of_file':  # si la posicion es para pack premiado
-                                # se guarda un pack premiado y uno standard
-                                prize_pack.box = box
-                                pack_list.append(prize_pack)
-                                pack_counter += 1
-                                standar_pack.box = box
-                                pack_list.append(standar_pack)
-                                pack_counter += 1
-                            else:  # si ya no hay packs premiados se guarda uno standard
-                                standar_pack.box = box
-                                pack_list.append(standar_pack)
-                                pack_counter += 1
-
-                        else:  # se guarda un pack standard
+                        if prize_pack != 'end_of_file':  # si la posicion es para pack premiado
+                            # se guarda un pack premiado y uno standard
+                            prize_pack.box = box
+                            prize_pack.save()
+                            # pack_list.append(prize_pack)
+                            pack_counter += 1
                             standar_pack.box = box
                             pack_list.append(standar_pack)
                             pack_counter += 1
+                            prize_counter += 1
 
-                        if pack_counter > self.collection.PACKS_PER_BOX:  # si se alcanza el number de packs
-                            # necesarios, se reinicia el counter
-                            # de packs y se adelanta el counter de boxes
-                            pack_counter = 1  # reinicio el counter de packs
-                            # counter_boxes += 1 #adelanto el counter de boxes
-                            # se recalculan las posiciones premiadas
-                            random_number_1 = random.randrange(
+                        else:  # si ya no hay packs premiados se guarda uno standard
+                            print(
+                                "No hay mas packs premiados, colocando standard pack en posicion: ", pack_counter)
+                            standar_pack.box = box
+                            pack_list.append(standar_pack)
+                            pack_counter += 1
+                            print("pack counter: ", pack_counter)
+                    else:  # se guarda un pack standard
+                        standar_pack.box = box
+                        pack_list.append(standar_pack)
+                        pack_counter += 1
+
+                    if pack_counter > self.collection.PACKS_PER_BOX:  # si se alcanza el number de packs
+                        # necesarios, se reinicia el counter
+                        # de packs y se adelanta el counter de boxes
+                        print("reiniciando contador para proximo box")
+                        pack_counter = 1  # reinicio el counter de packs
+                        # counter_boxes += 1 #adelanto el counter de boxes
+                        # se recalculan las posiciones premiadas
+                        random_number_1 = random.randrange(
+                            1, self.collection.PACKS_PER_BOX)
+
+                        while True:
+                            random_number_2 = random.randrange(
                                 1, self.collection.PACKS_PER_BOX)
 
-                            while True:
-                                random_number_2 = random.randrange(
-                                    1, self.collection.PACKS_PER_BOX)
+                            if (random_number_2 != random_number_1
+                                    and random_number_2 != (random_number_1 + 1)):
 
-                                if (random_number_2 != random_number_1
-                                        and random_number_2 != (random_number_1 + 1)):
-                                    break  # salgo del bucle de los aleatorios
+                                break  # salgo del bucle de los aleatorios
+                        break  # y salgo del bucle de los packs
 
-                            break  # y salgo del bucle de los packs
-                    else:
-                        # si se acabaron los packs standard y aun quedan premiados, se continúan
-                        # colocando en el box
-                        while True:
-                            prize_pack = next(
-                                prize_packs, 'end_of_file')
+                else:
+                    print("prize packs boxed normal flow: ", len(list(
+                        Pack.objects.filter(
+                            box__isnull=False
+                        ).annotate(
+                            Count('stickers')
+                        ).filter(
+                            stickers__coordinate__page=99
+                        ).order_by('ordinal'))
+                    ))
+                    # si se acabaron los packs standard y aun quedan premiados, se continúan
+                    # colocando en el box
+                    remaining_packs = list(
+                        Pack.objects.filter(
+                            box__isnull=True
+                        ).annotate(
+                            Count('stickers')
+                        ).filter(
+                            stickers__coordinate__page=99
+                        ).order_by('ordinal')
+                    )
+                    print("remaining packs: ", len(remaining_packs))
+                    remaining_packs_iter = iter(remaining_packs)
 
-                            if prize_pack != 'end_of_file':
-                                prize_pack.box = box
-                                pack_list.append(prize_pack)
+                    while True:
+                        prize_pack = next(
+                            remaining_packs_iter, 'end_of_file')
+
+                        if prize_pack != 'end_of_file':
+                            print(
+                                "colocando prize pack sobrante el la posicion: ", pack_counter)
+
+                            prize_pack.box = box
+                            prize_pack.save()
+                            pack_counter += 1
+                        else:
                             break
-                        # sino salgo del bucle de los packs
-                        break
+                    # sino salgo del bucle de los packs
+                    break
 
             else:  # salgo del bucle de los boxes
                 break
 
         Pack.objects.bulk_update(pack_list, ['box'])
+        print("prize packs boxed: ", len(list(
+            Pack.objects.filter(
+                box__isnull=False
+            ).annotate(
+                Count('stickers')
+            ).filter(
+                stickers__coordinate__page=99
+            ).order_by('ordinal'))
+        ))
+        print("prize packs unboxed: ", len(list(
+            Pack.objects.filter(
+                box__isnull=True
+            ).annotate(
+                Count('stickers')
+            ).filter(
+                stickers__coordinate__page=99
+            ).order_by('ordinal'))
+        ))
+
+        print("standard packs boxed: ", len(list(
+            Pack.objects.filter(
+                box__isnull=False
+            ).annotate(
+                Count('stickers')
+            ).exclude(
+                stickers__coordinate__page=99
+            ).order_by('ordinal'))))
+        print("standard packs unboxed: ", len(list(
+            Pack.objects.filter(
+                box__isnull=True
+            ).annotate(
+                Count('stickers')
+            ).exclude(
+                stickers__coordinate__page=99
+            ).order_by('ordinal'))))
+        print("total packs unboxed: ",
+              Pack.objects.filter(box__isnull=True).count())
+        print("total packs boxed: ", Pack.objects.filter(
+            box__isnull=False).count())
 
     # funcion que desordena el atributo ordinal de los boxes
+
     def shuffle_boxes(self):
         boxes = self.boxes.all()
         list = []

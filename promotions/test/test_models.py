@@ -10,7 +10,7 @@ from unittest import skip
 from .factories import (AlbumFactory, PromotionFactory, CollectionFactory,
                         EditionFactory, UserFactory)
 from ..models import (Promotion, Collection, Box, Edition,
-                      Pack, Sticker, Coordinate, StandardPrize)
+                      Pack, Sticker, Coordinate, StandardPrize, Slot)
 
 NOW = timezone.now()
 
@@ -53,7 +53,7 @@ class PromotionTestCase(TestCase):
     def test_Promotion_today_data(self):
         now = timezone.now()
         promotion_today = PromotionFactory(
-            start_date=now, current_time=now)
+            start_date=NOW, current_time=NOW,  duration=0.8)
         promotion_today2 = PromotionFactory(
             start_date=now,
             duration=29,
@@ -73,7 +73,7 @@ class PromotionTestCase(TestCase):
             "%m/%d/%Y"), NOW.strftime(
             "%m/%d/%Y"))
         self.assertEqual(promotion_today.end_date, end_date)
-        self.assertEqual(promotion_today.duration, 1)
+        self.assertEqual(promotion_today.duration, 0.8)
         self.assertEqual(promotion_today2.duration, 29)
         self.assertEqual(promotion_today3.duration, 90)
         self.assertEqual(promotion_today.pack_cost, 1.5)
@@ -396,11 +396,15 @@ class EditionTestCase(TestCase):
 
     def test_edition_data(self):
         boxes = Box.objects.filter(edition=self.edition).order_by('pk')
+        packsAll = Pack.objects.all()[:10]
         packs = Pack.objects.filter(box__edition_id=self.edition.id)
 
+        for pack in packsAll:
+            print(pack, pack.box)
         self.assertEqual(str(self.edition), 'Minecraft')
         self.assertEqual(boxes.count(), 37)
         # self.assertEqual(packs.count(), 3695)
+        # self.assertEqual(packsAll.count(), 3695)
 
     def test_rarity_distribution(self):
         stickers = Sticker.objects.all()
@@ -620,6 +624,29 @@ class StickerTestCase(TestCase):
         for each_sticker in self.stickers:
             self.assertEqual(each_sticker.ordinal, counter)
             counter += 1
+            self.assertEqual(str(each_sticker), str(each_sticker.number))
+            self.assertEqual(each_sticker.edition, self.edition)
+            self.assertEqual(each_sticker.collection, self.edition.collection)
+            self.assertEqual(each_sticker.number,
+                             each_sticker.coordinate.number)
+            self.assertEqual(each_sticker.page, each_sticker.coordinate.page)
+            self.assertEqual(each_sticker.rarity,
+                             each_sticker.coordinate.rarity_factor)
+            self.assertEqual(each_sticker.box, each_sticker.pack.box)
+            try:
+                each_sticker.slot
+                self.fail("Sticker should not have a slot associated.")
+            except Sticker.slot.RelatedObjectDoesNotExist:
+                self.assertTrue(True)
+
+    def test_stick_method(self):
+        user = UserFactory()
+        album = AlbumFactory(collector=user, edition=self.edition)
+        sticker = self.collectible_stickers.first()
+
+        sticker.stick(album.pk)
+
+        self.assertIsInstance(sticker.slot, Slot)
 
 
 class BoxTestCase(TestCase):
@@ -666,3 +693,24 @@ class AlbumTestCase(TestCase):
         self.assertEqual(str(self.album), str(self.album.edition.collection))
         self.assertEqual(self.album.missing_stickers, 24)
         self.assertEqual(self.album.collected_stickers, 0)
+
+
+class AnalisisEditionTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        PromotionFactory()
+        cls.edition = EditionFactory.build(circulation=500)
+        cls.edition.collection.save()
+        for each_prize in cls.edition.collection.standard_prizes.all():
+            each_prize.description = 'Bingo'
+            each_prize.save()
+
+        for each_prize in cls.edition.collection.surprise_prizes.all():
+            each_prize.description = 'Bingo'
+            each_prize.save()
+
+        cls.edition.clean()
+        cls.edition.save()
+
+    def test_edition_output(self):
+        print("circulation: ", self.edition.circulation)
