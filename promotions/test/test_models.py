@@ -396,15 +396,11 @@ class EditionTestCase(TestCase):
 
     def test_edition_data(self):
         boxes = Box.objects.filter(edition=self.edition).order_by('pk')
-        packsAll = Pack.objects.all()[:10]
         packs = Pack.objects.filter(box__edition_id=self.edition.id)
 
-        for pack in packsAll:
-            print(pack, pack.box)
         self.assertEqual(str(self.edition), 'Minecraft')
         self.assertEqual(boxes.count(), 37)
-        # self.assertEqual(packs.count(), 3695)
-        # self.assertEqual(packsAll.count(), 3695)
+        self.assertEqual(packs.count(), 3695)
 
     def test_rarity_distribution(self):
         stickers = Sticker.objects.all()
@@ -695,11 +691,12 @@ class AlbumTestCase(TestCase):
         self.assertEqual(self.album.collected_stickers, 0)
 
 
+# @skip
 class AnalisisEditionTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         PromotionFactory()
-        cls.edition = EditionFactory.build(circulation=500)
+        cls.edition = EditionFactory.build(circulation=1)
         cls.edition.collection.save()
         for each_prize in cls.edition.collection.standard_prizes.all():
             each_prize.description = 'Bingo'

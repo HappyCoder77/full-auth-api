@@ -1,6 +1,6 @@
 import math
 import random
-from decimal import Decimal, getcontext
+from decimal import Decimal, getcontext, ROUND_CEILING, ROUND_DOWN
 from dateutil import tz
 
 from dateutil.relativedelta import relativedelta
@@ -361,7 +361,8 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
     # TODO: este campo deberia null True porque se establece a traves del metodo clean
     promotion = models.ForeignKey(Promotion, on_delete=models.CASCADE)
     collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
-    circulation = models.BigIntegerField(default=1)
+    circulation = models.DecimalField(
+        max_digits=20, decimal_places=0, default=Decimal('1'))
 
     class Meta:
         verbose_name = "Edition"
@@ -440,14 +441,13 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
             circulation_counter = 1
 
             # asigna el limit de circulation, dependiendo de si
+            # es una barajia premiada o no
             if each_coordinate.rarity_factor == prize_rarity:
-                # es una barajia premiada o no
-                # COVERAGE NO ESTA PASANDO POR AQUI
-                limit = math.ceil(
-                    each_coordinate.rarity_factor * self.circulation)
+                limit = (each_coordinate.rarity_factor *
+                         self.circulation).quantize(Decimal('1'), rounding=ROUND_CEILING)
             else:
-                limit = math.floor(
-                    each_coordinate.rarity_factor * self.circulation)
+                limit = (each_coordinate.rarity_factor *
+                         self.circulation).quantize(Decimal('1'), rounding=ROUND_DOWN)
 
             sticker_list = []
 
@@ -490,8 +490,10 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
 
     def create_packs(self):  # crea los packs de la edición
         pack_list = []
-        stickers = Sticker.objects.filter(pack__isnull=True).count()
-        limit = math.ceil(stickers / self.collection.STICKERS_PER_PACK)
+        stickers = Decimal(Sticker.objects.filter(pack__isnull=True).count())
+        limit = (stickers / self.collection.STICKERS_PER_PACK).quantize(
+            Decimal('1'), rounding=ROUND_CEILING)
+
         counter = 1
 
         while counter <= limit:
@@ -560,7 +562,8 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
     def create_boxes(self):  # crea los boxes correspondientes a la edition
         box_list = []
         total_packs = Pack.objects.filter(box__isnull=True).count()
-        limit = math.ceil(total_packs / self.collection.PACKS_PER_BOX)
+        limit = Decimal(
+            total_packs / self.collection.PACKS_PER_BOX).quantize(Decimal('1'), rounding=ROUND_CEILING)
         counter = 1
 
         while counter <= limit:
@@ -620,6 +623,8 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
         prize_counter = 0  # solo para us en prints
         for box in boxes:
             print("box: ", box)
+            print("random 1: ", random_number_1)
+            print("random 2: ", random_number_2)
             while True:
                 # iteración pack cada pack
                 standar_pack = next(standard_packs_iter, 'end_of_file')
@@ -627,7 +632,8 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
                 if standar_pack != 'end_of_file':
 
                     if pack_counter == random_number_1 or pack_counter == random_number_2:
-                        print("colocando prize pack en posicion: ", pack_counter)
+                        print(
+                            f"colocando{standar_pack} en posición {pack_counter}")
                         prize_pack = next(
                             prize_packs_iter, 'end_of_file')
 
@@ -704,7 +710,7 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
 
                         if prize_pack != 'end_of_file':
                             print(
-                                "colocando prize pack sobrante el la posicion: ", pack_counter)
+                                f"colocando {prize_pack} en posición {pack_counter}")
 
                             prize_pack.box = box
                             prize_pack.save()
