@@ -40,7 +40,6 @@ class EditionFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Edition
 
-    promotion = factory.SubFactory(PromotionFactory)
     collection = factory.SubFactory(CollectionFactory)
     circulation = 1
 

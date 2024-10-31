@@ -358,6 +358,7 @@ class StandardPrize(models.Model):
 
 
 class Edition(models.Model):  # clase para crear las editiones que se haran en cada promoción
+    # TODO: este campo deberia null True porque se establece a traves del metodo clean
     promotion = models.ForeignKey(Promotion, on_delete=models.CASCADE)
     collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
     circulation = models.BigIntegerField(default=1)
@@ -370,13 +371,11 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
         return self.collection.name
 
     def clean(self):
-
         try:  # verifica que exista una promotion
             last_promotion = Promotion.objects.latest(
                 'end_date')
         except Promotion.DoesNotExist:
             last_promotion = None
-
         # valida la creación del registro dependiendo de si existe o no una promoción
         # anterior o, en caso de existir, que la misma no haya terminado
 
@@ -400,17 +399,16 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
                 )
             else:
                 standard_prize = self.collection.standard_prizes.first()
-
                 if standard_prize.description == 'descripción de premio standard':
                     raise ValidationError(
-                        '''La edition a la que se hace referencia parece no tener definidos los prizes 
+                        '''La edición a la que se hace referencia parece no tener definidos los premios 
                         standard. Revise e intente de nuevo guardar el registro''')
 
                 surprise_prize = self.collection.surprise_prizes.first()
 
                 if surprise_prize.description == 'descripción de premio sorpresa':
                     raise ValidationError(
-                        '''La edition a la que se hace referencia parece no tener definidos los prizes 
+                        '''La edición a la que se hace referencia parece no tener definidos los prizes 
                         sorpresa. Revise e intente de nuevo guardar el registro''')
 
             self.promotion = last_promotion

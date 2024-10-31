@@ -10,7 +10,7 @@ from unittest import skip
 from .factories import (AlbumFactory, PromotionFactory, CollectionFactory,
                         EditionFactory, UserFactory)
 from ..models import (Promotion, Collection, Box, Edition,
-                      Pack, Sticker, Coordinate)
+                      Pack, Sticker, Coordinate, StandardPrize)
 
 NOW = timezone.now()
 
@@ -380,7 +380,19 @@ class EditionTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.edition = EditionFactory(circulation=250)
+        PromotionFactory()
+        cls.edition = EditionFactory.build(circulation=250)
+        cls.edition.collection.save()
+        for each_prize in cls.edition.collection.standard_prizes.all():
+            each_prize.description = 'Bingo'
+            each_prize.save()
+
+        for each_prize in cls.edition.collection.surprise_prizes.all():
+            each_prize.description = 'Bingo'
+            each_prize.save()
+
+        cls.edition.clean()
+        cls.edition.save()
 
     def test_edition_data(self):
         boxes = Box.objects.filter(edition=self.edition).order_by('pk')
@@ -444,44 +456,97 @@ class EditionTestCase(TestCase):
 
 class EditionValidationTestCase(TestCase):
 
-    @classmethod
-    def setUpTestData(cls):
-        cls.edition = EditionFactory.build(promotion=None)
+    def test_no_validation_raised(self):
+        PromotionFactory()
+        collection = CollectionFactory()
+        edition = EditionFactory.build(collection=collection)
+
+        for each_prize in edition.collection.standard_prizes.all():
+            each_prize.description = 'Bingo'
+            each_prize.save()
+
+        for each_prize in edition.collection.surprise_prizes.all():
+            each_prize.description = 'Bingo'
+            each_prize.save()
+
+        try:
+            edition.clean()
+        except ValidationError:
+            self.fail("clean() raised ValidationError unexpectedly!",)
 
     def test_no_promotion_at_all(self):
+        collection = CollectionFactory(name="Loolapaloza")
+        edition = EditionFactory.build(collection=collection)
+
         with self.assertRaises(ValidationError) as context:
-            self.edition.full_clean()
+            edition.clean()
         error_messages = context.exception.messages
         self.assertTrue(any(
             'No hay ninguna promoción en curso.' in message for message in error_messages))
 
     def test_no_current_promotion(self):
-        promotion = PromotionFactory(
+        PromotionFactory(
             start_date=timezone.now() - datetime.timedelta(days=30), duration=29)
         collection = CollectionFactory(name="Angela")
-        edition = EditionFactory.build(
-            promotion=promotion, collection=collection)
-
-        with self.assertRaises(ValidationError) as context:
-            edition.full_clean()
-        error_messages = context.exception.messages
-        self.assertIn(
-            '''No hay ninguna promoción en curso. 
-            Por lo tanto, debe crearla primero y luego
-            intentar de nuevo agregar este registro''',
-            error_messages
-        )
-
-    def test_collection_belongs_to_other_edition(self):
-        edition = EditionFactory()
-        edition2 = EditionFactory.build(
-            collection=edition.collection, promotion=edition.promotion)
+        edition = EditionFactory.build(collection=collection)
 
         with self.assertRaises(ValidationError) as context:
             edition.full_clean()
         error_messages = context.exception.messages
         self.assertTrue(any(
+            'No hay ninguna promoción en curso.' in message for message in error_messages))
+
+    def test_collection_belongs_to_other_edition(self):
+        PromotionFactory()
+        edition = EditionFactory.build()
+        edition.collection.save()
+
+        for each_prize in edition.collection.standard_prizes.all():
+            each_prize.description = 'Bingo'
+            each_prize.save()
+
+        for each_prize in edition.collection.surprise_prizes.all():
+            each_prize.description = 'Bingo'
+            each_prize.save()
+        edition.clean()
+        edition.save()
+
+        edition2 = EditionFactory.build(collection=edition.collection)
+
+        with self.assertRaises(ValidationError) as context:
+            edition2.clean()
+        error_messages = context.exception.messages
+        self.assertTrue(any(
             'Ya existe una edición con la misma colección'
+            in message for message in error_messages))
+
+    def test_no_standard_prizes_defined(self):
+        promotion = PromotionFactory()
+        collection = CollectionFactory()
+        edition = EditionFactory.build(collection=collection)
+
+        with self.assertRaises(ValidationError) as context:
+            edition.full_clean()
+        error_messages = context.exception.messages
+        self.assertTrue(any(
+            'La edición a la que se hace referencia parece no tener definidos los premios'
+            in message for message in error_messages))
+
+    def test_no_surprise_prizes_defined(self):
+        promotion = PromotionFactory()
+        collection = CollectionFactory()
+        edition = EditionFactory.build(collection=collection)
+
+        for each_prize in collection.standard_prizes.all():
+            each_prize.description = 'Bingo'
+            each_prize.save()
+
+        with self.assertRaises(ValidationError) as context:
+            edition.full_clean()
+
+        error_messages = context.exception.messages
+        self.assertTrue(any(
+            'sorpresa. Revise e intente de nuevo guardar el registro'
             in message for message in error_messages))
 
 
@@ -490,8 +555,21 @@ class StickerTestCase(TestCase):
 
     @ classmethod
     def setUpTestData(cls):
+        PromotionFactory()
+        cls.edition = EditionFactory.build()
+        cls.edition.collection.save()
 
-        cls.edition = EditionFactory()
+        for each_prize in cls.edition.collection.standard_prizes.all():
+            each_prize.description = 'Bingo'
+            each_prize.save()
+
+        for each_prize in cls.edition.collection.surprise_prizes.all():
+            each_prize.description = 'Bingo'
+            each_prize.save()
+
+        cls.edition.clean()
+        cls.edition.save()
+
         cls.stickers = Sticker.objects.all().order_by('ordinal')
         cls.collectible_stickers = cls.stickers.exclude(
             coordinate__page=99)
@@ -544,10 +622,22 @@ class StickerTestCase(TestCase):
             counter += 1
 
 
-class BoxTextCase(TestCase):
+class BoxTestCase(TestCase):
     @ classmethod
     def setUpTestData(cls):
-        cls.edition = EditionFactory()
+        PromotionFactory()
+        cls.edition = EditionFactory.build()
+        cls.edition.collection.save()
+        for each_prize in cls.edition.collection.standard_prizes.all():
+            each_prize.description = 'Bingo'
+            each_prize.save()
+
+        for each_prize in cls.edition.collection.surprise_prizes.all():
+            each_prize.description = 'Bingo'
+            each_prize.save()
+
+        cls.edition.clean()
+        cls.edition.save()
         cls.box = cls.edition.boxes.get(edition=cls.edition)
 
     def test_box_data(self):
@@ -562,8 +652,10 @@ class BoxTextCase(TestCase):
 class AlbumTestCase(TestCase):
     @ classmethod
     def setUpTestData(cls):
+        promotion = PromotionFactory()
         cls.album = AlbumFactory(
             collector__email="albumcollector@example.com",
+            edition__promotion=promotion,
             edition__collection__name="Los Simpsons"
         )
 
