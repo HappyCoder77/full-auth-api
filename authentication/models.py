@@ -1,0 +1,41 @@
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+
+from django.db import models
+
+from .managers import UserAccountManager
+
+
+class UserAccount(AbstractBaseUser, PermissionsMixin):
+    email = models.EmailField(max_length=255, unique=True)
+
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
+    is_superuser = models.BooleanField(default=False)
+    is_collector = models.BooleanField(default=False)
+
+    objects = UserAccountManager()
+
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = []
+
+    def __str__(self):
+        return self.email
+
+    def is_regionalmanager(self):
+        return hasattr(self, 'baseprofile') and hasattr(self.baseprofile, 'regionalmanager')
+
+    def is_localmanager(self):
+        return hasattr(self, 'baseprofile') and hasattr(self.baseprofile, 'localmanager')
+
+    def is_sponsor(self):
+        return hasattr(self, 'baseprofile') and hasattr(self.baseprofile, 'sponsor')
+
+    def is_dealer(self):
+        return hasattr(self, 'baseprofile') and hasattr(self.baseprofile, 'dealer')
+
+    def has_profile(self):
+        return hasattr(self, 'baseprofile')
+
+# TODO: add Address model
+# TODO: add region Model
+# TODO: add locality model

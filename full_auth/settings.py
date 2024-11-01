@@ -54,8 +54,12 @@ INSTALLED_APPS = [
     'djoser',
     'social_django',
     'storages',
+    'authentication',
     'users',
-    'promotions'
+    'promotions',
+    'editions',
+    'sticker_collections',
+    'albums',
 ]
 
 MIDDLEWARE = [
@@ -258,4 +262,4 @@ CORS_ALLOW_CREDENTIALS = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-AUTH_USER_MODEL = 'users.UserAccount'
+AUTH_USER_MODEL = 'authentication.UserAccount'
