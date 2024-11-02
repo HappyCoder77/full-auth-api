@@ -2,7 +2,8 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import TestCase
 from django.contrib.auth import get_user_model
-from ..models import BaseProfile, RegionalManager, UserAccount
+from ..models import BaseProfile, RegionalManager
+
 User = get_user_model()
 
 SUPERUSER_EMAIL = 'superuser@example.com'

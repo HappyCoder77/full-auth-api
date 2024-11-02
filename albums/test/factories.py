@@ -1,7 +1,7 @@
 import factory
 
 from editions.test.factories import EditionFactory
-from users.test.factories import UserFactory
+from authentication.test.factories import UserFactory
 from ..models import Album
 
 

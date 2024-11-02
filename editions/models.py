@@ -16,7 +16,7 @@ User = get_user_model()
 
 """TODO: Explorar una mecanica de creacion mas eficiente y menos propensa a errores.
 Podria ser creando pack y boxes
-sobre la marcha,consolidando el atributo edition en un solo lugar, 
+sobre la marcha,consolidando el atributo edition en un solo lugar,
 Se podria crear un clase diagramado o algo asi para contener la configuracion del album
 crear rama para este trabajo exclusivamente"""
 
@@ -46,7 +46,7 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
 
         if last_promotion == None or last_promotion.end_date < timezone.now():
             raise ValidationError(
-                '''No hay ninguna promoción en curso. 
+                '''No hay ninguna promoción en curso.
             Por lo tanto, debe crearla primero y luego
             intentar de nuevo agregar este registro'''
             )
@@ -66,14 +66,14 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
                 standard_prize = self.collection.standard_prizes.first()
                 if standard_prize.description == 'descripción de premio standard':
                     raise ValidationError(
-                        '''La edición a la que se hace referencia parece no tener definidos los premios 
+                        '''La edición a la que se hace referencia parece no tener definidos los premios
                         standard. Revise e intente de nuevo guardar el registro''')
 
                 surprise_prize = self.collection.surprise_prizes.first()
 
                 if surprise_prize.description == 'descripción de premio sorpresa':
                     raise ValidationError(
-                        '''La edición a la que se hace referencia parece no tener definidos los prizes 
+                        '''La edición a la que se hace referencia parece no tener definidos los prizes
                         sorpresa. Revise e intente de nuevo guardar el registro''')
 
             self.promotion = last_promotion
@@ -241,6 +241,9 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
         Box.objects.bulk_create(box_list)
 
     def fill_boxes(self):  # asigna los packs a los boxes
+        # print("---------------------------filling boxes")
+        # print("available stickers: ", Sticker.objects.all().count())
+        print
         pack_list = []
         boxes = list(self.boxes.all())
         # print("available boxes: ", len(boxes))
@@ -469,7 +472,7 @@ class Pack(models.Model):
     # sale = models.ForeignKey(
     #     Sale, on_delete=models.CASCADE, null=True, related_name='packs')
 
-    @property
+    @ property
     def edition(self):
         return self.box.edition
 
@@ -505,30 +508,30 @@ class Sticker(models.Model):  # instancia ejemplares de cada sticker definida en
     def __str__(self):
         return str(self.coordinate.number)
 
-    @property
+    @ property
     # @admin.display(ordering='sticker__edition')
     def edition(self):
         return self.pack.box.edition
 
-    @property
+    @ property
     def collection(self):
         return self.pack.box.edition.collection
 
-    @property
-    @admin.display()
+    @ property
+    @ admin.display()
     def number(self):
         return self.coordinate.number
 
-    @property
-    @admin.display(ordering='sticker__page')
+    @ property
+    @ admin.display(ordering='sticker__page')
     def page(self):
         return self.coordinate.page
 
-    @property
-    @admin.display(ordering='sticker__rarity_factor')
+    @ property
+    @ admin.display(ordering='sticker__rarity_factor')
     def rarity(self):
         return self.coordinate.rarity_factor
 
-    @property
+    @ property
     def box(self):
         return self.pack.box

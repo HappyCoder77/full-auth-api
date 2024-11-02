@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'promotions',
     'editions',
     'sticker_collections',
+    'sales',
     'albums',
 ]
 
