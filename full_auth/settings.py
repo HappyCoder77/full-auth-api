@@ -34,7 +34,7 @@ DEVELOPMENT_MODE = getenv("DEVELOPMENT_MODE", "False") == "True"
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = getenv("DJANGO_SECRET_KEY", get_random_secret_key())
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = getenv("DEBUG", "False") == "True"
+DEBUG = getenv("DEBUG", "False").lower() == "true"
 
 ALLOWED_HOSTS = getenv("DJANGO_ALLOWED_HOSTS",
                        "127.0.0.1,localhost").split(",")
@@ -103,7 +103,10 @@ if DEVELOPMENT_MODE is True:
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
-        }
+        },
+        'TEST': {
+            'NAME': BASE_DIR / 'test_db.sqlite3',
+        },
     }
 elif len(sys.argv) > 0 and sys.argv[1] != 'collectstatic':
     if getenv('DATABASE_URL', None) is None:
@@ -232,7 +235,7 @@ CSRF_COOKIE_SAMESITE = 'None'
 
 AUTH_COOKIE = 'access'
 AUTH_COOKIE_ACCESS_MAX_AGE = 60 * 60 * 24
-AUTH_COOKIE_SECURE = getenv('AUTH_COOKIE_SECURE', 'True') == 'True'
+AUTH_COOKIE_SECURE = getenv('AUTH_COOKIE_SECURE', 'True').lower() == 'true'
 AUTH_COOKIE_HTTP_ONLY = True
 AUTH_COOKIE_PATH = '/'
 AUTH_COOKIE_SAMESITE = 'Lax' if DEBUG else 'None'
