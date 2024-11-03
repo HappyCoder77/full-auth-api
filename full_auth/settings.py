@@ -37,7 +37,7 @@ SECRET_KEY = getenv("DJANGO_SECRET_KEY", get_random_secret_key())
 DEBUG = getenv("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = getenv("DJANGO_ALLOWED_HOSTS",
-                       "127.0.0.1,localhost,192.168.0.118").split(",")
+                       "127.0.0.1,localhost").split(",")
 
 
 # Application definition
@@ -112,21 +112,17 @@ elif len(sys.argv) > 0 and sys.argv[1] != 'collectstatic':
         'default': dj_database_url.parse(getenv('DATABASE_URL')),
     }
 
-# EMAIL_BACKEND = 'django_ses.SESBackend'
-# DEFAULT_FROM_EMAIL = getenv('AWS_SES_FROM_EMAIL')
-# AWS_SES_ACCESS_KEY_ID = getenv('AWS_SES_ACCESS_KEY_ID')
-# AWS_SES_SECRET_ACCESS_KEY = getenv('AWS_SES_SECRET_ACCESS_KEY')
-# USE_SES_V2 = True
-# AWS_SES_REGION_NAME = getenv('AWS_SES_REGION_NAME')
-# AWS_SES_REGION_ENDPOINT = f'email.{AWS_SES_REGION_NAME}.amazonaws.com'
-# AWS_SES_FROM_EMAIL = getenv('AWS_SES_FROM_EMAIL')
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.privateemail.com'
-EMAIL_PORT = 465
-EMAIL_HOST_USER = 'cuentas@misbarajitas.xyz'
-EMAIL_HOST_PASSWORD = getenv('EMAIL_PASSWORD')
-EMAIL_USE_SSL = True
+if getenv('DEBUG', 'False') == 'True':
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+# EMAIL_HOST = 'smtp.privateemail.com'
+# EMAIL_PORT = 465
+# EMAIL_HOST_USER = 'cuentas@misbarajitas.xyz'
+# EMAIL_HOST_PASSWORD = getenv('EMAIL_PASSWORD')
+# EMAIL_USE_SSL = True
 DEFAULT_FROM_EMAIL = 'Equipo de cuentas Mis Barajitas <cuentas@misbarajitas.xyz>'
 
 
@@ -229,6 +225,11 @@ DJOSER = {
     'PASSWORD_VALIDATORS': [password_validation.validate_password]
 }
 
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SAMESITE = 'None'
+
 AUTH_COOKIE = 'access'
 AUTH_COOKIE_ACCESS_MAX_AGE = 60 * 60 * 24
 AUTH_COOKIE_SECURE = getenv('AUTH_COOKIE_SECURE', 'True') == 'True'
@@ -255,7 +256,7 @@ SOCIAL_AUTH_FACEBOOK_PROFILE_EXTRA_PARAMS = {
 
 CORS_ALLOWED_ORIGINS = getenv(
     'CORS_ALLOWED_ORIGINS',
-    'http://localhost:3000,http://127.0.0.1:8000,http://192.168.0.118:8000').split(',')
+    'http://localhost:3000,http://127.0.0.1:3000').split(',')
 
 CORS_ALLOW_CREDENTIALS = True
 # Default primary key field type
