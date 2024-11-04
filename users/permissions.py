@@ -35,7 +35,7 @@ class IsRegionalManagerOrSuperUser(permissions.BasePermission):
     """
 
     def has_permission(self, request, view):
-        return request.user.is_regionalmanager or request.user.is_superuser
+        return request.user.is_authenticated and (request.user.is_regionalmanager or request.user.is_superuser)
 
 
 class IsLocalManager(permissions.BasePermission):
