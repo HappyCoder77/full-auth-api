@@ -9,7 +9,7 @@ from django.conf import settings
 from authentication.test.factories import UserFactory
 from ..models import RegionalManager, LocalManager
 
-from .factories import RegionalManagerFactory
+from .factories import RegionalManagerFactory, LocalManagerFactory
 
 User = get_user_model()
 
@@ -200,15 +200,16 @@ class LocalManagerViewSetTestCase(APITestCase):
         self.superuser = UserFactory(is_superuser=True)
         self.user = UserFactory()
         self.regional_manager = RegionalManagerFactory(user=self.user)
-        self.client.force_authenticate(user=self.superuser)
+        self.client.force_authenticate(user=self.regional_manager.user)
         self.list_url = reverse('local-manager-profile-list')
         self.count_url = reverse('local-manager-profile-count')
 
     def test_get_local_managers(self):
         response = self.client.get(self.list_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(LocalManager.objects.count(), 0)
 
-    def test_create_local_manager(self):
+    def test_create_local_manager_with_regional_manager(self):
         data = {
             'first_name': 'Local',
             'last_name': 'Parra',
@@ -216,19 +217,106 @@ class LocalManagerViewSetTestCase(APITestCase):
             'email': 'localmanager@example.com'
         }
         response = self.client.post(self.list_url, data, format='json')
-        manager = LocalManager.objects.get(first_name='Local')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(LocalManager.objects.count(), 1)
-        self.assertIsNone(manager.user)
-        self.assertEqual(manager.first_name, 'Local')
-        self.assertEqual(manager.last_name, 'Parra')
-        self.assertEqual(manager.gender, 'F')
-        self.assertEqual(manager.email, 'localmanager@example.com')
+        self.assertIsNone(response.data.get('user'))
+        self.assertEqual(response.data.get('first_name'), 'Local')
+        self.assertEqual(response.data.get('last_name'), 'Parra')
+        self.assertEqual(response.data.get('gender'), 'F')
+        self.assertEqual(response.data.get('email'),
+                         'localmanager@example.com')
+        self.assertEqual(response.data.get('created_by'),
+                         self.regional_manager.user.id)
 
-    # def test_count_regional_managers(self):
-    #     RegionalManagerFactory()
-    #     RegionalManagerFactory()
-    #     response = self.client.get(self.count_url)
-    #     self.assertEqual(response.status_code, status.HTTP_200_OK)
-    #     self.assertEqual(response.data['total'], 2)
+    def test_create_local_manager_with_superuser(self):
+        self.client.force_authenticate(user=self.superuser)
+        data = {
+            'first_name': 'Local',
+            'last_name': 'Parra',
+            'gender': 'F',
+            'email': 'localmanager@example.com'
+        }
+        response = self.client.post(self.list_url, data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(LocalManager.objects.count(), 1)
+        self.assertIsNone(response.data.get('user'))
+        self.assertEqual(response.data.get('created_by'),
+                         self.superuser.id)
+
+    def test_create_local_manager_with_user(self):
+        user = UserFactory()
+        self.client.force_authenticate(user=user)
+        data = {
+            'first_name': 'Local',
+            'last_name': 'Parra',
+            'gender': 'F',
+            'email': 'localmanager@example.com'
+        }
+        response = self.client.post(self.list_url, data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(LocalManager.objects.count(), 0)
+
+    def test_count_with_regional_manager(self):
+        LocalManagerFactory(created_by=self.regional_manager.user)
+        LocalManagerFactory(created_by=self.regional_manager.user)
+        LocalManagerFactory(created_by=self.superuser)
+        response = self.client.get(self.count_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['total'], 2)
+
+    def test_count_with_superuser(self):
+        self.client.force_authenticate(user=self.superuser)
+        LocalManagerFactory(created_by=self.superuser)
+        LocalManagerFactory(created_by=self.superuser)
+        LocalManagerFactory(created_by=self.regional_manager.user)
+        response = self.client.get(self.count_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['total'], 3)
+
+    def test_count_with_user(self):
+        user = UserFactory()
+        self.client.force_authenticate(user=user)
+        LocalManagerFactory(created_by=self.superuser)
+        LocalManagerFactory(created_by=self.superuser)
+        LocalManagerFactory(created_by=self.regional_manager.user)
+
+        response = self.client.get(self.count_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_list_with_regional_manager(self):
+        LocalManagerFactory(created_by=self.regional_manager.user)
+        LocalManagerFactory(created_by=self.regional_manager.user)
+        LocalManagerFactory(created_by=self.superuser)
+        LocalManagerFactory(created_by=self.superuser)
+
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+    def test_list_with_superuser(self):
+        self.client.force_authenticate(user=self.superuser)
+        LocalManagerFactory(created_by=self.regional_manager.user)
+        LocalManagerFactory(created_by=self.regional_manager.user)
+        LocalManagerFactory(created_by=self.superuser)
+        LocalManagerFactory(created_by=self.superuser)
+        LocalManagerFactory(created_by=self.superuser)
+
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 5)
+
+    def test_list_with_user(self):
+        user = UserFactory()
+        self.client.force_authenticate(user=user)
+        LocalManagerFactory(created_by=self.regional_manager.user)
+        LocalManagerFactory(created_by=self.regional_manager.user)
+        LocalManagerFactory(created_by=self.superuser)
+        LocalManagerFactory(created_by=self.superuser)
+        LocalManagerFactory(created_by=self.superuser)
+
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(len(response.data), 1)

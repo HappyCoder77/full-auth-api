@@ -21,6 +21,7 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email
 
+    @property
     def is_regionalmanager(self):
         return hasattr(self, 'baseprofile') and hasattr(self.baseprofile, 'regionalmanager')
 

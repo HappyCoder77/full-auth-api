@@ -12,7 +12,7 @@ class RegionalManagerFactory(factory.django.DjangoModelFactory):
 
     first_name = factory.LazyAttribute(lambda _: faker.first_name())
     last_name = factory.LazyAttribute(lambda _: faker.last_name())
-    gender = 'F' if random.random() * 2 < 1 else 'F'
+    gender = 'F' if random.random() * 2 < 1 else 'M'
     email = factory.LazyAttribute(lambda _: faker.unique.email())
 
 
@@ -22,5 +22,5 @@ class LocalManagerFactory(factory.django.DjangoModelFactory):
 
     first_name = factory.LazyAttribute(lambda _: faker.first_name())
     last_name = factory.LazyAttribute(lambda _: faker.last_name())
-    gender = 'F' if random.random() * 2 < 1 else 'F'
+    gender = 'F' if random.random() * 2 < 1 else 'M'
     email = factory.LazyAttribute(lambda _: faker.unique.email())

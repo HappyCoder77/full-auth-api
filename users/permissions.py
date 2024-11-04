@@ -17,7 +17,7 @@ class IsSuperUser(permissions.BasePermission):
     """
 
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.is_superuser
+        return request.user.is_superuser
 
 
 class IsRegionalManager(permissions.BasePermission):
@@ -26,7 +26,16 @@ class IsRegionalManager(permissions.BasePermission):
     """
 
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.is_regionalmanager
+        return request.user.is_regionalmanager
+
+
+class IsRegionalManagerOrSuperUser(permissions.BasePermission):
+    """
+    Permite el acceso solo a los gerentes regionales.
+    """
+
+    def has_permission(self, request, view):
+        return request.user.is_regionalmanager or request.user.is_superuser
 
 
 class IsLocalManager(permissions.BasePermission):
@@ -35,7 +44,7 @@ class IsLocalManager(permissions.BasePermission):
     """
 
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.is_localmanager
+        return request.user.is_localmanager
 
 
 class IsSponsor(permissions.BasePermission):
@@ -44,7 +53,7 @@ class IsSponsor(permissions.BasePermission):
     """
 
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.is_sponsor
+        return request.user.is_sponsor
 
 
 class IsCollector(permissions.BasePermission):
@@ -53,4 +62,4 @@ class IsCollector(permissions.BasePermission):
     """
 
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.is_collector
+        return request.user.is_collector

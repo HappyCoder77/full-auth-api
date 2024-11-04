@@ -1,5 +1,5 @@
 from django.conf import settings
-from rest_framework.views import APIView
+from rest_framework.views import APIView, PermissionDenied
 from rest_framework.response import Response
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -16,7 +16,7 @@ from .models import (RegionalManager, LocalManager,
 from .serializers import (RegionalManagerSerializer,
                           LocalManagerSerializer, SponsorSerializer,
                           DealerSerializer, BaseProfileSerializer)
-from .permissions import (IsSuperUser, IsRegionalManager,
+from .permissions import (IsSuperUser, IsRegionalManagerOrSuperUser,
                           IsLocalManager, IsSponsor, IsCollector)
 
 
@@ -151,27 +151,19 @@ class LocalManagerViewSet(viewsets.ModelViewSet):
     """
     # evitar borrado o actualizacion del registro
     http_method_names = ['get', 'post']
-    queryset = LocalManager.objects.all()
     serializer_class = LocalManagerSerializer
+    permission_classes = [IsRegionalManagerOrSuperUser]
 
-    def get_permissions(self):
-        if self.action in ['create', 'count_by_creator', 'list_by_creator']:
-            permission_classes = [IsRegionalManager]
-        else:
-            permission_classes = [IsSuperUser]
+    def get_queryset(self):
 
-        return [permission() for permission in permission_classes]
+        if self.request.user.is_regionalmanager:
+            return LocalManager.objects.filter(created_by=self.request.user)
+
+        return LocalManager.objects.all()
 
     @action(detail=False, methods=['get'])
     def count(self, request):
-        total = self.queryset.count()
-        return Response({'total': total})
-
-    @action(detail=False,
-            methods=['get'],
-            url_path="count-by-creator/(?P<creator_id>\d+)",)
-    def count_by_creator(self, request, creator_id=None):
-        total = self.queryset.filter(created_by_id=creator_id).count()
+        total = self.get_queryset().count()
         return Response({'total': total})
 
     def perform_create(self, serializer):
