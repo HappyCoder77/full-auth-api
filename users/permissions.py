@@ -65,6 +65,15 @@ class IsSponsor(permissions.BasePermission):
         return request.user.is_sponsor
 
 
+class IsSponsorOrSuperUser(permissions.BasePermission):
+    """
+    Permite el acceso solo a los gerentes regionales.
+    """
+
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and (request.user.is_sponsor or request.user.is_superuser)
+
+
 class IsCollector(permissions.BasePermission):
     """
     Permite el acceso solo a los coleccionistas.

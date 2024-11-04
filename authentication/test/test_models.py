@@ -93,6 +93,6 @@ class UserAccountTest(TestCase):
         self.assertEqual(str(self.user), USER_EMAIL)
         self.assertFalse(self.user.is_regionalmanager)
         self.assertFalse(self.user.is_localmanager)
-        self.assertFalse(self.user.is_sponsor())
-        self.assertFalse(self.user.is_dealer())
+        self.assertFalse(self.user.is_sponsor)
+        self.assertFalse(self.user.is_dealer)
         self.assertFalse(self.user.has_profile())

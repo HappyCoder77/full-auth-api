@@ -19,7 +19,7 @@ from .serializers import (RegionalManagerSerializer,
                           DealerSerializer, BaseProfileSerializer)
 
 from .permissions import (IsSuperUser, IsRegionalManagerOrSuperUser,
-                          IsLocalManagerOrSuperUser, IsSponsor, IsCollector)
+                          IsLocalManagerOrSuperUser, IsSponsorOrSuperUser, IsCollector)
 
 
 class CustomProviderAuthView(ProviderAuthView):
@@ -178,7 +178,6 @@ class SponsorViewSet(viewsets.ModelViewSet):
     """
     # evitar borrado o actualizacion del registro
     http_method_names = ['get', 'post']
-    queryset = Sponsor.objects.all()
     serializer_class = SponsorSerializer
     permission_classes = [IsLocalManagerOrSuperUser]
 
@@ -204,21 +203,19 @@ class DealerViewSet(viewsets.ModelViewSet):
     """
     # evitar borrado o actualizacion del registro
     http_method_names = ['get', 'post']
-    queryset = Dealer.objects.all()
     serializer_class = DealerSerializer
-    permission_classes = [IsSponsor]
+    permission_classes = [IsSponsorOrSuperUser]
 
-    @action(detail=False, methods=['get'], permission_classes=[IsSuperUser])
+    def get_queryset(self):
+
+        if self.request.user.is_sponsor:
+            return Dealer.objects.filter(created_by=self.request.user)
+
+        return Dealer.objects.all()
+
+    @action(detail=False, methods=['get'])
     def count(self, request):
-        total = self.queryset.count()
-        return Response({'total': total})
-
-    @action(detail=False,
-            methods=['get'],
-            url_path="count-by-creator/(?P<creator_id>\d+)",
-            permission_classes=[IsSponsor])
-    def count_by_creator(self, request, creator_id=None):
-        total = self.queryset.filter(created_by_id=creator_id).count()
+        total = self.get_queryset().count()
         return Response({'total': total})
 
     def perform_create(self, serializer):

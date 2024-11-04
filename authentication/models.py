@@ -29,9 +29,11 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     def is_localmanager(self):
         return hasattr(self, 'baseprofile') and hasattr(self.baseprofile, 'localmanager')
 
+    @property
     def is_sponsor(self):
         return hasattr(self, 'baseprofile') and hasattr(self.baseprofile, 'sponsor')
 
+    @property
     def is_dealer(self):
         return hasattr(self, 'baseprofile') and hasattr(self.baseprofile, 'dealer')
 

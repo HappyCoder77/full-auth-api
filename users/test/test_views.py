@@ -7,9 +7,9 @@ from rest_framework import status
 from django.conf import settings
 
 from authentication.test.factories import UserFactory
-from ..models import RegionalManager, LocalManager, Sponsor
+from ..models import RegionalManager, LocalManager, Sponsor, Dealer
 
-from .factories import RegionalManagerFactory, LocalManagerFactory, SponsorFactory
+from .factories import RegionalManagerFactory, LocalManagerFactory, SponsorFactory, DealerFactory
 
 User = get_user_model()
 
@@ -636,6 +636,187 @@ class SponsorViewSetTestCase(APITestCase):
         SponsorFactory(created_by=self.superuser)
         SponsorFactory(created_by=self.superuser)
         SponsorFactory(created_by=self.superuser)
+
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(len(response.data), 1)
+
+
+class DealerViewSetTestCase(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.superuser = UserFactory(is_superuser=True)
+        self.user = UserFactory()
+        self.sponsor = SponsorFactory(user=self.user)
+        self.client.force_authenticate(user=self.sponsor.user)
+        self.list_url = reverse('dealer-profile-list')
+        self.count_url = reverse('dealer-profile-count')
+
+    def test_get_dealers(self):
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Dealer.objects.count(), 0)
+
+    def test_get_dealers_with_superuser(self):
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Dealer.objects.count(), 0)
+
+    def test_get_dealers_unauthorized(self):
+        self.client.logout()
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(len(response.data), 1)
+
+    def test_get_dealers_forbidden(self):
+        user = UserFactory()
+        self.client.force_authenticate(user=user)
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(len(response.data), 1)
+
+    def test_create_local_manager(self):
+        data = {
+            'first_name': 'Dealer',
+            'last_name': 'Parra',
+            'gender': 'F',
+            'email': 'localmanager@example.com'
+        }
+        response = self.client.post(self.list_url, data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Dealer.objects.count(), 1)
+        self.assertIsNone(response.data.get('user'))
+        self.assertEqual(response.data.get('first_name'), 'Dealer')
+        self.assertEqual(response.data.get('last_name'), 'Parra')
+        self.assertEqual(response.data.get('gender'), 'F')
+        self.assertEqual(response.data.get('email'),
+                         'localmanager@example.com')
+        self.assertEqual(response.data.get('created_by'),
+                         self.sponsor.user.id)
+
+    def test_create_local_manager_with_superuser(self):
+        self.client.force_authenticate(user=self.superuser)
+        data = {
+            'first_name': 'Dealer',
+            'last_name': 'Parra',
+            'gender': 'F',
+            'email': 'localmanager@example.com'
+        }
+        response = self.client.post(self.list_url, data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Dealer.objects.count(), 1)
+        self.assertIsNone(response.data.get('user'))
+        self.assertEqual(response.data.get('created_by'),
+                         self.superuser.id)
+
+    def test_create_local_manager_unauthorized(self):
+        self.client.logout()
+        data = {
+            'first_name': 'Dealer',
+            'last_name': 'Parra',
+            'gender': 'F',
+            'email': 'localmanager@example.com'
+        }
+        response = self.client.post(self.list_url, data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(len(response.data), 1)
+
+    def test_create_local_manager_forbidden(self):
+        user = UserFactory()
+        self.client.force_authenticate(user=user)
+        data = {
+            'first_name': 'Dealer',
+            'last_name': 'Parra',
+            'gender': 'F',
+            'email': 'localmanager@example.com'
+        }
+        response = self.client.post(self.list_url, data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Dealer.objects.count(), 0)
+
+    def test_count_with_localmanager(self):
+        DealerFactory(created_by=self.sponsor.user)
+        DealerFactory(created_by=self.sponsor.user)
+        DealerFactory(created_by=self.superuser)
+        response = self.client.get(self.count_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['total'], 2)
+
+    def test_count_with_superuser(self):
+        self.client.force_authenticate(user=self.superuser)
+        DealerFactory(created_by=self.superuser)
+        DealerFactory(created_by=self.superuser)
+        DealerFactory(created_by=self.sponsor.user)
+        response = self.client.get(self.count_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['total'], 3)
+
+    def test_count_unauthorized(self):
+        self.client.logout()
+        DealerFactory(created_by=self.superuser)
+        DealerFactory(created_by=self.superuser)
+        DealerFactory(created_by=self.sponsor.user)
+
+        response = self.client.get(self.count_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_count_forbidden(self):
+        user = UserFactory()
+        self.client.force_authenticate(user=user)
+        DealerFactory(created_by=self.superuser)
+        DealerFactory(created_by=self.superuser)
+        DealerFactory(created_by=self.sponsor.user)
+
+        response = self.client.get(self.count_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_list_with_sponsor(self):
+        DealerFactory(created_by=self.sponsor.user)
+        DealerFactory(created_by=self.sponsor.user)
+        DealerFactory(created_by=self.superuser)
+        DealerFactory(created_by=self.superuser)
+
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+    def test_list_with_superuser(self):
+        self.client.force_authenticate(user=self.superuser)
+        DealerFactory(created_by=self.sponsor.user)
+        DealerFactory(created_by=self.sponsor.user)
+        DealerFactory(created_by=self.superuser)
+        DealerFactory(created_by=self.superuser)
+        DealerFactory(created_by=self.superuser)
+
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 5)
+
+    def test_list_unauthorized(self):
+        self.client.logout()
+        DealerFactory(created_by=self.sponsor.user)
+        DealerFactory(created_by=self.sponsor.user)
+        DealerFactory(created_by=self.superuser)
+        DealerFactory(created_by=self.superuser)
+        DealerFactory(created_by=self.superuser)
+
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(len(response.data), 1)
+
+    def test_list_forbidden(self):
+        user = UserFactory()
+        self.client.force_authenticate(user=user)
+        DealerFactory(created_by=self.sponsor.user)
+        DealerFactory(created_by=self.sponsor.user)
+        DealerFactory(created_by=self.superuser)
+        DealerFactory(created_by=self.superuser)
+        DealerFactory(created_by=self.superuser)
 
         response = self.client.get(self.list_url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

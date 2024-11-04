@@ -136,6 +136,6 @@ class RegionalManagerTest(TestCase):
         self.assertFalse(user.is_superuser)
         self.assertTrue(user.is_regionalmanager)
         self.assertFalse(user.is_localmanager)
-        self.assertFalse(user.is_sponsor())
-        self.assertFalse(user.is_dealer())
+        self.assertFalse(user.is_sponsor)
+        self.assertFalse(user.is_dealer)
         self.assertFalse(user.is_collector)
