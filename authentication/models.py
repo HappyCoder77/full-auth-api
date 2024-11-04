@@ -25,6 +25,7 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     def is_regionalmanager(self):
         return hasattr(self, 'baseprofile') and hasattr(self.baseprofile, 'regionalmanager')
 
+    @property
     def is_localmanager(self):
         return hasattr(self, 'baseprofile') and hasattr(self.baseprofile, 'localmanager')
 

@@ -47,6 +47,15 @@ class IsLocalManager(permissions.BasePermission):
         return request.user.is_localmanager
 
 
+class IsLocalManagerOrSuperUser(permissions.BasePermission):
+    """
+    Permite el acceso solo a los gerentes regionales.
+    """
+
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and (request.user.is_localmanager or request.user.is_superuser)
+
+
 class IsSponsor(permissions.BasePermission):
     """
     Permite el acceso solo a los gerentes regionales.

@@ -13,11 +13,13 @@ from rest_framework_simplejwt.views import (
 from djoser.social.views import ProviderAuthView
 from .models import (RegionalManager, LocalManager,
                      Sponsor, Dealer, BaseProfile)
+
 from .serializers import (RegionalManagerSerializer,
                           LocalManagerSerializer, SponsorSerializer,
                           DealerSerializer, BaseProfileSerializer)
+
 from .permissions import (IsSuperUser, IsRegionalManagerOrSuperUser,
-                          IsLocalManager, IsSponsor, IsCollector)
+                          IsLocalManagerOrSuperUser, IsSponsor, IsCollector)
 
 
 class CustomProviderAuthView(ProviderAuthView):
@@ -178,35 +180,19 @@ class SponsorViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post']
     queryset = Sponsor.objects.all()
     serializer_class = SponsorSerializer
+    permission_classes = [IsLocalManagerOrSuperUser]
 
-    def get_permissions(self):
-        if self.action in ['count', 'list']:
-            permission_classes = [IsSuperUser]
-        elif self.action in ['count_by_creator', 'list_by_creator']:
-            permission_classes = [IsLocalManager]
-        else:
-            permission_classes = [IsSuperUser]
-        return [permission() for permission in permission_classes]
+    def get_queryset(self):
+
+        if self.request.user.is_localmanager:
+            return Sponsor.objects.filter(created_by=self.request.user)
+
+        return Sponsor.objects.all()
 
     @action(detail=False, methods=['get'])
     def count(self, request):
-        total = self.queryset.count()
+        total = self.get_queryset().count()
         return Response({'total': total})
-
-    @action(detail=False,
-            methods=['get'],
-            url_path="count-by-creator/(?P<creator_id>\d+)")
-    def count_by_creator(self, request, creator_id=None):
-        total = self.queryset.filter(created_by_id=creator_id).count()
-        return Response({'total': total})
-
-    @action(detail=False,
-            methods=['get'],
-            url_path="list-by-creator/(?P<creator_id>\d+)")
-    def list_by_creator(self, request, creator_id=None):
-        sponsors = self.queryset.filter(created_by_id=creator_id)
-        serializer = self.get_serializer(sponsors, many=True)
-        return Response(serializer.data)
 
     def perform_create(self, serializer):
         serializer.save(user=None, created_by=self.request.user)

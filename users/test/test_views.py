@@ -7,9 +7,9 @@ from rest_framework import status
 from django.conf import settings
 
 from authentication.test.factories import UserFactory
-from ..models import RegionalManager, LocalManager
+from ..models import RegionalManager, LocalManager, Sponsor
 
-from .factories import RegionalManagerFactory, LocalManagerFactory
+from .factories import RegionalManagerFactory, LocalManagerFactory, SponsorFactory
 
 User = get_user_model()
 
@@ -26,8 +26,6 @@ class CustomTokenObtainPairViewTestCase(TestCase):
             "email": "test_user@example.com",
             "password": "testpassword"
         }
-        self.client.login(username="test_user@example.com",
-                          password="testpassword")
 
         response = self.client.post(self.url, data, format="json")
 
@@ -68,8 +66,6 @@ class CustomTokenRefreshViewTestCase(TestCase):
             "password": "testpassword"
         }
 
-        self.client.login(email="test_user@example.com",
-                          password="testpassword")
         self.client.post(self.jwt_create_url, data, format="json")
         data = {}
         response = self.client.post(self.url, data, format="json")
@@ -102,8 +98,6 @@ class CustomTokenVerifyViewTestCase(TestCase):
             "password": "testpassword"
         }
 
-        self.client.login(username="test_user@example.com",
-                          password="testpassword")
         self.client.post(
             self.jwt_create_url, data, format="json")
         data = {}
@@ -126,8 +120,7 @@ class LogoutViewTestCase(TestCase):
             "email": "test_user@example.com",
             "password": "testpassword"
         }
-        self.client.login(email="test_user@example.com",
-                          password="testpassword")
+
         response = self.client.post(self.create_url, data, format="json")
 
         self.assertIn("access", response.cookies)
@@ -143,7 +136,6 @@ class LogoutViewTestCase(TestCase):
         self.assertEqual(logout_response.cookies['refresh']['max-age'], 0)
 
 
-# @skip("this")
 class RegionalManagerViewSetTestCase(APITestCase):
     def setUp(self):
         self.client = APIClient()
@@ -463,6 +455,187 @@ class LocalManagerViewSetTestCase(APITestCase):
         LocalManagerFactory(created_by=self.superuser)
         LocalManagerFactory(created_by=self.superuser)
         LocalManagerFactory(created_by=self.superuser)
+
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(len(response.data), 1)
+
+
+class SponsorViewSetTestCase(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.superuser = UserFactory(is_superuser=True)
+        self.user = UserFactory()
+        self.localmanager = LocalManagerFactory(user=self.user)
+        self.client.force_authenticate(user=self.localmanager.user)
+        self.list_url = reverse('sponsor-profile-list')
+        self.count_url = reverse('sponsor-profile-count')
+
+    def test_get_sponsors(self):
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Sponsor.objects.count(), 0)
+
+    def test_get_sponsors_with_superuser(self):
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Sponsor.objects.count(), 0)
+
+    def test_get_sponsors_unauthorized(self):
+        self.client.logout()
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(len(response.data), 1)
+
+    def test_get_sponsors_forbidden(self):
+        user = UserFactory()
+        self.client.force_authenticate(user=user)
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(len(response.data), 1)
+
+    def test_create_local_manager(self):
+        data = {
+            'first_name': 'Sponsor',
+            'last_name': 'Parra',
+            'gender': 'F',
+            'email': 'localmanager@example.com'
+        }
+        response = self.client.post(self.list_url, data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Sponsor.objects.count(), 1)
+        self.assertIsNone(response.data.get('user'))
+        self.assertEqual(response.data.get('first_name'), 'Sponsor')
+        self.assertEqual(response.data.get('last_name'), 'Parra')
+        self.assertEqual(response.data.get('gender'), 'F')
+        self.assertEqual(response.data.get('email'),
+                         'localmanager@example.com')
+        self.assertEqual(response.data.get('created_by'),
+                         self.localmanager.user.id)
+
+    def test_create_local_manager_with_superuser(self):
+        self.client.force_authenticate(user=self.superuser)
+        data = {
+            'first_name': 'Sponsor',
+            'last_name': 'Parra',
+            'gender': 'F',
+            'email': 'localmanager@example.com'
+        }
+        response = self.client.post(self.list_url, data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Sponsor.objects.count(), 1)
+        self.assertIsNone(response.data.get('user'))
+        self.assertEqual(response.data.get('created_by'),
+                         self.superuser.id)
+
+    def test_create_local_manager_unauthorized(self):
+        self.client.logout()
+        data = {
+            'first_name': 'Sponsor',
+            'last_name': 'Parra',
+            'gender': 'F',
+            'email': 'localmanager@example.com'
+        }
+        response = self.client.post(self.list_url, data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(len(response.data), 1)
+
+    def test_create_local_manager_forbidden(self):
+        user = UserFactory()
+        self.client.force_authenticate(user=user)
+        data = {
+            'first_name': 'Sponsor',
+            'last_name': 'Parra',
+            'gender': 'F',
+            'email': 'localmanager@example.com'
+        }
+        response = self.client.post(self.list_url, data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Sponsor.objects.count(), 0)
+
+    def test_count_with_localmanager(self):
+        SponsorFactory(created_by=self.localmanager.user)
+        SponsorFactory(created_by=self.localmanager.user)
+        SponsorFactory(created_by=self.superuser)
+        response = self.client.get(self.count_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['total'], 2)
+
+    def test_count_with_superuser(self):
+        self.client.force_authenticate(user=self.superuser)
+        SponsorFactory(created_by=self.superuser)
+        SponsorFactory(created_by=self.superuser)
+        SponsorFactory(created_by=self.localmanager.user)
+        response = self.client.get(self.count_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['total'], 3)
+
+    def test_count_unauthorized(self):
+        self.client.logout()
+        SponsorFactory(created_by=self.superuser)
+        SponsorFactory(created_by=self.superuser)
+        SponsorFactory(created_by=self.localmanager.user)
+
+        response = self.client.get(self.count_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_count_forbidden(self):
+        user = UserFactory()
+        self.client.force_authenticate(user=user)
+        SponsorFactory(created_by=self.superuser)
+        SponsorFactory(created_by=self.superuser)
+        SponsorFactory(created_by=self.localmanager.user)
+
+        response = self.client.get(self.count_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_list_with_sponsor(self):
+        SponsorFactory(created_by=self.localmanager.user)
+        SponsorFactory(created_by=self.localmanager.user)
+        SponsorFactory(created_by=self.superuser)
+        SponsorFactory(created_by=self.superuser)
+
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+    def test_list_with_superuser(self):
+        self.client.force_authenticate(user=self.superuser)
+        SponsorFactory(created_by=self.localmanager.user)
+        SponsorFactory(created_by=self.localmanager.user)
+        SponsorFactory(created_by=self.superuser)
+        SponsorFactory(created_by=self.superuser)
+        SponsorFactory(created_by=self.superuser)
+
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 5)
+
+    def test_list_unauthorized(self):
+        self.client.logout()
+        SponsorFactory(created_by=self.localmanager.user)
+        SponsorFactory(created_by=self.localmanager.user)
+        SponsorFactory(created_by=self.superuser)
+        SponsorFactory(created_by=self.superuser)
+        SponsorFactory(created_by=self.superuser)
+
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(len(response.data), 1)
+
+    def test_list_forbidden(self):
+        user = UserFactory()
+        self.client.force_authenticate(user=user)
+        SponsorFactory(created_by=self.localmanager.user)
+        SponsorFactory(created_by=self.localmanager.user)
+        SponsorFactory(created_by=self.superuser)
+        SponsorFactory(created_by=self.superuser)
+        SponsorFactory(created_by=self.superuser)
 
         response = self.client.get(self.list_url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
