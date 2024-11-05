@@ -1,5 +1,6 @@
 from django.conf import settings
-from rest_framework.views import APIView, PermissionDenied
+from rest_framework.views import APIView
+from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.response import Response
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -12,14 +13,16 @@ from rest_framework_simplejwt.views import (
 
 from djoser.social.views import ProviderAuthView
 from .models import (RegionalManager, LocalManager,
-                     Sponsor, Dealer, BaseProfile)
+                     Sponsor, Dealer, Collector)
 
 from .serializers import (RegionalManagerSerializer,
                           LocalManagerSerializer, SponsorSerializer,
-                          DealerSerializer, BaseProfileSerializer)
+                          DealerSerializer, CollectorSerializer)
 
 from .permissions import (IsSuperUser, IsRegionalManagerOrSuperUser,
-                          IsLocalManagerOrSuperUser, IsSponsorOrSuperUser, IsCollector)
+                          IsLocalManagerOrSuperUser, IsSponsorOrSuperUser, CollectorPermission, DetailedPermissionDenied)
+
+# TODO: considera eliminar esto ya que no se esta usando
 
 
 class CustomProviderAuthView(ProviderAuthView):
@@ -226,21 +229,17 @@ class CollectorViewSet(viewsets.ModelViewSet):
     """
     Vista para manejar perfiles de Coleccionistas.
     """
-    queryset = BaseProfile.objects.all()
-    serializer_class = BaseProfileSerializer
-    permission_classes = [IsCollector]
+    http_method_names = ['get', 'post', 'put', 'patch']
+    serializer_class = CollectorSerializer
+    permission_classes = [CollectorPermission]
+    queryset = Collector.objects.all()
 
-    def get_queryset(self):
-        # Filtrar para que un coleccionista solo pueda ver su propio perfil
-        return BaseProfile.objects.filter(user=self.request.user)
+    @ action(detail=False, methods=['get'])
+    def count(self, request):
+        total = self.queryset.count()
+        return Response({'total': total})
 
     def create(self, request, *args, **kwargs):
-        # Verificar si el usuario ya tiene un perfil
-        if BaseProfile.objects.filter(user=request.user).exists():
-            return Response(
-                {"detail": "Ya tienes un perfil creado. Usa el método PUT para actualizarlo."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
         request.data['email'] = request.user.email
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -254,14 +253,6 @@ class CollectorViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
-
-        # Asegurarse de que el usuario solo pueda actualizar su propio perfil
-        if instance.user != request.user:
-            return Response(
-                {"detail": "No tienes permiso para editar este perfil."},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
         serializer = self.get_serializer(
             instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
@@ -269,21 +260,14 @@ class CollectorViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @action(detail=False, methods=['get'])
+    @ action(detail=False, methods=['get'])
     def me(self, request):
-        profile = get_object_or_404(BaseProfile, user=request.user)
+        profile = get_object_or_404(Collector, user=request.user)
         serializer = self.get_serializer(profile)
         return Response(serializer.data)
 
-    # Sobrescribir estos métodos para prevenir su uso
-    def destroy(self, request, *args, **kwargs):
-        return Response(
-            {"detail": "No se permite eliminar perfiles de coleccionistas."},
-            status=status.HTTP_405_METHOD_NOT_ALLOWED
-        )
+    def handle_exception(self, exc):
+        if isinstance(exc, DetailedPermissionDenied):
+            return Response({'detail': str(exc.detail)}, status=exc.status_code)
 
-    def list(self, request, *args, **kwargs):
-        return Response(
-            {"detail": "No se permite listar todos los perfiles. Usa la acción 'me' para ver tu perfil."},
-            status=status.HTTP_405_METHOD_NOT_ALLOWED
-        )
+        return super().handle_exception(exc)

@@ -1,5 +1,5 @@
 
-from ..models import LocalManager, RegionalManager, Sponsor, Dealer
+from ..models import LocalManager, RegionalManager, Sponsor, Dealer, Collector
 import factory
 import random
 from faker import Faker
@@ -39,6 +39,16 @@ class SponsorFactory(factory.django.DjangoModelFactory):
 class DealerFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Dealer
+
+    first_name = factory.LazyAttribute(lambda _: faker.first_name())
+    last_name = factory.LazyAttribute(lambda _: faker.last_name())
+    gender = 'F' if random.random() * 2 < 1 else 'M'
+    email = factory.LazyAttribute(lambda _: faker.unique.email())
+
+
+class CollectorFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Collector
 
     first_name = factory.LazyAttribute(lambda _: faker.first_name())
     last_name = factory.LazyAttribute(lambda _: faker.last_name())

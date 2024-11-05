@@ -27,7 +27,6 @@ class UserAccountManager(BaseUserManager):
         kwargs.update({
             "is_superuser": True,
             "is_staff": True,
-            "is_collector": False
         })
 
         user = self.create_user(

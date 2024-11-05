@@ -41,7 +41,7 @@ class BaseProfileTest(TestCase):
         self.assertEqual(self.profile.gender, 'M')
         self.assertEqual(self.profile.birthdate, USER_BIRTHDATE)
         self.assertEqual(self.profile.email, USER_EMAIL)
-        self.assertTrue(self.user.has_profile())
+        self.assertTrue(self.user.has_profile)
         self.assertEqual(str(self.profile),
                          USER_FIRST_NAME + " " + USER_LAST_NAME)
 

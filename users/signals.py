@@ -14,7 +14,8 @@ def link_profile(sender, instance, created, **kwargs):
 
 
 def link_user_to_profile(user):
-    profile_models = ["RegionalManager", "LocalManager", "Sponsor", "Dealer"]
+    profile_models = ["RegionalManager", "LocalManager",
+                      "Sponsor", "Dealer", "Collector"]
 
     for model_name in profile_models:
         ProfileModel = apps.get_model("users", model_name)
@@ -25,10 +26,4 @@ def link_user_to_profile(user):
             profile.save()
             return
         except ProfileModel.DoesNotExist:
-            continue
-
-    try:
-        user.is_collector = True
-        user.save()
-    except Exception as e:
-        print(f"Error al marcar al usuario como coleccionista: {e}")
+            return

@@ -3,13 +3,16 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient, APITestCase
+from rest_framework.exceptions import PermissionDenied
 from rest_framework import status
 from django.conf import settings
 
 from authentication.test.factories import UserFactory
-from ..models import RegionalManager, LocalManager, Sponsor, Dealer
+from ..models import RegionalManager, LocalManager, Sponsor, Dealer, Collector
 
-from .factories import RegionalManagerFactory, LocalManagerFactory, SponsorFactory, DealerFactory
+from .factories import (RegionalManagerFactory, LocalManagerFactory,
+                        SponsorFactory, DealerFactory, CollectorFactory)
+
 
 User = get_user_model()
 
@@ -821,3 +824,195 @@ class DealerViewSetTestCase(APITestCase):
         response = self.client.get(self.list_url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(len(response.data), 1)
+
+
+class CollectorViewSetTestCase(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.superuser = UserFactory(is_superuser=True)
+        self.user = UserFactory()
+        self.collector = CollectorFactory(
+            user=self.user, email=self.user.email)
+        self.client.force_authenticate(user=self.collector.user)
+        self.list_url = reverse('collector-profile-list')
+        self.retrieve_url = reverse('collector-profile-me')
+        self.detail_url = reverse(
+            'collector-profile-detail', kwargs={'pk': self.collector.pk})
+        self.count_url = reverse('collector-profile-count')
+
+    def test_get_collector(self):
+        response = self.client.get(self.retrieve_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['id'], 1)
+        self.assertEqual(
+            response.data['first_name'], self.collector.first_name)
+        self.assertEqual(
+            response.data['middle_name'], self.collector.middle_name)
+        self.assertEqual(
+            response.data['last_name'], self.collector.last_name)
+        self.assertEqual(
+            response.data['second_last_name'], self.collector.second_last_name)
+        self.assertEqual(
+            response.data['gender'], self.collector.gender)
+        self.assertEqual(
+            response.data['birthdate'], self.collector.birthdate)
+        self.assertEqual(
+            response.data['email'], self.user.email)
+
+    def test_get_collector_forbidden(self):
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.get(self.retrieve_url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(len(response.data), 1)
+
+    def test_get_collector_unauthorized(self):
+        self.client.logout()
+        response = self.client.get(self.retrieve_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(len(response.data), 1)
+
+    def test_create_collector(self):
+        user = UserFactory()
+        self.client.force_authenticate(user=user)
+        data = {
+            'first_name': 'Collector',
+            'last_name': 'Parra',
+            'gender': 'F',
+        }
+
+        response = self.client.post(self.list_url, data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Collector.objects.count(), 2)
+        self.assertEqual(response.data.get('first_name'), 'Collector')
+        self.assertEqual(response.data.get('last_name'), 'Parra')
+        self.assertEqual(response.data.get('gender'), 'F')
+        self.assertEqual(response.data.get('email'), user.email)
+
+    def test_create_collector_forbidden(self):
+        user = UserFactory()
+        manager = RegionalManagerFactory(user=user)
+        self.client.force_authenticate(user=manager.user)
+        data = {
+            'first_name': 'Collector',
+            'last_name': 'Parra',
+            'gender': 'F',
+            'email': 'collector@example.com'
+        }
+        response = self.client.post(self.list_url, data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_create_collector_forbidden_superuser(self):
+        self.client.force_authenticate(user=self.superuser)
+        data = {
+            'first_name': 'Collector',
+            'last_name': 'Parra',
+            'gender': 'F',
+            'email': 'collector@example.com'
+        }
+        response = self.client.post(self.list_url, data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_create_collector_unauthorized(self):
+        self.client.logout()
+        data = {
+            'first_name': 'Collector',
+            'last_name': 'Parra',
+            'gender': 'F',
+            'email': 'collector@example.com'
+        }
+
+        response = self.client.post(self.list_url, data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_count_collector(self):
+        self.client.force_authenticate(user=self.superuser)
+        user = UserFactory()
+        user2 = UserFactory()
+        user3 = UserFactory()
+        CollectorFactory(user=user)
+        CollectorFactory(user=user2)
+        CollectorFactory(user=user3)
+        response = self.client.get(self.count_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['total'], 4)
+
+    def test_count_collector_forbidden(self):
+        user = UserFactory()
+        self.client.force_authenticate(user=user)
+        response = self.client.get(self.count_url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_count_collector_unauthorized(self):
+        self.client.logout()
+        response = self.client.get(self.count_url)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_list_collector(self):
+        self.client.force_authenticate(user=self.superuser)
+        user = UserFactory()
+        user2 = UserFactory()
+        user3 = UserFactory()
+        CollectorFactory(user=user)
+        CollectorFactory(user=user2)
+        CollectorFactory(user=user3)
+
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 4)
+
+    def test_list_collector_forbidden(self):
+        user = UserFactory()
+        self.client.force_authenticate(user=user)
+        response = self.client.get(self.list_url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_list_collector_unauthorized(self):
+        self.client.logout()
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_update_collector(self):
+        data = {
+            'first_name': 'UpdatedName',
+            'last_name': 'UpdatedLastName',
+            'gender': 'M',
+        }
+        response = self.client.patch(self.detail_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['first_name'], 'UpdatedName')
+        self.assertEqual(response.data['last_name'], 'UpdatedLastName')
+        self.assertEqual(response.data['gender'], 'M')
+
+    def test_update_collector_forbidden(self):
+        self.client.force_authenticate(user=self.superuser)
+        data = {
+            'first_name': 'UpdatedName',
+            'last_name': 'UpdatedLastName',
+            'gender': 'M',
+        }
+        response = self.client.put(self.detail_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_update_collector_unauthorized(self):
+        self.client.logout()
+        data = {
+            'first_name': 'UpdatedName',
+            'last_name': 'UpdatedLastName',
+            'gender': 'M',
+        }
+        response = self.client.put(self.detail_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_destroy_collector(self):
+        response = self.client.delete(self.detail_url)
+
+        self.assertEqual(response.status_code,
+                         status.HTTP_405_METHOD_NOT_ALLOWED)

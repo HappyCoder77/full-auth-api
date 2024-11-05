@@ -11,7 +11,6 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
-    is_collector = models.BooleanField(default=False)
 
     objects = UserAccountManager()
 
@@ -37,6 +36,11 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
     def is_dealer(self):
         return hasattr(self, 'baseprofile') and hasattr(self.baseprofile, 'dealer')
 
+    @property
+    def is_collector(self):
+        return self.has_profile and hasattr(self.baseprofile, 'collector')
+
+    @property
     def has_profile(self):
         return hasattr(self, 'baseprofile')
 

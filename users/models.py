@@ -45,3 +45,7 @@ class Sponsor(BaseProfile):
 class Dealer(BaseProfile):
     created_by = models.ForeignKey(
         UserAccount, on_delete=models.SET_NULL, null=True, related_name='created_dealers')
+
+
+class Collector(BaseProfile):
+    rescue_options = models.PositiveSmallIntegerField(default=0)

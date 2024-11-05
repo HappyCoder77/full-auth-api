@@ -28,7 +28,7 @@ class UserAccountManagerTests(TestCase):
         self.assertTrue(self.user.is_active)
         self.assertFalse(self.user.is_staff)
         self.assertFalse(self.user.is_superuser)
-        self.assertTrue(self.user.is_collector)
+        self.assertFalse(self.user.is_collector)
 
     # intentar crear un un usuario con una cadena vacia como email
     def test_create_user_no_email(self):
@@ -89,10 +89,10 @@ class UserAccountTest(TestCase):
         self.assertTrue(self.user.is_active)
         self.assertFalse(self.user.is_staff)
         self.assertFalse(self.user.is_superuser)
-        self.assertTrue(self.user.is_collector)
+        self.assertFalse(self.user.is_collector)
         self.assertEqual(str(self.user), USER_EMAIL)
         self.assertFalse(self.user.is_regionalmanager)
         self.assertFalse(self.user.is_localmanager)
         self.assertFalse(self.user.is_sponsor)
         self.assertFalse(self.user.is_dealer)
-        self.assertFalse(self.user.has_profile())
+        self.assertFalse(self.user.has_profile)
