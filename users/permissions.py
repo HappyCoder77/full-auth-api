@@ -14,16 +14,6 @@ class DetailedPermissionDenied(APIException):
             self.status_code = status_code
 
 
-class IsNotAuthenticated(permissions.BasePermission):
-    """
-    Permite el acceso solo a usuarios no autenticados.
-    """
-    message = "Lo siento, esta vista solo está disponible para usuarios no autenticados."
-
-    def has_permission(self, request, view):
-        return not request.user.is_authenticated
-
-
 class IsSuperUser(permissions.BasePermission):
     """
     Permite el acceso solo a los superusuarios.
@@ -31,15 +21,6 @@ class IsSuperUser(permissions.BasePermission):
 
     def has_permission(self, request, view):
         return request.user.is_superuser
-
-
-class IsRegionalManager(permissions.BasePermission):
-    """
-    Permite el acceso solo a los gerentes regionales.
-    """
-
-    def has_permission(self, request, view):
-        return request.user.is_regionalmanager
 
 
 class IsRegionalManagerOrSuperUser(permissions.BasePermission):
@@ -51,15 +32,6 @@ class IsRegionalManagerOrSuperUser(permissions.BasePermission):
         return request.user.is_authenticated and (request.user.is_regionalmanager or request.user.is_superuser)
 
 
-class IsLocalManager(permissions.BasePermission):
-    """
-    Permite el acceso solo a los gerentes regionales.
-    """
-
-    def has_permission(self, request, view):
-        return request.user.is_localmanager
-
-
 class IsLocalManagerOrSuperUser(permissions.BasePermission):
     """
     Permite el acceso solo a los gerentes regionales.
@@ -69,15 +41,6 @@ class IsLocalManagerOrSuperUser(permissions.BasePermission):
         return request.user.is_authenticated and (request.user.is_localmanager or request.user.is_superuser)
 
 
-class IsSponsor(permissions.BasePermission):
-    """
-    Permite el acceso solo a los gerentes regionales.
-    """
-
-    def has_permission(self, request, view):
-        return request.user.is_sponsor
-
-
 class IsSponsorOrSuperUser(permissions.BasePermission):
     """
     Permite el acceso solo a los gerentes regionales.
@@ -85,15 +48,6 @@ class IsSponsorOrSuperUser(permissions.BasePermission):
 
     def has_permission(self, request, view):
         return request.user.is_authenticated and (request.user.is_sponsor or request.user.is_superuser)
-
-
-class IsCollector(permissions.BasePermission):
-    """
-    Permite el acceso solo a los coleccionistas.
-    """
-
-    def has_permission(self, request, view):
-        return request.user.is_collector
 
 
 class CollectorPermission(permissions.BasePermission):
