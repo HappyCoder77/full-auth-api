@@ -194,3 +194,25 @@ class PromotionViewSetTestCase(TestCase):
         response = self.client.delete(delete_url)
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_not_found_promotion(self):
+        detail_url = reverse(
+            'promotion-detail', kwargs={'pk': 10000})
+        response = self.client.get(detail_url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(
+            response.data['detail'], 'No encontrado.')
+
+    def test_method_not_allowed(self):
+        response = self.client.put(self.list_url, data={}, format='json')
+
+        self.assertEqual(response.status_code,
+                         status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.data['detail'], 'Método no permitido.')
+
+    def test_unexpected_error(self):
+        response = self.client.get(reverse('promotion-force-error'))
+        self.assertEqual(response.status_code,
+                         status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertEqual(response.data['detail'],
+                         'Se produjo un error inesperado.')

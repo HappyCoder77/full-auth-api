@@ -1,6 +1,6 @@
 from django.http import Http404
 from .serializers import PromotionSerializer
-from rest_framework.exceptions import MethodNotAllowed
+from rest_framework.exceptions import MethodNotAllowed, APIException
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
@@ -54,3 +54,7 @@ class PromotionViewSet(viewsets.ModelViewSet):
         return Response(
             {'detail': 'Se produjo un error inesperado.'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['get'])
+    def force_error(self, request):
+        raise APIException("Error forzado para prueba.")
