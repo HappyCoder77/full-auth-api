@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.http import Http404
 from rest_framework.views import APIView
 from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.response import Response
@@ -264,6 +265,11 @@ class CollectorViewSet(viewsets.ModelViewSet):
 
     @ action(detail=False, methods=['get'])
     def me(self, request):
+        """
+        Acción que permite ver el perfil de coleccionista del usuario actual si lo tuviese.
+        difiere del endpoint detail en que el argumento esta implícito y no necesita ser
+        enviado en la url y que sólo el propietario del perfil puede realizar la acción.
+        """
         profile = get_object_or_404(Collector, user=request.user)
         serializer = self.get_serializer(profile)
         return Response(serializer.data)
@@ -272,4 +278,12 @@ class CollectorViewSet(viewsets.ModelViewSet):
         if isinstance(exc, DetailedPermissionDenied):
             return Response({'detail': str(exc.detail)}, status=exc.status_code)
 
-        return super().handle_exception(exc)
+        elif isinstance(exc, Http404):
+            return Response({'detail': 'No encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        elif isinstance(exc, MethodNotAllowed):
+            return Response({'detail': 'Método no permitido.'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+        return Response(
+            {'detail': 'Se produjo un error inesperado.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR)

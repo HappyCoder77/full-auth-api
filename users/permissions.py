@@ -82,7 +82,8 @@ class CollectorPermission(permissions.BasePermission):
         if view.action in ['me']:
             if not request.user.is_collector:
                 raise DetailedPermissionDenied(
-                    "Sólo los  coleccionistas pueden ejecutar esta acción")
+                    detail="Sólo los  coleccionistas pueden ejecutar esta acción"
+                )
 
             return True
 
@@ -94,14 +95,15 @@ class CollectorPermission(permissions.BasePermission):
 
             if request.method not in permissions.SAFE_METHODS:
                 raise DetailedPermissionDenied(
-                    code="Los superusuarios solo pueden ver perfiles, no modificarlos."
+                    detail="Los superusuarios solo pueden ver perfiles, no modificarlos."
                 )
 
             return True
+        else:
 
-        if obj.user != request.user:
-            raise DetailedPermissionDenied(
-                detail="Solo puedes acceder a tu propio perfil."
-            )
+            if obj.user != request.user:
+                raise DetailedPermissionDenied(
+                    detail="Solo puedes acceder a tu propio perfil."
+                )
 
-        return True
+            return True

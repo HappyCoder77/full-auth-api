@@ -1,17 +1,20 @@
 from unittest import skip
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
-from rest_framework.test import APIClient, APITestCase
-from rest_framework.exceptions import PermissionDenied
-from rest_framework import status
 from django.conf import settings
+from rest_framework.test import (
+    APIClient, APITestCase, force_authenticate, APIRequestFactory)
+from rest_framework import status
+from rest_framework import status
 
 from authentication.test.factories import UserFactory
 from ..models import RegionalManager, LocalManager, Sponsor, Dealer, Collector
-
 from .factories import (RegionalManagerFactory, LocalManagerFactory,
                         SponsorFactory, DealerFactory, CollectorFactory)
+from ..permissions import DetailedPermissionDenied
+from ..views import CollectorViewSet
 
 
 User = get_user_model()
@@ -835,13 +838,42 @@ class CollectorViewSetTestCase(APITestCase):
             user=self.user, email=self.user.email)
         self.client.force_authenticate(user=self.collector.user)
         self.list_url = reverse('collector-profile-list')
-        self.retrieve_url = reverse('collector-profile-me')
+        self.me_url = reverse('collector-profile-me')
         self.detail_url = reverse(
             'collector-profile-detail', kwargs={'pk': self.collector.pk})
         self.count_url = reverse('collector-profile-count')
 
-    def test_get_collector(self):
-        response = self.client.get(self.retrieve_url)
+    def test_get_collector_detail(self):
+        response = self.client.get(self.detail_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 8)
+
+    def test_get_collector_detail_with_superuser(self):
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.get(self.detail_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 8)
+
+    def test_get_collector_detail_unauthorized(self):
+        self.client.logout()
+        response = self.client.get(self.detail_url)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(len(response.data), 1)
+
+    def test_get_collector_detail_not_owner(self):
+        user = UserFactory()
+        self.client.force_authenticate(user=user)
+        response = self.client.get(self.detail_url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data['detail'],
+                         "Solo puedes acceder a tu propio perfil.")
+
+    def test_get_collector_me(self):
+        response = self.client.get(self.me_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['id'], 1)
         self.assertEqual(
@@ -859,16 +891,16 @@ class CollectorViewSetTestCase(APITestCase):
         self.assertEqual(
             response.data['email'], self.user.email)
 
-    def test_get_collector_forbidden(self):
+    def test_get_collector_me_forbidden(self):
         self.client.force_authenticate(user=self.superuser)
-        response = self.client.get(self.retrieve_url)
+        response = self.client.get(self.me_url)
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(len(response.data), 1)
 
-    def test_get_collector_unauthorized(self):
+    def test_get_collector_me_unauthorized(self):
         self.client.logout()
-        response = self.client.get(self.retrieve_url)
+        response = self.client.get(self.me_url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertEqual(len(response.data), 1)
 
@@ -1016,3 +1048,74 @@ class CollectorViewSetTestCase(APITestCase):
 
         self.assertEqual(response.status_code,
                          status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_superuser_cannot_modify_other_collector(self):
+        self.client.force_authenticate(user=self.superuser)
+        data = {'first_name': 'UpdatedName'}
+        response = self.client.patch(self.detail_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data['detail'], "Los superusuarios solo pueden ver perfiles, no modificarlos.")
+
+    def test_cannot_create_second_collector_profile(self):
+        data = {
+            'first_name': 'Collector',
+            'last_name': 'Parra',
+            'gender': 'F',
+        }
+
+        response = self.client.post(self.list_url, data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data['detail'], "Ya tienes un perfil creado. No puedes crear otro.")
+
+    def test_get_collector_non_existent(self):
+        non_existent_url = reverse(
+            "collector-profile-detail", kwargs={'pk': 14567})
+        response = self.client.get(non_existent_url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertIn('No encontrado.',
+                      response.data['detail'])
+
+    def test_handle_exception_detailed_permission_denied(self):
+        # Crea una instancia de CollectorViewSet
+        view = CollectorViewSet()
+
+        # Configura la solicitud
+        factory = APIRequestFactory()
+        request = factory.get('/fake-url/')
+
+        # Fuerza la autenticación con un usuario que no tiene permiso
+        user = UserFactory()
+        force_authenticate(request, user=user)
+
+        # Simula una excepción DetailedPermissionDenied
+        exception = DetailedPermissionDenied(
+            detail="Mensaje de error personalizado",
+            status_code=status.HTTP_403_FORBIDDEN
+        )
+
+        # Llama al método handle_exception
+        response = view.handle_exception(exception)
+
+        # Verifica que la respuesta sea correcta
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data, {'detail': 'Mensaje de error personalizado'})
+
+    def test_handle_exception_other_exception(self):
+        # Crea una instancia de CollectorViewSet
+        view = CollectorViewSet()
+
+        # Simula otra excepción
+        exception = ValueError("Otro tipo de error")
+
+        # Llama al método handle_exception
+        response = view.handle_exception(exception)
+
+        # Verifica que la respuesta sea la predeterminada para otras excepciones
+        self.assertEqual(response.status_code,
+                         status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertEqual(
+            response.data, {'detail': 'Se produjo un error inesperado.'})
