@@ -22,10 +22,11 @@ from .serializers import (RegionalManagerSerializer,
 from .permissions import (IsSuperUser, IsRegionalManagerOrSuperUser,
                           IsLocalManagerOrSuperUser, IsSponsorOrSuperUser, CollectorPermission, DetailedPermissionDenied)
 
-# TODO: considera eliminar esto ya que no se esta usando
+# TODO: agregar docstrings a las actions para mejorar la documentacion
 
 
 class CustomProviderAuthView(ProviderAuthView):
+    # TODO: considera eliminar esto ya que no se esta usando
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
 
@@ -236,6 +237,7 @@ class CollectorViewSet(viewsets.ModelViewSet):
 
     @ action(detail=False, methods=['get'])
     def count(self, request):
+        """Devuelve el total de collectors existentes"""
         total = self.queryset.count()
         return Response({'total': total})
 
