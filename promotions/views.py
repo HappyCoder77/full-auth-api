@@ -1,27 +1,23 @@
+from django.http import Http404
 from .serializers import PromotionSerializer
+from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from .models import Promotion
-from users.permissions import IsSuperUser
+from users.permissions import DetailedPermissionDenied
+from .permissions import PromotionPermission
 
 
 class PromotionViewSet(viewsets.ModelViewSet):
     """
-    Vista para visualizar promocion activa
+    Vista para manejar las promociones
     """
     # evitar borrado o actualizacion del registro
     queryset = Promotion.objects.all()
     serializer_class = PromotionSerializer
-
-    def get_permissions(self):
-        if self.action in ['list']:
-            permission_classes = [IsSuperUser]
-        else:
-            permission_classes = []
-
-        return [permission() for permission in permission_classes]
+    permission_classes = [PromotionPermission]
 
     def get_current_promotion(self):
         now = timezone.now()
@@ -35,7 +31,7 @@ class PromotionViewSet(viewsets.ModelViewSet):
 
         return promotion
 
-    @action(detail=True, methods=['get'])
+    @action(detail=False, methods=['get'])
     def current(self, request):
         promotion = self.get_current_promotion()
 
@@ -44,3 +40,17 @@ class PromotionViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
 
         return Response(None)
+
+    def handle_exception(self, exc):
+        if isinstance(exc, DetailedPermissionDenied):
+            return Response({'detail': str(exc.detail)}, status=exc.status_code)
+
+        elif isinstance(exc, Http404):
+            return Response({'detail': 'No encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        elif isinstance(exc, MethodNotAllowed):
+            return Response({'detail': 'Método no permitido.'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+        return Response(
+            {'detail': 'Se produjo un error inesperado.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR)

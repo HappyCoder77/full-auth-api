@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-# getcontext().prec = 6
+
 User = get_user_model()
 
 
@@ -28,7 +28,8 @@ class Promotion(models.Model):
         "Date de Inicio", default=timezone.now, editable=False)
     duration = models.PositiveSmallIntegerField(
         'duración en días', default=1, )
-    end_date = models.DateTimeField("Date de finalización")
+    end_date = models.DateTimeField(
+        "Date de finalización")
     pack_cost = models.DecimalField(verbose_name='costo unitario de pack',
                                     decimal_places=2,
                                     max_digits=4,
