@@ -11,21 +11,6 @@ class UserSerializer(BaseUserSerializer):
             ('is_superuser', 'is_regionalmanager',
              "is_localmanager", "is_sponsor", "is_dealer", "is_collector", "has_profile")
 
-    def get_is_regionalmanager(self, obj):
-        return obj.is_regionalmanager()
-
-    def get_is_localmanager(self, obj):
-        return obj.is_localmanager()
-
-    def get_is_sponsor(self, obj):
-        return obj.is_sponsor()
-
-    def get_is_dealer(self, obj):
-        return obj.is_dealer()
-
-    def get_has_profile(self, obj):
-        return obj.has_profile()
-
 
 class RegionalManagerSerializer(serializers.ModelSerializer):
     class Meta:
