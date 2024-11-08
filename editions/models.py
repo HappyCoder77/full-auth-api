@@ -8,22 +8,20 @@ from django.db import models, transaction
 from django.db.models import Count
 from django.utils import timezone
 
-
 from promotions.models import Promotion
 from sticker_collections.models import Collection, Coordinate
 
 User = get_user_model()
 
-"""TODO: Explorar una mecanica de creacion mas eficiente y menos propensa a errores.
-Podria ser creando pack y boxes
-sobre la marcha,consolidando el atributo edition en un solo lugar,
-Se podria crear un clase diagramado o algo asi para contener la configuracion del album
-crear rama para este trabajo exclusivamente"""
-
 
 class Edition(models.Model):  # clase para crear las editiones que se haran en cada promoción
-    # TODO: este campo deberia null True porque se establece a traves del metodo clean
+    """TODO: Explorar una mecanica de creacion mas eficiente y menos propensa a errores.
+    Podria ser creando pack y boxes
+    sobre la marcha,consolidando el atributo edition en un solo lugar,
+    Se podria crear un clase diagramado o algo asi para contener la configuracion del album
+    crear rama para este trabajo exclusivamente"""
     promotion = models.ForeignKey(Promotion, on_delete=models.CASCADE)
+    # TODO: este campo deberia null True porque se establece a traves del metodo clean
     collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
     circulation = models.DecimalField(
         max_digits=20, decimal_places=0, default=Decimal('1'))
@@ -502,36 +500,34 @@ class Sticker(models.Model):  # instancia ejemplares de cada sticker definida en
     collector = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='stickers', null=True, blank=True)
     on_the_board = models.BooleanField(default=False)
-    # album = models.ForeignKey(
-    #     'Album', on_delete=models.CASCADE, related_name='stickers', null=True)
 
     def __str__(self):
-        return str(self.coordinate.number)
+        return str(self.coordinate.absolute_number)
 
-    @ property
+    @property
     # @admin.display(ordering='sticker__edition')
     def edition(self):
         return self.pack.box.edition
 
-    @ property
+    @property
     def collection(self):
         return self.pack.box.edition.collection
 
-    @ property
-    @ admin.display()
+    @property
+    @admin.display()
     def number(self):
-        return self.coordinate.number
+        return self.coordinate.absolute_number
 
-    @ property
-    @ admin.display(ordering='sticker__page')
+    @property
+    @admin.display(ordering='sticker__page')
     def page(self):
         return self.coordinate.page
 
-    @ property
-    @ admin.display(ordering='sticker__rarity_factor')
+    @property
+    @admin.display(ordering='sticker__rarity_factor')
     def rarity(self):
         return self.coordinate.rarity_factor
 
-    @ property
+    @property
     def box(self):
         return self.pack.box

@@ -87,9 +87,6 @@ class EditionTestCase(TestCase):
     def test_boxes_content(self):
         boxes = Box.objects.filter(edition=self.edition).order_by('pk')
 
-        # self.assertIn(boxes[0].packs.count(), [100, 48])
-        # self.assertIn(boxes[1].packs.count(), [100, 48])
-
         for each_box in boxes:
             self.assertEqual(str(
                 each_box), f'Box N°: {each_box.id}, ordinal: {each_box.ordinal}')
@@ -265,7 +262,7 @@ class StickerTestCase(TestCase):
             self.assertEqual(each_sticker.collection, self.edition.collection)
             self.assertEqual(each_sticker.edition, self.edition)
             self.assertEqual(each_sticker.number,
-                             each_sticker.coordinate.number)
+                             each_sticker.coordinate.absolute_number)
             self.assertEqual(each_sticker.rarity,
                              each_sticker.coordinate.rarity_factor)
             self.assertEqual(each_sticker.page, each_sticker.coordinate.page)
@@ -287,7 +284,7 @@ class StickerTestCase(TestCase):
             self.assertEqual(each_sticker.edition, self.edition)
             self.assertEqual(each_sticker.collection, self.edition.collection)
             self.assertEqual(each_sticker.number,
-                             each_sticker.coordinate.number)
+                             each_sticker.coordinate.absolute_number)
             self.assertEqual(each_sticker.page, each_sticker.coordinate.page)
             self.assertEqual(each_sticker.rarity,
                              each_sticker.coordinate.rarity_factor)

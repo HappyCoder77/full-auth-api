@@ -46,7 +46,7 @@ class CollectionTestCase(TestCase):
     def test_prize_coordinate_data(self):
         prize_coordinate = self.collection.coordinates.get(page=99)
 
-        self.assertEqual(prize_coordinate.slot,
+        self.assertEqual(prize_coordinate.slot_number,
                          self.collection.PRIZE_STICKER_COORDINATE)
         self.assertEqual(prize_coordinate.rarity_factor,
                          self.collection.PRIZE_STICKER_RARITY)
@@ -59,7 +59,7 @@ class CollectionTestCase(TestCase):
 
         while current_page <= self.collection.PAGES:
             coordinates = iter(self.collection.coordinates.filter(
-                page=current_page).order_by('slot'))
+                page=current_page).order_by('slot_number'))
             current_slot = 1
 
             while True:
@@ -67,8 +67,8 @@ class CollectionTestCase(TestCase):
 
                 if coordinate != 'fin_de_archivo':
                     self.assertEqual(coordinate.page, current_page)
-                    self.assertEqual(coordinate.slot, current_slot)
-                    self.assertEqual(coordinate.number, counter)
+                    self.assertEqual(coordinate.slot_number, current_slot)
+                    self.assertEqual(coordinate.absolute_number, counter)
                     self.assertEqual(str(coordinate), str(counter))
                     current_slot += 1
                     counter += 1

@@ -52,9 +52,9 @@ class Collection(models.Model):
                 coordinate = Coordinate(
                     collection=self,
                     page=current_page,
-                    slot=current_slot,
+                    slot_number=current_slot,
                     ordinal=current_slot,
-                    number=counter,
+                    absolute_number=counter,
                     rarity_factor=0
                 )
 
@@ -67,7 +67,7 @@ class Collection(models.Model):
         coordinate = Coordinate(  # creacion de las coordinates de la sticker premiada
             collection=self,
             page=self.PRIZE_STICKER_COORDINATE,
-            slot=self.PRIZE_STICKER_COORDINATE,
+            slot_number=self.PRIZE_STICKER_COORDINATE,
             rarity_factor=float(self.PRIZE_STICKER_RARITY)
         )
 
@@ -110,13 +110,14 @@ class Collection(models.Model):
         # asigno los factores de rarity comun en función del número de sticker
         for each_coordinate in self.coordinates.all():
 
-            if each_coordinate.slot == 1 or each_coordinate.slot == 2:
+            if each_coordinate.slot_number == 1 or each_coordinate.slot_number == 2:
                 each_coordinate.rarity_factor = self.RARITY_1
-            elif each_coordinate.slot == 3 or each_coordinate.slot == 4:
+            elif each_coordinate.slot_number == 3 or each_coordinate.slot_number == 4:
                 each_coordinate.rarity_factor = self.RARITY_2
-            elif each_coordinate.slot == 5:
+            elif each_coordinate.slot_number == 5:
                 each_coordinate.rarity_factor = self.RARITY_3
-            elif each_coordinate.slot == 6:  # asigno los factores de rarity mas elevados a una unica sticker por página
+            # asigno los factores de rarity mas elevados a una unica sticker por página
+            elif each_coordinate.slot_number == 6:
 
                 if each_coordinate.page == 1:
                     each_coordinate.rarity_factor = self.RARITY_4
@@ -149,15 +150,15 @@ class Collection(models.Model):
 class Coordinate(models.Model):
     collection = models.ForeignKey(
         Collection, on_delete=models.CASCADE, related_name='coordinates')
-    page = models.BigIntegerField('Número de página')
-    slot = models.BigIntegerField('Número de sticker')
-    ordinal = models.BigIntegerField('number ordinal por página', default=0)
-    number = models.BigIntegerField('Número en album', default=0)
+    page = models.BigIntegerField('Página')
+    slot_number = models.BigIntegerField('Casilla')
+    absolute_number = models.BigIntegerField('Número absoluto', default=0)
+    ordinal = models.BigIntegerField('Ordinal', default=0)
     rarity_factor = models.DecimalField(
         'Factor de rareza', max_digits=6, decimal_places=3)
 
     def __str__(self):
-        return str(self.number)
+        return str(self.absolute_number)
 
     class Meta:
         verbose_name_plural = "Coordinates"

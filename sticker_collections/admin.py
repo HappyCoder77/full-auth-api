@@ -10,10 +10,10 @@ class CollectionAdmin(admin.ModelAdmin):
 
 @admin.register(Coordinate)
 class CoordinateAdmin(admin.ModelAdmin):
-    list_display = ('id', 'collection', 'page', 'slot',
-                    'ordinal', 'number', 'rarity_factor')
+    list_display = ('id', 'collection', 'page', 'slot_number',
+                    'absolute_number', 'ordinal', 'rarity_factor')
     ordering = ('id', 'collection',)
-    list_filter = ('page', 'slot', 'rarity_factor')
+    list_filter = ('page', 'slot_number', 'rarity_factor')
     search_fields = ('rarity_factor',)
 
     def has_add_permission(self, request):

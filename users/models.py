@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from albums.models import Slot
 from authentication.models import UserAccount
 
 GENERO_CHOICES = [

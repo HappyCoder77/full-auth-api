@@ -48,11 +48,12 @@ class Album(models.Model):
             counter += 1
 
     def number_slots(self):
+
         slots = Slot.objects.filter(page__album=self).order_by('id')
         counter = 1
 
         for each_slot in slots:
-            each_slot.absolut_number = counter
+            each_slot.absolute_number = counter
             each_slot.save()
             counter += 1
 
@@ -67,14 +68,20 @@ class Page(models.Model):
     number = models.PositiveSmallIntegerField()
 
     @property
-    def is_full(self):
-        slots = Slot.objects.filter(
-            page=self, sticker__isnull=True).count()
+    def standard_prize(self):
+        prize = StandardPrize.objects.get(
+            collection=self.album.edition.collection,
+            page=self.number
+        )
 
-        if slots == 0:
-            return True
-        else:
-            return False
+        return prize
+
+    @property
+    def is_full(self):
+        return Slot.objects.filter(
+            page=self,
+            sticker__isnull=True
+        ).count() <= 0
 
     @property
     def prize_was_claimed(self):
@@ -91,22 +98,25 @@ class Page(models.Model):
     class Meta:
         ordering = ['number']
 
+    def create_slots(self):
+        slot_list = []
+        slots = self.album.edition.collection.SLOTS_PER_PAGE
+        counter = 1
+
+        while counter <= slots:
+            slot = Slot(
+                page=self,
+                number=counter
+            )
+            slot_list.append(slot)
+            counter += 1
+
+        Slot.objects.bulk_create(slot_list)
+
     @transaction.atomic
     def save(self, *args, **kwargs):
         super(Page, self).save(*args, **kwargs)
-        lote_slots = []
-        slots = self.album.edition.collection.SLOTS_PER_PAGE
-        contador = 1
-
-        while contador <= slots:
-            slot = Slot(
-                page=self,
-                number=contador
-            )
-            lote_slots.append(slot)
-            contador += 1
-
-        Slot.objects.bulk_create(lote_slots)
+        self.create_slots()
 
 
 class Slot(models.Model):
@@ -119,28 +129,29 @@ class Slot(models.Model):
         Sticker, on_delete=models.SET_NULL,
         null=True
     )
-    absolut_number = models.PositiveSmallIntegerField(default=0)
+    absolute_number = models.PositiveSmallIntegerField(default=0)
+
+    def stick_sticker(self, sticker):
+        number = sticker.coordinate.absolute_number
+        if number != self.absolute_number:
+            raise ValueError(
+                f"Casilla equivocada. intentas pegar la barajita número {number} en la casilla número {self.number}")
+        if not self.is_empty:
+            raise ValueError(f"La casilla número {self.number} ya está llena")
+
+        self.sticker = sticker
+        self.save()
 
     class Meta:
         ordering = ['number']
 
+    @property
     def is_empty(self):
-        if self.sticker == None:
-            return True
-        else:
-            return False
-    # TODO: Arreglar este método
-    # def fill(self, album_pk):
-    #     slot = Slot.objects.get(
-    #         page__album_id=album_pk,
-    #         page__number=self.coordinate.page,
-    #         number=self.coordinate.slot
-    #     )
-    #     slot.sticker = self
-    #     slot.save(update_fields=['sticker'])
+        return self.sticker is None
 
 
 class PagePrize(models.Model):
+    # TODO: candidato a eliminación; con un atributo booleano bastaría
     page = models.OneToOneField(Page, on_delete=models.CASCADE, null=True)
     prize = models.ForeignKey(
         StandardPrize, on_delete=models.CASCADE, null=True)
