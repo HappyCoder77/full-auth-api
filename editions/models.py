@@ -475,7 +475,7 @@ class Pack(models.Model):
         return self.box.edition
 
     def __str__(self):
-        return 'Pack N°: ' + str(self.id)
+        return f'Pack N°: {self.id}'
 
     def open(self, user):
         """

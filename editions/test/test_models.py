@@ -294,15 +294,6 @@ class StickerTestCase(TestCase):
                 self.fail("Sticker should not have a slot associated.")
             except Sticker.slot.RelatedObjectDoesNotExist:
                 self.assertTrue(True)
-    # TODO: arreglar si se puede o eliminarlo
-    # def test_stick_method(self):
-    #     user = UserFactory()
-    #     album = AlbumFactory(collector=user, edition=self.edition)
-    #     sticker = self.collectible_stickers.first()
-
-    #     sticker.stick(album.pk)
-
-    #     self.assertIsInstance(sticker.slot, Slot)
 
 
 class BoxTestCase(TestCase):
@@ -329,3 +320,31 @@ class BoxTestCase(TestCase):
         self.assertEqual(Box.objects.all().count(), 1)
         self.assertEqual(
             str(self.box), f'Box N°: {self.box.id}, ordinal: {self.box.ordinal}')
+
+
+class PackTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        promotion = PromotionFactory()
+        cls.edition = EditionFactory(promotion=promotion)
+
+    def test_box_data(self):
+        for box in self.edition.boxes.all():
+
+            pack_counter = 1
+            for pack in box.packs.all().order_by('ordinal'):
+                self.assertEqual(pack.box, box)
+                self.assertEqual(pack.ordinal, pack_counter)
+                self.assertEqual(pack.edition, self.edition)
+                self.assertEqual(str(pack), f'Pack N°: {pack.id}')
+
+                pack_counter += 1
+
+    def test_box_open_method(self):
+        user = UserFactory()
+        pack = Pack.objects.all().first()
+        pack.open(user)
+
+        for sticker in pack.stickers.all():
+            self.assertEqual(sticker.pack, pack)
+            self.assertEqual(sticker.collector, user)

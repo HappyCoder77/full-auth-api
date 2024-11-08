@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.contrib.auth import logout
 from django.http import Http404
 from rest_framework.views import APIView
 from rest_framework.exceptions import MethodNotAllowed
