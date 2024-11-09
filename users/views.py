@@ -27,7 +27,7 @@ from .permissions import (IsSuperUser, IsRegionalManagerOrSuperUser,
 # TODO: agregar docstrings a las actions para mejorar la documentacion
 
 
-class CustomProviderAuthView(ProviderAuthView):
+class CustomProviderAuthView(ProviderAuthView):  # pragma: no cover
     # TODO: considera eliminar esto ya que no se esta usando
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)

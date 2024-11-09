@@ -109,7 +109,7 @@ class EditionValidationTestCase(TestCase):
 
         try:
             edition.clean()
-        except ValidationError:
+        except ValidationError:  # pragma: no cover
             self.fail("clean() raised ValidationError unexpectedly!",)
 
     def test_no_promotion_at_all(self):
@@ -189,7 +189,7 @@ class EditionValidationTestCase(TestCase):
 
 
 @skip
-class AnalisisEditionTestCase(TestCase):
+class AnalisisEditionTestCase(TestCase):  # pragma: no cover
     @classmethod
     def setUpTestData(cls):
         PromotionFactory()
@@ -291,7 +291,8 @@ class StickerTestCase(TestCase):
             self.assertEqual(each_sticker.box, each_sticker.pack.box)
             try:
                 each_sticker.slot
-                self.fail("Sticker should not have a slot associated.")
+                self.fail(
+                    "Sticker should not have a slot associated.")  # pragma: no cover
             except Sticker.slot.RelatedObjectDoesNotExist:
                 self.assertTrue(True)
 

@@ -54,7 +54,7 @@ class BaseProfileTest(TestCase):
         )
         with self.assertRaises(ValidationError):
             profile.full_clean()  # Esto lanzará la ValidationError
-            profile.save()  # Esto no debería ejecutarse
+            profile.save()  # pragma: no cover
 
     def test_save_profile_with_no_user(self):
         self.profile.user = None
@@ -111,7 +111,7 @@ class RegionalManagerTest(TestCase):
         # Verificar que no se lancen errores de validación
         try:
             self.regional_manager.full_clean()
-        except ValidationError as e:
+        except ValidationError as e:  # pragma no cover
             self.fail(f"full_clean() lanzó ValidationError: {e}")
 
     def test_create_regional_manager(self):

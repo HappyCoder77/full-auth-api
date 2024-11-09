@@ -266,7 +266,7 @@ class PromotionValidationTestCase(TestCase):
 
         try:
             promotion2.full_clean()
-        except ValidationError:
+        except ValidationError:  # pragma: no cover
             self.fail("clean() raised ValidationError unexpectedly!")
 
     def test_promotion_no_previous_promotions(self):
@@ -274,5 +274,5 @@ class PromotionValidationTestCase(TestCase):
         promotion = PromotionFactory()
         try:
             promotion.full_clean()
-        except ValidationError:
+        except ValidationError:  # pragma: no cover
             self.fail("clean() raised ValidationError unexpectedly!")

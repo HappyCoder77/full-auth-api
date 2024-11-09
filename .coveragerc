@@ -1,0 +1,12 @@
+[report]
+# Archivos o directorios a omitir en el reporte de cobertura
+omit =
+    */migrations/*
+    */settings/*
+    */admin.py*
+    */manage.py*
+    */settings.py*
+
+
+[html]
+directory = coverage_html_report
