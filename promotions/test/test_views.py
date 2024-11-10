@@ -1,14 +1,13 @@
 from django.test import TestCase
 from django.utils import timezone
 from django.contrib.auth import get_user_model
-from rest_framework.test import APIRequestFactory, force_authenticate, APIClient
+from rest_framework.test import APIClient
 from rest_framework import status
-from datetime import timedelta
 from django.urls import reverse
 from authentication.test.factories import UserFactory
 from .factories import PromotionFactory
 from ..models import Promotion
-from ..views import PromotionViewSet
+
 
 User = get_user_model()
 
@@ -22,8 +21,6 @@ class PromotionViewSetTestCase(TestCase):
         self.past_promotion = PromotionFactory(past=True)
         self.future_promotion = PromotionFactory(future=True)
         self.list_url = reverse('promotion-list')
-        # self.detail_url = reverse(
-        #     'promotion-detail', kwargs={'pk': self.active_promotion.pk})
         self.current_url = reverse('promotion-current')
 
     def test_promotion_list(self):

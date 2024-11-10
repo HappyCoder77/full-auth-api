@@ -6,7 +6,6 @@ from collection_manager.models import Coordinate
 
 from ..models import Slot
 from .factories import AlbumFactory
-# TODO: aqui fatan mas tests
 
 
 class AlbumTestCase(TestCase):
@@ -181,20 +180,3 @@ class StickStickerTestCase(TestCase):
             str(context.exception),
             f"Casilla equivocada. intentas pegar la barajita número {sticker.number} en la casilla número {slot.number}"
         )
-
-
-# class TestSlot(unittest.TestCase):
-
-#     def setUp(self):
-#         self.coordinate = Coordinate(number=1)
-#         self.sticker = Sticker(coordinate=self.coordinate)
-#         self.slot = Slot(absolute_number=1, number=1)
-
-#     def test_stick_sticker_success(self):
-#         # Caso exitoso: el número del sticker coincide y el slot está vacío
-#         self.slot.stick_sticker(self.sticker)
-#         self.assertEqual(self.slot.sticker, self.sticker)
-
-
-# if __name__ == '__main__':
-#     unittest.main()

@@ -11,9 +11,6 @@ from .serializers import AlbumSerializer
 
 
 class AlbumViewSet(ModelViewSet):
-    """
-    Endpoints para el manejo del crud de albums 
-    """
     queryset = Album.objects.all()
     serializer_class = AlbumSerializer
     permission_classes = [AlbumPermission]

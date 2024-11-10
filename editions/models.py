@@ -1,5 +1,5 @@
 import random
-from decimal import Decimal, getcontext, ROUND_CEILING, ROUND_DOWN
+from decimal import Decimal, ROUND_CEILING, ROUND_DOWN
 
 from django.contrib import admin
 from django.contrib.auth import get_user_model

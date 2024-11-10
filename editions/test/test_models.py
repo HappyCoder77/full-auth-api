@@ -6,8 +6,6 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils import timezone
 
-from albums.models import Slot
-from albums.test.factories import AlbumFactory
 from promotions.test.factories import PromotionFactory
 from collection_manager.models import Coordinate
 from collection_manager.test.factories import CollectionFactory

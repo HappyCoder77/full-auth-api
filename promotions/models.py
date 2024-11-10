@@ -2,7 +2,6 @@ from dateutil import tz
 from dateutil.relativedelta import relativedelta
 
 from django.db import models, transaction
-from django.db.models import Count
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -155,11 +154,6 @@ class Promotion(models.Model):
 
         if overlapping_promotions.exists():
             raise ValidationError('Ya hay una promoción en curso')
-
-    # TODO:revisar si esto es viable aqui
-    # def reiniciar_rescue_options(self):
-    #     User.objects.filter(
-    #         is_collector=True).update(rescue_options=0)
 
     @transaction.atomic
     def save(self, *args, **kwargs):

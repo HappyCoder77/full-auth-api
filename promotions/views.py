@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from django.utils import timezone
 from rest_framework import viewsets, status
 from .models import Promotion
-from users.permissions import DetailedPermissionDenied
+from utils.exceptions import DetailedPermissionDenied
 from .permissions import PromotionPermission
 
 
