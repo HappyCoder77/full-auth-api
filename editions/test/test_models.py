@@ -9,8 +9,8 @@ from django.utils import timezone
 from albums.models import Slot
 from albums.test.factories import AlbumFactory
 from promotions.test.factories import PromotionFactory
-from sticker_collections.models import Coordinate
-from sticker_collections.test.factories import CollectionFactory
+from collection_manager.models import Coordinate
+from collection_manager.test.factories import CollectionFactory
 from authentication.test.factories import UserFactory
 from ..models import Box, Pack, Sticker
 from .factories import EditionFactory

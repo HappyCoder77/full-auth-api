@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class StickerCollectionsConfig(AppConfig):
+class CollectionManagerConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'sticker_collections'
+    name = 'collection_manager'

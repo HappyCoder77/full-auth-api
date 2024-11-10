@@ -9,7 +9,7 @@ from django.db.models import Count
 from django.utils import timezone
 
 from promotions.models import Promotion
-from sticker_collections.models import Collection, Coordinate
+from collection_manager.models import Collection, Coordinate
 
 User = get_user_model()
 

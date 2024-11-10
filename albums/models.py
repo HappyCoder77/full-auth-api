@@ -4,7 +4,7 @@ from django.db import models, transaction
 from editions.models import Sticker
 
 from editions.models import Edition
-from sticker_collections.models import StandardPrize
+from collection_manager.models import StandardPrize
 
 User = get_user_model()
 

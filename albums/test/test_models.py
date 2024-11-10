@@ -2,7 +2,7 @@ from django.test import TestCase
 
 from promotions.test.factories import PromotionFactory
 from editions.models import Sticker
-from sticker_collections.models import Coordinate
+from collection_manager.models import Coordinate
 
 from ..models import Slot
 from .factories import AlbumFactory

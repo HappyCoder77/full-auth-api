@@ -1,6 +1,6 @@
 import factory
 
-from sticker_collections.test.factories import CollectionFactory
+from collection_manager.test.factories import CollectionFactory
 from ..models import Edition
 
 
