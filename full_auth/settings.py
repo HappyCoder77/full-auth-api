@@ -202,7 +202,7 @@ AUTHENTICATION_BACKENDS = [
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'users.authentication.CustomJWTAuthentication',
+        'authentication.authentication.CustomJWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
     'SESSION_COOKIE_AGE': 3600,
@@ -216,13 +216,13 @@ REST_FRAMEWORK = {
 
 DJOSER = {
     'SERIALIZERS': {
-        'user': 'users.serializers.UserSerializer',
-        'current_user': 'users.serializers.UserSerializer',
+        'user': 'authentication.serializers.UserSerializer',
+        'current_user': 'authentication.serializers.UserSerializer',
 
     },
     'EMAIL': {
-        'activation': 'users.email.ActivationEmail',
-        'password_reset': 'users.email.PasswordResetEmail',
+        'activation': 'authentication.email.ActivationEmail',
+        'password_reset': 'authentication.email.PasswordResetEmail',
     },
     'PASSWORD_RESET_CONFIRM_URL': 'password-reset/{uid}/{token}',
     'SEND_ACTIVATION_EMAIL': True,

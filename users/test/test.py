@@ -2,15 +2,15 @@ import unittest
 from unittest.mock import Mock, patch
 from django.conf import settings
 from rest_framework_simplejwt.exceptions import InvalidToken, AuthenticationFailed
-from ..authentication import CustomJWTAuthentication
+from authentication.authentication import CustomJWTAuthentication
 
 
 class TestCustomJWTAuthentication(unittest.TestCase):
     # TODO: Estudiar este codigo, se copió asi sin mas de la IA
-    @patch('users.authentication.CustomJWTAuthentication.get_header')
-    @patch('users.authentication.CustomJWTAuthentication.get_raw_token')
-    @patch('users.authentication.CustomJWTAuthentication.get_validated_token')
-    @patch('users.authentication.CustomJWTAuthentication.get_user')
+    @patch('authentication.authentication.CustomJWTAuthentication.get_header')
+    @patch('authentication.authentication.CustomJWTAuthentication.get_raw_token')
+    @patch('authentication.authentication.CustomJWTAuthentication.get_validated_token')
+    @patch('authentication.authentication.CustomJWTAuthentication.get_user')
     def test_authenticate_with_header(self, mock_get_user, mock_get_validated_token, mock_get_raw_token, mock_get_header):
         request = Mock()
         mock_get_header.return_value = 'header_token'
@@ -28,9 +28,9 @@ class TestCustomJWTAuthentication(unittest.TestCase):
         mock_get_validated_token.assert_called_once_with('raw_token')
         mock_get_user.assert_called_once_with('validated_token')
 
-    @patch('users.authentication.CustomJWTAuthentication.get_header')
-    @patch('users.authentication.CustomJWTAuthentication.get_validated_token')
-    @patch('users.authentication.CustomJWTAuthentication.get_user')
+    @patch('authentication.authentication.CustomJWTAuthentication.get_header')
+    @patch('authentication.authentication.CustomJWTAuthentication.get_validated_token')
+    @patch('authentication.authentication.CustomJWTAuthentication.get_user')
     def test_authenticate_with_cookie(self, mock_get_user, mock_get_validated_token, mock_get_header):
         request = Mock()
         request.COOKIES = {settings.AUTH_COOKIE: 'cookie_token'}
@@ -47,7 +47,7 @@ class TestCustomJWTAuthentication(unittest.TestCase):
         mock_get_validated_token.assert_called_once_with('cookie_token')
         mock_get_user.assert_called_once_with('validated_token')
 
-    @patch('users.authentication.CustomJWTAuthentication.get_header')
+    @patch('authentication.authentication.CustomJWTAuthentication.get_header')
     def test_authenticate_no_token(self, mock_get_header):
         request = Mock()
         mock_get_header.return_value = None
@@ -59,9 +59,9 @@ class TestCustomJWTAuthentication(unittest.TestCase):
         self.assertIsNone(result)
         mock_get_header.assert_called_once_with(request)
 
-    @patch('users.authentication.CustomJWTAuthentication.get_header')
-    @patch('users.authentication.CustomJWTAuthentication.get_raw_token')
-    @patch('users.authentication.CustomJWTAuthentication.get_validated_token')
+    @patch('authentication.authentication.CustomJWTAuthentication.get_header')
+    @patch('authentication.authentication.CustomJWTAuthentication.get_raw_token')
+    @patch('authentication.authentication.CustomJWTAuthentication.get_validated_token')
     def test_authenticate_invalid_token(self, mock_get_validated_token, mock_get_raw_token, mock_get_header):
         request = Mock()
         mock_get_header.return_value = 'header_token'
@@ -76,9 +76,9 @@ class TestCustomJWTAuthentication(unittest.TestCase):
         mock_get_raw_token.assert_called_once_with('header_token')
         mock_get_validated_token.assert_called_once_with('raw_token')
 
-    @patch('users.authentication.CustomJWTAuthentication.get_header')
-    @patch('users.authentication.CustomJWTAuthentication.get_raw_token')
-    @patch('users.authentication.CustomJWTAuthentication.get_validated_token')
+    @patch('authentication.authentication.CustomJWTAuthentication.get_header')
+    @patch('authentication.authentication.CustomJWTAuthentication.get_raw_token')
+    @patch('authentication.authentication.CustomJWTAuthentication.get_validated_token')
     def test_authenticate_authentication_failed(self, mock_get_validated_token, mock_get_raw_token, mock_get_header):
         request = Mock()
         mock_get_header.return_value = 'header_token'

@@ -1,11 +1,10 @@
 from . import views
-from django.urls import path, re_path, include
-from .views import (
+from django.urls import path,  include
+from authentication.views import (
     CustomTokenObtainPairView,
     CustomTokenRefreshView,
     CustomTokenVerifyView,
     LogoutView,
-    CustomProviderAuthView
 )
 from rest_framework.routers import DefaultRouter
 router = DefaultRouter()
@@ -23,11 +22,6 @@ router.register(r'collector-profile', views.CollectorViewSet,
 # TODO: refactor urls
 urlpatterns = [
     path('register/', include(router.urls)),
-    re_path(
-        r'^o/(?P<provider>\S+)/$',
-        CustomProviderAuthView.as_view(),
-        name='provider-auth'
-    ),
     path('jwt/create/', CustomTokenObtainPairView.as_view(), name='jwt_create'),
     path('jwt/refresh/', CustomTokenRefreshView.as_view(), name='jwt_refresh'),
     path('jwt/verify/', CustomTokenVerifyView.as_view(), name='jwt_verify'),
