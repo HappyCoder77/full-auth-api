@@ -16,11 +16,12 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
+    path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
     path('admin/', admin.site.urls),
-    path('api/', include('djoser.urls')),
-    path('api/', include('users.urls')),
-    path('api/', include('promotions.urls')),
     path('api/', include('albums.urls')),
+    path('api/', include('authentication.urls')),
+    path('api/', include('promotions.urls')),
+    path('api/', include('users.urls')),
     path('docs/', include_docs_urls(title=API_TITLE, description=API_DESCRIPTION)),
     path('schema/', schema_view)
 ]

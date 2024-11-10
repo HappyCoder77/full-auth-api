@@ -19,7 +19,7 @@ class AlbumViewSet(ModelViewSet):
         """
         Obtiene la lista de todos los álbumes.
         Retorna una colección paginada de álbumes con sus datos básicos.
-        Permisos => Autenticado y superusuario
+        Permisos - autenticado y superusuario
         """
         return super().list(request, *args, **kwargs)
 

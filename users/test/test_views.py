@@ -22,8 +22,8 @@ class RegionalManagerViewSetTestCase(APITestCase):
         self.client = APIClient()
         self.user = UserFactory(is_superuser=True)
         self.client.force_authenticate(user=self.user)
-        self.list_url = reverse('regional-manager-profile-list')
-        self.count_url = reverse('regional-manager-profile-count')
+        self.list_url = reverse('regional-manager-list')
+        self.count_url = reverse('regional-manager-count')
 
     def test_get_regional_managers(self):
         response = self.client.get(self.list_url)
@@ -168,8 +168,8 @@ class LocalManagerViewSetTestCase(APITestCase):
         self.user = UserFactory()
         self.regional_manager = RegionalManagerFactory(user=self.user)
         self.client.force_authenticate(user=self.regional_manager.user)
-        self.list_url = reverse('local-manager-profile-list')
-        self.count_url = reverse('local-manager-profile-count')
+        self.list_url = reverse('local-manager-list')
+        self.count_url = reverse('local-manager-count')
 
     def test_get_local_managers(self):
         response = self.client.get(self.list_url)
@@ -349,8 +349,8 @@ class SponsorViewSetTestCase(APITestCase):
         self.user = UserFactory()
         self.localmanager = LocalManagerFactory(user=self.user)
         self.client.force_authenticate(user=self.localmanager.user)
-        self.list_url = reverse('sponsor-profile-list')
-        self.count_url = reverse('sponsor-profile-count')
+        self.list_url = reverse('sponsor-list')
+        self.count_url = reverse('sponsor-count')
 
     def test_get_sponsors(self):
         response = self.client.get(self.list_url)
@@ -530,8 +530,8 @@ class DealerViewSetTestCase(APITestCase):
         self.user = UserFactory()
         self.sponsor = SponsorFactory(user=self.user)
         self.client.force_authenticate(user=self.sponsor.user)
-        self.list_url = reverse('dealer-profile-list')
-        self.count_url = reverse('dealer-profile-count')
+        self.list_url = reverse('dealer-list')
+        self.count_url = reverse('dealer-count')
 
     def test_get_dealers(self):
         response = self.client.get(self.list_url)
@@ -712,11 +712,11 @@ class CollectorViewSetTestCase(APITestCase):
         self.collector = CollectorFactory(
             user=self.user, email=self.user.email)
         self.client.force_authenticate(user=self.collector.user)
-        self.list_url = reverse('collector-profile-list')
-        self.me_url = reverse('collector-profile-me')
+        self.list_url = reverse('collector-list')
+        self.me_url = reverse('collector-me')
         self.detail_url = reverse(
-            'collector-profile-detail', kwargs={'pk': self.collector.pk})
-        self.count_url = reverse('collector-profile-count')
+            'collector-detail', kwargs={'pk': self.collector.pk})
+        self.count_url = reverse('collector-count')
 
     def test_get_collector_detail(self):
         response = self.client.get(self.detail_url)
@@ -947,7 +947,7 @@ class CollectorViewSetTestCase(APITestCase):
 
     def test_get_collector_non_existent(self):
         non_existent_url = reverse(
-            "collector-profile-detail", kwargs={'pk': 14567})
+            "collector-detail", kwargs={'pk': 14567})
         response = self.client.get(non_existent_url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertIn('No encontrado.',
