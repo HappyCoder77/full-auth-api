@@ -203,11 +203,11 @@ AUTHENTICATION_BACKENDS = [
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'authentication.authentication.CustomJWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
+        # 'rest_framework.authentication.SessionAuthentication',
     ],
-    'SESSION_COOKIE_AGE': 3600,
-    'SESSION_COOKIE_SECURE': getenv('AUTH_COOKIE_SECURE', 'True').lower() == 'true',
-    'SESSION_COOKIE_HTTPONLY': True,
+    # 'SESSION_COOKIE_AGE': 3600,
+    # 'SESSION_COOKIE_SECURE': getenv('AUTH_COOKIE_SECURE', 'True').lower() == 'true',
+    # 'SESSION_COOKIE_HTTPONLY': True,
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated'
     ],
@@ -265,6 +265,10 @@ SOCIAL_AUTH_FACEBOOK_PROFILE_EXTRA_PARAMS = {
 
 CORS_ALLOWED_ORIGINS = getenv(
     'CORS_ALLOWED_ORIGINS',
+    'http://localhost:3000,http://127.0.0.1:3000').split(',')
+
+CSRF_TRUSTED_ORIGINS = getenv(
+    'CSRF_TRUSTED_ORIGINS',
     'http://localhost:3000,http://127.0.0.1:3000').split(',')
 
 CORS_ALLOW_CREDENTIALS = True
