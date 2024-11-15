@@ -10,6 +10,7 @@ from authentication.test.factories import UserFactory
 from promotions.test.factories import PromotionFactory
 from editions.test.factories import EditionFactory
 from users.test.factories import CollectorFactory
+from ..models import Album
 from ..views import AlbumViewSet
 from .factories import AlbumFactory
 
@@ -28,6 +29,7 @@ class AlbumViewSetTestCase(APITestCase):
         cls.list_url = reverse('album-list')
         cls.detail_url = reverse(
             'album-detail', kwargs={'pk': cls.collector.user.pk})
+        cls.me_list_url = reverse('album-me-list')
 
     def setUp(self):
         self.album = AlbumFactory(
@@ -78,6 +80,33 @@ class AlbumViewSetTestCase(APITestCase):
         self.assertEqual(response.data['collector'], self.album.collector.id)
         self.assertEqual(response.data['edition'], self.album.edition.id)
 
+    def test_collector_can_retrieve_his_album_list(self):
+        user = UserFactory()
+        collector = CollectorFactory(user=user)
+        edition = EditionFactory(
+            promotion=self.promotion,
+            collection__name="Angela"
+        )
+        AlbumFactory(
+            collector=self.collector.user,
+            edition=edition
+        )
+
+        AlbumFactory(
+            collector=collector.user,
+            edition=edition
+        )
+        self.client.force_authenticate(user=self.collector.user)
+        response = self.client.get(self.me_list_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Album.objects.count(), 3)
+        self.assertEqual(len(response.data), 2)
+
+        for album in response.data:
+            self.assertEqual(
+                album['collector'], self.collector.user.id)
+
     def test_superuser_can_retrieve_album(self):
         self.client.force_authenticate(user=self.superuser)
         response = self.client.get(self.detail_url)
@@ -117,19 +146,32 @@ class AlbumViewSetTestCase(APITestCase):
             response.data['detail'], "Debe estar autenticado para realizar esta acción")
 
     def test_collector_can_create_album(self):
-        # TODO: un collector no puede crear mas de 1 album por coleccion
         user = UserFactory()
         collector = CollectorFactory(user=user)
         self.client.force_authenticate(user=collector.user)
         data = {
-            'collector': self.collector.user.id,
+            'collector': collector.user.id,
             'edition': self.edition.id
         }
         response = self.client.post(self.list_url, data=data, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['collector'], collector.id)
+        self.assertEqual(response.data['collector'], collector.user.id)
         self.assertEqual(response.data['edition'], self.edition.id)
+
+    def test_collector_cannot_create_more_than_one_album_per_edition(self):
+        self.client.force_authenticate(user=self.collector.user)
+        data = {
+            'collector': self.collector.user.id,
+            'edition': self.edition.id
+        }
+
+        response = self.client.post(self.list_url, data=data, format='json')
+
+        self.assertEqual(response.status_code,
+                         status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['detail'],
+                         'Ya existe un album para este usuario y esta edición')
 
     def test_superuser_can_create_album(self):
 

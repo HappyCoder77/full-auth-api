@@ -1,3 +1,4 @@
+from django.db import IntegrityError
 from django.test import TestCase
 
 from promotions.test.factories import PromotionFactory
@@ -34,6 +35,14 @@ class AlbumTestCase(TestCase):
         )
         self.assertEqual(self.album.missing_stickers, 24)
         self.assertEqual(self.album.collected_stickers, 0)
+
+    def test_unique_constraint(self):
+
+        with self.assertRaises(IntegrityError):
+            AlbumFactory(
+                collector=self.album.collector,
+                edition=self.album.edition
+            )
 
 
 class PageTestCase(TestCase):

@@ -19,6 +19,7 @@ class Album(models.Model):
 
     class Meta:
         verbose_name_plural = 'Albums'
+        unique_together = ('collector', 'edition')
 
     @property
     def missing_stickers(self):
