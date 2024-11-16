@@ -21,7 +21,7 @@ class Collection(models.Model):
     PRIZE_STICKER_RARITY = Decimal(0.301).quantize(Decimal('0.000'))
     name = models.CharField("Tema de la colección",
                             max_length=50, unique=True)
-    image = models.ImageField(upload_to='albums', null=True)
+    image = models.ImageField(upload_to='images/collections/')
 
     def __str__(self):
         return self.name

@@ -8,10 +8,11 @@ class CollectionTestCase(TestCase):
     COLLECTION_NAME = "Minecraft"
 
     def setUp(self):
-        self.collection = CollectionFactory()
+        self.collection = CollectionFactory(with_image=True)
 
     def tearDown(self):
         """Clean up data after each test method."""
+        self.collection.image.delete(save=False)
         Collection.objects.all().delete()
 
     def test_collection_data(self):
@@ -20,6 +21,8 @@ class CollectionTestCase(TestCase):
 
         self.assertEqual(standard_coordinates, 24)
         self.assertEqual(self.collection.name, self.COLLECTION_NAME)
+        self.assertEqual(self.collection.image.name,
+                         "images/collections/collection_image.png")
         self.assertEqual(str(self.collection), 'Minecraft')
         self.assertEqual(self.collection.coordinates.count(), 25)
         self.assertEqual(
