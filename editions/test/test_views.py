@@ -123,3 +123,22 @@ class EditionViewSetTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertEqual(
             response.data['detail'], 'Debe estar autenticado para realizar esta acción')
+
+    def test_http_404_exception(self):
+        superuser = UserFactory(is_superuser=True)
+        self.client.force_authenticate(user=superuser)
+        detail_url = reverse('edition-detail', kwargs={'pk': 9007})
+        response = self.client.get(detail_url)
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data['detail'], 'No encontrado.')
+
+    def test_method_not_allowed_exception(self):
+        superuser = UserFactory(is_superuser=True)
+        self.client.force_authenticate(user=superuser)
+        detail_url = reverse('edition-detail', kwargs={'pk': 9007})
+        response = self.client.put(detail_url)
+
+        self.assertEqual(response.status_code,
+                         status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.data['detail'], 'Método no permitido.')

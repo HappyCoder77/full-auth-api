@@ -57,35 +57,19 @@ class EditionViewSet(ReadOnlyModelViewSet):
         )
 
     def handle_exception(self, exc):
+
         if isinstance(exc, DetailedPermissionDenied):
             return Response({'detail': str(exc.detail)}, status=exc.status_code)
-
         elif isinstance(exc, Http404):
             return Response(
                 {'detail': 'No encontrado.'},
                 status=status.HTTP_404_NOT_FOUND
             )
-
         elif isinstance(exc, MethodNotAllowed):
             return Response(
                 {'detail': 'Método no permitido.'},
                 status=status.HTTP_405_METHOD_NOT_ALLOWED
             )
-
-        elif isinstance(exc, ValidationError):
-            if 'non_field_errors' in str(exc).lower():
-                message = 'Los campos collector, edition deben formar un conjunto único.'
-
-                if message in exc.detail['non_field_errors']:
-                    return Response(
-                        {'detail': 'Ya existe un album para este usuario y esta edición'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-
-                return Response(
-                    {'detail': 'Se produjo un error de integridad en la base de datos.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
         else:
             return Response(
                 {
