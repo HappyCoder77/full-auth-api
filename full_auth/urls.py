@@ -21,6 +21,7 @@ urlpatterns = [
     path('api/', include('albums.urls')),
     path('api/', include('authentication.urls')),
     path('api/', include('promotions.urls')),
+    path('api/', include('editions.urls')),
     path('api/', include('users.urls')),
     path('docs/', include_docs_urls(title=API_TITLE, description=API_DESCRIPTION)),
     path('schema/', schema_view)
