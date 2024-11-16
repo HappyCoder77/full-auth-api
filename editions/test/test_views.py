@@ -19,20 +19,27 @@ class EditionViewSetTestCase(APITestCase):
 
     def test_current_list_with_active_promotion_and_editions(self):
         promotion = PromotionFactory()
-        edition = EditionFactory(
-            promotion=promotion, collection__name='Edition 1')
-        edition2 = EditionFactory(
-            promotion=promotion, collection__name='Edition 2')
+        EditionFactory(
+            promotion=promotion, collection__name='Collection 1')
+        EditionFactory(
+            promotion=promotion, collection__name='Collection 2')
 
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
-        self.assertEqual(response.data[0]['promotion'], promotion.id)
-        self.assertEqual(response.data[0]['collection'], edition.collection.id)
-        self.assertEqual(response.data[1]['promotion'], promotion.id)
-        self.assertEqual(
-            response.data[1]['collection'], edition2.collection.id)
+
+        for item in response.data:
+            self.assertIn('remaining_time', item['promotion'])
+            self.assertIn('Esta promoción termina en',
+                          item['promotion']['remaining_time'])
+            self.assertIn('name', item['collection'])
+            self.assertIn('image', item['collection'])
+
+        collection_names = [item['collection']['name']
+                            for item in response.data]
+        self.assertIn('Collection 1', collection_names)
+        self.assertIn('Collection 2', collection_names)
 
     def test_current_list_with_active_promotion_and_no_editions(self):
         PromotionFactory()
@@ -93,13 +100,17 @@ class EditionViewSetTestCase(APITestCase):
         self.client.force_authenticate(user=superuser)
         promotion = PromotionFactory()
         edition = EditionFactory(
-            promotion=promotion, collection__name='Edition 1')
+            promotion=promotion, collection__name='Collection 1')
         detail_url = reverse('edition-detail', kwargs={'pk': edition.pk})
         response = self.client.get(detail_url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['promotion'], promotion.id)
-        self.assertEqual(response.data['collection'], edition.collection.id)
+        self.assertIn('remaining_time', response.data['promotion'])
+        self.assertIn('Esta promoción termina en',
+                      response.data['promotion']['remaining_time'])
+        self.assertIn('name', response.data['collection'])
+        self.assertIn('Collection 1', response.data['collection']['name'])
+        self.assertIn('image', response.data['collection'])
 
     def test_user_cannot_retrieve_edition(self):
         promotion = PromotionFactory()
