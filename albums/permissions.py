@@ -12,7 +12,7 @@ class AlbumPermission(permissions.BasePermission):
                 status_code=status.HTTP_401_UNAUTHORIZED
             )
 
-        if view.action in ['create', 'retrieve', 'partial_update', 'me-albums']:
+        if view.action in ['create', 'retrieve', 'partial_update', 'me-albums', 'get_or_create']:
 
             if not request.user.is_collector and not request.user.is_superuser:
                 raise DetailedPermissionDenied(

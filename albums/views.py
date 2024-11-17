@@ -33,6 +33,44 @@ class AlbumViewSet(ModelViewSet):
         """
         return super().create(request, *args, **kwargs)
 
+    @action(detail=False, methods=['POST'], url_path='get-or-create', url_name='get-or-create')
+    def get_or_create(self, request):
+        """
+        Obtiene o crea un álbum para una edición específica.
+
+        Si ya existe un álbum para el usuario y la edición, lo retorna.
+        Si no existe, crea uno nuevo.
+
+        Permisos => autenticado y (collector o superuser)
+        """
+        edition_id = request.data.get('editionId')
+
+        if not edition_id:
+            return Response(
+                {'detail': 'Se requiere el id de la edición.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            album = Album.objects.get(
+                collector=request.user,
+                edition_id=edition_id
+            )
+            serializer = self.get_serializer(album)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Album.DoesNotExist:
+            data = {
+                'collector': self.request.user.id,
+                'edition': edition_id
+            }
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(
+                serializer.data,
+                status=status.HTTP_201_CREATED
+            )
+
     def get_object(self):
         collector = self.kwargs.get('pk')
         queryset = self.get_queryset()

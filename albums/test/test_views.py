@@ -22,14 +22,15 @@ class AlbumViewSetTestCase(APITestCase):
         cls.promotion = PromotionFactory()
         cls.edition = EditionFactory(promotion=cls.promotion)
         cls.superuser = UserFactory(is_superuser=True)
-        cls.collector_user = UserFactory()
         cls.user = UserFactory()
+        cls.collector_user = UserFactory()
         cls.collector = CollectorFactory(
-            user=cls.collector_user, email=cls.user.email)
+            user=cls.collector_user, email=cls.collector_user.email)
         cls.list_url = reverse('album-list')
         cls.detail_url = reverse(
             'album-detail', kwargs={'pk': cls.collector.user.pk})
         cls.me_list_url = reverse('album-me-list')
+        cls.get_or_create_url = reverse('album-get-or-create')
 
     def setUp(self):
         self.album = AlbumFactory(
@@ -383,3 +384,93 @@ class AlbumViewSetTestCase(APITestCase):
                          status.HTTP_500_INTERNAL_SERVER_ERROR)
         self.assertEqual(
             response.data['detail'], "Se produjo un error inesperado.")
+
+    def test_superuser_can_get_or_create_album_create_branch(self):
+        self.client.force_authenticate(user=self.superuser)
+        data = {
+            'editionId': self.edition.id
+        }
+        response = self.client.post(
+            self.get_or_create_url, data=data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['collector'], self.superuser.id)
+        self.assertEqual(response.data['edition'], self.edition.id)
+        self.assertEqual(Album.objects.count(), 2)
+
+    def test_superuser_can_get_or_create_album_get_branch(self):
+        self.client.force_authenticate(user=self.superuser)
+        AlbumFactory(collector=self.superuser, edition=self.edition)
+        data = {
+            'editionId': self.edition.id
+        }
+        response = self.client.post(
+            self.get_or_create_url, data=data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['collector'], self.superuser.id)
+        self.assertEqual(response.data['edition'], self.edition.id)
+        self.assertEqual(Album.objects.count(), 2)
+
+    def test_collector_can_get_or_create_album_create_branch(self):
+        self.client.force_authenticate(user=self.collector.user)
+        edition = EditionFactory(
+            promotion=self.promotion, collection__name='Angela')
+        data = {
+            'editionId': edition.id
+        }
+        response = self.client.post(
+            self.get_or_create_url, data=data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['collector'], self.collector.user.id)
+        self.assertEqual(response.data['edition'], edition.id)
+        self.assertEqual(Album.objects.count(), 2)
+
+    def test_collector_can_get_or_create_album_get_branch(self):
+        self.client.force_authenticate(user=self.collector.user)
+        data = {
+            'editionId': self.edition.id
+        }
+        response = self.client.post(
+            self.get_or_create_url, data=data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['collector'], self.collector.user.id)
+        self.assertEqual(response.data['edition'], self.edition.id)
+        self.assertEqual(Album.objects.count(), 1)
+
+    def test_basic_user_cannot_get_or_create_album(self):
+        self.client.force_authenticate(user=self.user)
+        data = {
+            'editionId': self.edition.id
+        }
+        response = self.client.post(
+            self.get_or_create_url, data=data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data['detail'], "Solo los coleccionistas o superusuarios pueden realizar esta acción")
+
+    def test_unauthorized_user_cannot_get_or_create_album(self):
+        self.client.logout()
+        data = {
+            'editionId': self.edition.id
+        }
+
+        response = self.client.post(
+            self.get_or_create_url, data=data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data['detail'], "Debe estar autenticado para realizar esta acción")
+
+    def test_cannot_get_or_create_album_without_edition_id(self):
+        self.client.force_authenticate(user=self.collector.user)
+        data = {}
+        response = self.client.post(
+            self.get_or_create_url, data=data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data['detail'], "Se requiere el id de la edición.")
