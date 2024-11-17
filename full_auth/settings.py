@@ -202,12 +202,9 @@ AUTHENTICATION_BACKENDS = [
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
         'authentication.authentication.CustomJWTAuthentication',
-        # 'rest_framework.authentication.SessionAuthentication',
     ],
-    # 'SESSION_COOKIE_AGE': 3600,
-    # 'SESSION_COOKIE_SECURE': getenv('AUTH_COOKIE_SECURE', 'True').lower() == 'true',
-    # 'SESSION_COOKIE_HTTPONLY': True,
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated'
     ],
