@@ -31,7 +31,7 @@ class IsLocalManagerOrSuperUser(permissions.BasePermission):
 
 class IsSponsorOrSuperUser(permissions.BasePermission):
     """
-    Permite el acceso solo a los gerentes regionales.
+    Permite el acceso solo a los sponsors.
     """
 
     def has_permission(self, request, view):

@@ -1,164 +1,133 @@
-from django.shortcuts import get_object_or_404
-from django.http import Http404
-from rest_framework.exceptions import MethodNotAllowed, ValidationError
-from rest_framework.decorators import action
+
+from django.utils import timezone
+from rest_framework.exceptions import NotFound
+from rest_framework.serializers import ValidationError
+from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
-from rest_framework.viewsets import ModelViewSet
-from rest_framework import status
+from rest_framework import status, mixins
+from editions.models import Edition
+from promotions.models import Promotion
 from .models import Album
-from utils.exceptions import DetailedPermissionDenied
-from .permissions import AlbumPermission
+from .permissions import IsAuthenticatedCollector
 from .serializers import AlbumSerializer
 
 
-class AlbumViewSet(ModelViewSet):
-    queryset = Album.objects.all()
+class UserAlbumListRetrieveView(
+        mixins.ListModelMixin,
+        mixins.RetrieveModelMixin,
+        GenericAPIView):
+    """
+    Vista de recuperacion de albums.
+    GET /api/user-albums/{edition_id}/ => devuelve el álbum perteneciente
+    a un colleccionista y edición en curso.
+    GET /api/user-albums/ => devuelve una lista de todos
+    los álbumes del coleccionista para la promoción en curso.
+    Permisos - collector autenticado.
+    """
     serializer_class = AlbumSerializer
-    permission_classes = [AlbumPermission]
+    permission_classes = [IsAuthenticatedCollector]
+    lookup_field = 'edition_id'
+    lookup_url_kwarg = lookup_field
 
-    def list(self, request, *args, **kwargs):
-        """
-        Obtiene la lista de todos los álbumes.
-        Retorna una colección paginada de álbumes con sus datos básicos.
-        Permisos - autenticado y superusuario
-        """
-        return super().list(request, *args, **kwargs)
-
-    def create(self, request, *args, **kwargs):
-        """
-        Crea un nuevo álbum.
-
-        Recibe los datos del álbum y retorna el álbum creado.
-        Permisos => autenticado y (coleccionista o superusuario)
-        """
-        return super().create(request, *args, **kwargs)
-
-    @action(detail=False, methods=['POST'], url_path='get-or-create', url_name='get-or-create')
-    def get_or_create(self, request):
-        """
-        Obtiene o crea un álbum para una edición específica.
-
-        Si ya existe un álbum para el usuario y la edición, lo retorna.
-        Si no existe, crea uno nuevo.
-
-        Permisos => autenticado y (collector o superuser)
-        """
-        edition_id = request.data.get('editionId')
-
-        if not edition_id:
-            return Response(
-                {'detail': 'Se requiere el id de la edición.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
+    def get_current_promotion(self):
+        now = timezone.now()
         try:
-            album = Album.objects.get(
-                collector=request.user,
-                edition_id=edition_id
+            promotion = Promotion.objects.get(
+                start_date__lte=now,
+                end_date__gte=now
             )
-            serializer = self.get_serializer(album)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except Album.DoesNotExist:
-            data = {
-                'collector': self.request.user.id,
-                'edition': edition_id
-            }
-            serializer = self.get_serializer(data=data)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
+        except Promotion.DoesNotExist:
+            return None
+
+        return promotion
+
+    def get_queryset(self):
+        return Album.objects.filter(collector=self.request.user)
+
+    def get(self, request, *args, **kwargs):
+        promotion = self.get_current_promotion()
+
+        if not promotion:
             return Response(
-                serializer.data,
-                status=status.HTTP_201_CREATED
+                {'detail': 'No hay ninguna promoción en curso, no es posible la consulta.'},
+                status=status.HTTP_200_OK
             )
 
-    def get_object(self):
-        collector = self.kwargs.get('pk')
-        queryset = self.get_queryset()
-        obj = get_object_or_404(queryset, collector=collector)
-        self.check_object_permissions(self.request, obj)
-        return obj
+        edition_id = self.kwargs.get('edition_id')
 
-    def retrieve(self, request, *args, **kwargs):
-        """
-        Obtiene un álbum específico.
+        if edition_id:
+            try:
+                edition = Edition.objects.get(pk=edition_id)
 
-        Retorna los detalles completos de un álbum según su ID.
-        Permisos => autenticado y (collector.user coincidente con album.collector o superusuario)
-        """
-        return super().retrieve(request, *args, **kwargs)
+            except Edition.DoesNotExist:
 
-    def update(self, request, *args, **kwargs):
-        """
-        Actualiza un álbum existente.
+                raise NotFound(
+                    'No existe ninguna edición con el id suministrado')
 
-        Actualiza todos los campos de un álbum específico.
-        Permisos => autenticado y superusuario
-        """
-        return super().update(request, *args, **kwargs)
+            return self.retrieve(request, *args, **kwargs)
 
-    def partial_update(self, request, *args, **kwargs):
-        """
-        Actualiza parcialmente un álbum.
-
-        Permite actualizar uno o más campos de un álbum específico.
-        Permisos => autenticado y (coleccionista o superusuario)
-        """
-        return super().partial_update(request, *args, **kwargs)
-
-    def destroy(self, request, *args, **kwargs):
-        """
-        Elimina un álbum.
-        Elimina permanentemente un álbum específico del sistemas.
-        Permisos => autenticado y superusuario
-        """
-        return super().destroy(request, *args, **kwargs)
-
-    @action(detail=False, methods=['GET'], url_path='me/list', url_name='me-list')
-    def user_albums(self, request):
-        """
-        Obtiene los álbumes del usuario autenticado.
-
-        Retorna una lista de álbumes pertenecientes al usuario autenticado.
-        Permisos => autenticado y (collector o superuser)
-        """
-        albums = Album.objects.filter(collector=request.user)
-        serializer = self.get_serializer(albums, many=True)
-        return Response(serializer.data)
+        return self.list(request, *args, **kwargs)
 
     def handle_exception(self, exc):
-        if isinstance(exc, DetailedPermissionDenied):
-            return Response({'detail': str(exc.detail)}, status=exc.status_code)
+        return Response(
+            {'detail': str(exc)}, status=exc.status_code
+        )
 
-        elif isinstance(exc, Http404):
+
+class UserAlbumCreateView(mixins.CreateModelMixin, GenericAPIView):
+    """
+    Vista para la creacion de álbum para edición en curso. 
+    Permisos - collector autenticado
+    """
+    serializer_class = AlbumSerializer
+    permission_classes = [IsAuthenticatedCollector]
+
+    def get_current_promotion(self):
+        now = timezone.now()
+        try:
+            promotion = Promotion.objects.get(
+                start_date__lte=now,
+                end_date__gte=now
+            )
+        except Promotion.DoesNotExist:
+            return None
+
+        return promotion
+
+    def post(self, request, *args, **kwargs):
+        promotion = self.get_current_promotion()
+
+        if not promotion:
             return Response(
-                {'detail': 'No encontrado.'},
-                status=status.HTTP_404_NOT_FOUND
+                {'detail': 'No hay ninguna promoción en curso, no es posible esta acción.'},
+                status=status.HTTP_200_OK
             )
 
-        elif isinstance(exc, MethodNotAllowed):
-            return Response(
-                {'detail': 'Método no permitido.'},
-                status=status.HTTP_405_METHOD_NOT_ALLOWED
-            )
-
-        elif isinstance(exc, ValidationError):
-            if 'non_field_errors' in str(exc).lower():
-                message = 'Los campos collector, edition deben formar un conjunto único.'
-
-                if message in exc.detail['non_field_errors']:
-                    return Response(
-                        {'detail': 'Ya existe un album para este usuario y esta edición'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-
-                return Response(
-                    {'detail': 'Se produjo un error de integridad en la base de datos.'},
-                    status=status.HTTP_400_BAD_REQUEST
+        edition_id = request.data.get('edition')
+        if edition_id:
+            try:
+                edition = Edition.objects.get(pk=edition_id)
+            except Edition.DoesNotExist:
+                raise NotFound(
+                    'No existe ninguna edición con el id suministrado.'
                 )
-        else:
-            return Response(
-                {
-                    'detail': 'Se produjo un error inesperado.',
-                    "error": str(exc)
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return self.create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        serializer.save(collector=self.request.user)
+
+    def handle_exception(self, exc):
+
+        if (isinstance(exc, ValidationError) and
+            isinstance(exc.detail, dict) and
+                'edition' in exc.detail):
+            if 'Este campo es requerido' in str(exc.detail['edition']):
+                return Response(
+                    {'detail': 'El campo edition es requerido.'},
+                    status=exc.status_code
+                )
+
+        return Response(
+            {'detail': str(exc)}, status=exc.status_code
+        )

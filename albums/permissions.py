@@ -2,6 +2,24 @@ from rest_framework import permissions, status
 from utils.exceptions import DetailedPermissionDenied
 
 
+class IsAuthenticatedCollector(permissions.BasePermission):
+
+    def has_permission(self, request, view):
+
+        if not request.user.is_authenticated:
+            raise DetailedPermissionDenied(
+                detail="Debe iniciar sesión para realizar esta acción",
+                status_code=status.HTTP_401_UNAUTHORIZED
+            )
+
+        if not request.user.is_collector:
+            raise DetailedPermissionDenied(
+                detail="Solo los coleccionistas pueden realizar esta acción"
+            )
+
+        return True
+
+
 class AlbumPermission(permissions.BasePermission):
 
     def has_permission(self, request, view):
@@ -12,7 +30,7 @@ class AlbumPermission(permissions.BasePermission):
                 status_code=status.HTTP_401_UNAUTHORIZED
             )
 
-        if view.action in ['create', 'retrieve', 'partial_update', 'me-albums', 'get_or_create']:
+        if view.action in ['partial_update', 'me-albums', 'get_or_create', 'me']:
 
             if not request.user.is_collector and not request.user.is_superuser:
                 raise DetailedPermissionDenied(
@@ -21,7 +39,7 @@ class AlbumPermission(permissions.BasePermission):
 
             return True
 
-        if view.action in ['list', 'update', 'destroy']:
+        if view.action in ['create', 'list', 'update', 'retrieve', 'destroy']:
             if not request.user.is_superuser:
                 raise DetailedPermissionDenied(
                     "Sólo los  superusuarios pueden realizar esta acción")

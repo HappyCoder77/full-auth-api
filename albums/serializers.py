@@ -5,7 +5,7 @@ from .models import Album, Page, Slot
 class SlotSerializer(serializers.ModelSerializer):
     class Meta:
         model = Slot
-        fields = '__all__'
+        fields = ('number', 'absolute_number')
 
 
 class PageSerializer(serializers.ModelSerializer):
@@ -13,12 +13,13 @@ class PageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Page
-        fields = '__all__'
+        fields = ('id', 'number', 'slots')
 
 
 class AlbumSerializer(serializers.ModelSerializer):
     pages = PageSerializer(many=True, read_only=True)
+    collector = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = Album
-        fields = '__all__'
+        fields = ('id', 'edition', 'collector', 'pages')
