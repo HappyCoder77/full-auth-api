@@ -156,6 +156,8 @@ class Coordinate(models.Model):
     ordinal = models.BigIntegerField('Ordinal', default=0)
     rarity_factor = models.DecimalField(
         'Factor de rareza', max_digits=6, decimal_places=3)
+    image = models.ImageField(
+        upload_to='images/coordinates/', null=True, blank=True)
 
     def __str__(self):
         return str(self.absolute_number)

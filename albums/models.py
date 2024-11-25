@@ -53,7 +53,10 @@ class Album(models.Model):
         counter = 1
 
         for each_slot in slots:
+            coordinate = self.edition.collection.coordinates.get(
+                absolute_number=counter)
             each_slot.absolute_number = counter
+            each_slot.image = coordinate.image
             each_slot.save()
             counter += 1
 
@@ -130,6 +133,7 @@ class Slot(models.Model):
         null=True
     )
     absolute_number = models.PositiveSmallIntegerField(default=0)
+    image = models.ImageField(null=True, blank=True)
 
     def stick_sticker(self, sticker):
         number = sticker.coordinate.absolute_number

@@ -3,7 +3,7 @@ import tempfile
 from PIL import Image
 from django.core.files.base import ContentFile
 
-from ..models import Collection
+from ..models import Collection, Coordinate
 
 
 class CollectionFactory(factory.django.DjangoModelFactory):
@@ -15,7 +15,7 @@ class CollectionFactory(factory.django.DjangoModelFactory):
 
     class Params:
         with_image = factory.Trait(
-            image=factory.lazy_attribute(lambda x: create_temp_image())
+            image=factory.lazy_attribute(lambda x: create_temp_image()),
         )
 
 

@@ -92,9 +92,12 @@ class SlotTestCase(TestCase):
         for page in self.album.pages.all():
             slot_counter = 1
             for slot in page.slots.all().order_by('number'):
+                coordinate = self.album.edition.collection.coordinates.get(
+                    absolute_number=slot_absolute_counter)
                 self.assertEqual(slot.page, page)
                 self.assertEqual(slot.number, slot_counter)
                 self.assertEqual(slot.absolute_number, slot_absolute_counter)
+                self.assertEqual(slot.image, coordinate.image)
                 self.assertTrue(slot.is_empty)
                 slot_counter += 1
                 slot_absolute_counter += 1
