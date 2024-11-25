@@ -11,4 +11,4 @@ class EditionSerializer(ModelSerializer):
 
     class Meta:
         model = Edition
-        fields = ('promotion', 'collection')
+        fields = ('id', 'promotion', 'collection')

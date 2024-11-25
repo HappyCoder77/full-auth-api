@@ -1,19 +1,17 @@
-
+from django.db import IntegrityError
+from unittest.mock import patch
 from django.urls import reverse
-from django.conf import settings
-from rest_framework.test import (
-    APIClient, APITestCase)
-from rest_framework import status
-
+from rest_framework.test import APIClient, APITestCase
+from rest_framework import status, mixins
 
 from authentication.test.factories import UserFactory
-from promotions.test.factories import PromotionFactory
 from editions.test.factories import EditionFactory
-from users.test.factories import CollectorFactory
 from promotions.models import Promotion
+from promotions.test.factories import PromotionFactory
+from users.test.factories import CollectorFactory
+
 from ..models import Album
 from ..serializers import AlbumSerializer
-# from ..views import AlbumViewSet
 from .factories import AlbumFactory
 
 
@@ -171,6 +169,17 @@ class UserAlbumCreateViewAPITestCase(APITestCase):
         self.assertEqual(response.data, AlbumSerializer(
             Album.objects.get(pk=1)).data)
 
+    def test_collector_can_get_album_if_already_exists(self):
+        AlbumFactory(edition=self.edition, collector=self.collector.user)
+        self.client.force_authenticate(user=self.collector.user)
+        data = {
+            'edition': self.edition.id
+        }
+        response = self.client.post(self.url, data=data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, AlbumSerializer(
+            Album.objects.get(pk=1)).data)
+
     def test_superuser_cannot_create_album(self):
         self.client.force_authenticate(user=self.superuser)
         data = {
@@ -252,3 +261,33 @@ class UserAlbumCreateViewAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['detail'],
                          'El campo edition es requerido.')
+
+    def test_integrity_error_handling(self):
+        self.client.force_authenticate(user=self.collector.user)
+        data = {
+            'edition': self.edition.id
+        }
+
+        with patch.object(mixins.CreateModelMixin, 'create') as mock_create:
+            mock_create.side_effect = IntegrityError("Duplicate entry")
+            response = self.client.post(self.url, data=data, format='json')
+
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertEqual(
+                response.data['detail'],
+                'El álbum ya existe para esta edición.'
+            )
+
+    def test_handle_generic_exception(self):
+        self.client.force_authenticate(user=self.collector.user)
+        data = {
+            'edition': self.edition.id
+        }
+
+        with patch.object(mixins.CreateModelMixin, 'create') as mock_create:
+            mock_create.side_effect = ValueError("Some unexpected error")
+            response = self.client.post(self.url, data=data, format='json')
+
+            self.assertEqual(response.status_code,
+                             status.HTTP_500_INTERNAL_SERVER_ERROR)
+            self.assertEqual(response.data['detail'], "Some unexpected error")

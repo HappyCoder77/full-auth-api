@@ -1,5 +1,6 @@
 
 from django.utils import timezone
+from django.db import IntegrityError
 from rest_framework.exceptions import NotFound
 from rest_framework.serializers import ValidationError
 from rest_framework.generics import GenericAPIView
@@ -76,7 +77,7 @@ class UserAlbumListRetrieveView(
 
 class UserAlbumCreateView(mixins.CreateModelMixin, GenericAPIView):
     """
-    Vista para la creacion de álbum para edición en curso. 
+    Vista para la creacion de álbum para edición en curso.
     Permisos - collector autenticado
     """
     serializer_class = AlbumSerializer
@@ -111,13 +112,24 @@ class UserAlbumCreateView(mixins.CreateModelMixin, GenericAPIView):
                 raise NotFound(
                     'No existe ninguna edición con el id suministrado.'
                 )
-
-        return self.create(request, *args, **kwargs)
+        try:
+            album = Album.objects.get(
+                collector=request.user, edition=edition_id)
+            serializer = self.get_serializer(album)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Album.DoesNotExist:
+            return self.create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         serializer.save(collector=self.request.user)
 
     def handle_exception(self, exc):
+
+        if isinstance(exc, IntegrityError):
+            return Response(
+                {'detail': 'El álbum ya existe para esta edición.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         if (isinstance(exc, ValidationError) and
             isinstance(exc.detail, dict) and
@@ -128,6 +140,9 @@ class UserAlbumCreateView(mixins.CreateModelMixin, GenericAPIView):
                     status=exc.status_code
                 )
 
+        status_code = getattr(exc, 'status_code',
+                              status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response(
-            {'detail': str(exc)}, status=exc.status_code
+            {'detail': str(exc)},
+            status=status_code
         )
