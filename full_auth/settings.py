@@ -60,7 +60,7 @@ INSTALLED_APPS = [
     'promotions',
     'editions',
     'collection_manager',
-    'sales',
+    'commerce',
     'albums',
 ]
 
