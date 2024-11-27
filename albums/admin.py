@@ -8,10 +8,10 @@ class AlbumAdmin(admin.ModelAdmin):
 
 
 @admin.register(Page)
-class AlbumAdmin(admin.ModelAdmin):
+class PageAdmin(admin.ModelAdmin):
     model = Page
 
 
 @admin.register(Slot)
-class AlbumAdmin(admin.ModelAdmin):
+class SlotAdmin(admin.ModelAdmin):
     model = Slot

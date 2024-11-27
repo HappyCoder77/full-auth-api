@@ -20,7 +20,7 @@ class SaleTestCase(TestCase):
         cls.dealer = UserFactory()
         cls.collector = UserFactory()
         cls.order = Orderfactory(
-            dealer=cls.dealer, box=cls.edition.boxes.first())
+            dealer=cls.dealer, edition=cls.edition)
         cls.sale = SaleFactory(date=NOW, edition=cls.edition,
                                dealer=cls.dealer, collector=cls.collector)
 
@@ -49,23 +49,59 @@ class SaleTestCase(TestCase):
             any("Inventario insuficiente:" in message for message in error_messages))
 
 
-class OrderTestcase(TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        cls.promotion = PromotionFactory()
-        cls.edition = EditionFactory(promotion=cls.promotion)
-        cls.dealer = UserFactory()
-        cls.order = Orderfactory(
-            dealer=cls.dealer,
-            date=NOW,
-            box=cls.edition.boxes.first())
+class OrderTestCase(TestCase):
+
+    def setUp(self):
+        self.promotion = PromotionFactory()
+        self.edition = EditionFactory(promotion=self.promotion)
+        self.dealer = UserFactory()
 
     def test_order_data(self):
-        amount = self.order.pack_cost * self.order.box.packs.all().count()
-        self.assertEqual(self.order.date, NOW)
-        self.assertEqual(self.order.box, self.edition.boxes.first())
-        self.assertEqual(self.order.dealer, self.dealer)
-        self.assertEqual(self.order.pack_cost, 1.5)
+        # TODO: eliminar tal vez el dealer ya que el factory lo agrega
+        order = Orderfactory.build(
+            dealer=self.dealer,
+            edition=self.edition,
+        )
+        order.full_clean()
+        order.save()
+        amount = order.pack_cost * order.box.packs.all().count()
+        self.assertEqual(order.date, NOW.date())
+        self.assertEqual(order.box, self.edition.boxes.first())
+        self.assertEqual(order.dealer, self.dealer)
+        self.assertEqual(order.pack_cost, 1.5)
         self.assertEqual(
-            self.order.__str__(), f'{self.order.id} / {self.order.date}')
-        self.assertEqual(self.order.amount, amount)
+            order.__str__(), f'{order.id} / {order.date}')
+        self.assertEqual(order.amount, amount)
+
+    def test_create_order_without_current_promotion(self):
+        self.promotion.delete()
+        PromotionFactory(past=True)
+        order = Orderfactory.build(
+            dealer=self.dealer,
+            edition=self.edition,
+        )
+        with self.assertRaises(ValidationError):
+            order.full_clean()
+
+    def test_create_order_with_invalid_edition(self):
+        PromotionFactory(past=True)
+        order = Orderfactory.build(
+            dealer=self.dealer,
+            edition_id=10000,
+        )
+        with self.assertRaises(ValidationError):
+            order.full_clean()
+
+    def test_create_order_without_available_box(self):
+        Orderfactory(
+            dealer=self.dealer,
+            edition=self.edition,
+        )
+
+        order = Orderfactory.build(
+            dealer=self.dealer,
+            edition=self.edition,
+        )
+
+        with self.assertRaises(ValidationError):
+            order.full_clean()

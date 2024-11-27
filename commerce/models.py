@@ -4,6 +4,7 @@ from django.db import models, transaction
 from django.utils import timezone
 
 from editions.models import Edition, Box, Pack
+from promotions.utils import promotion_is_running
 
 User = get_user_model()
 
@@ -16,7 +17,7 @@ class Sale(models.Model):
     Los atributos edition, collector y quantity no cumplen estrictamente con la normalización
     ya que no conciernen estrictamente a la sale sino a los packs,
     pero la experiencia demostró que facilita las consultas y otras operaciones pack el modelo.
-    Esto se bede a la política de vender packs de solo una collection por sale
+    Esto se debe a la política de vender packs de solo una collection por sale
     """
     date = models.DateField(default=timezone.now)
     edition = models.ForeignKey(
@@ -99,13 +100,13 @@ class SaleDetail(models.Model):
         Pack, on_delete=models.SET_NULL, null=True, related_name="sale")
 
 
-class Order(models.Model):  # compra de boxes
+class Order(models.Model):
     dealer = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='orders')  # dealer
+        User, on_delete=models.CASCADE, related_name='orders')
     date = models.DateField(default=timezone.now)
+    edition = models.ForeignKey(Edition, on_delete=models.CASCADE, null=True)
     box = models.OneToOneField(
-        Box, on_delete=models.CASCADE, null=True)  # 1 box por compra
-    # al borrar una compra el box queda huérfano
+        Box, on_delete=models.CASCADE, null=True, blank=True)
     pack_cost = models.DecimalField(
         verbose_name='costo unitario del sobre', decimal_places=2, max_digits=4, default=0)
 
@@ -118,7 +119,26 @@ class Order(models.Model):  # compra de boxes
         amount = packs * self.pack_cost
         return amount
 
+    def clean(self):
+        if not promotion_is_running():
+            raise ValidationError(
+                'No hay ninguna promoción en curso; no se puede realizar esta acción'
+            )
+
+        if not Edition.objects.filter(pk=self.edition_id).exists():
+            raise ValidationError(
+                'No existe ninguna edición con el id suministrado'
+            )
+        box = Box.objects.filter(edition=self.edition,
+                                 order__isnull=True).first()
+        if not box:
+            raise ValidationError(
+                f'No hay paquetes disponibles para esta edición'
+            )
+        self.box = box
+        self.pack_cost = self.box.edition.promotion.pack_cost
+
     @transaction.atomic
     def save(self, *args, **kwargs):
-        self.pack_cost = self.box.edition.promotion.pack_cost
+        self.full_clean()
         super(Order, self).save(*args, **kwargs)

@@ -6,6 +6,7 @@ from .models import UserAccount
 
 @receiver(post_save, sender=UserAccount)
 def link_profile(sender, instance, created, **kwargs):
+
     if not created or instance.is_superuser:
         return
 
@@ -19,6 +20,7 @@ def link_user_to_profile(user):
 
     for model_name in profile_models:
         ProfileModel = apps.get_model("users", model_name)
+
         try:
             profile = ProfileModel.objects.get(
                 email=user.email, user__isnull=True)
@@ -26,4 +28,4 @@ def link_user_to_profile(user):
             profile.save()
             return
         except ProfileModel.DoesNotExist:
-            return
+            continue

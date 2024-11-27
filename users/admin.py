@@ -44,8 +44,9 @@ class SponsorAdmin(admin.ModelAdmin):
 
 
 class DealerAdmin(admin.ModelAdmin):
-    fields = ["user", 'email', 'first_name', 'middle_name', 'last_name',
+    fields = ["user", 'id', 'email', 'first_name', 'middle_name', 'last_name',
               'second_last_name', 'gender', 'birthdate', 'created_by']
+    list_display = ('id', 'email')
     readonly_fields = ["user", "created_by"]
 
     def save_model(self, request, obj, form, change):
