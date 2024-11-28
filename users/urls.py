@@ -2,7 +2,7 @@ from . import views
 from django.urls import path,  include
 
 from rest_framework.routers import DefaultRouter
-
+from .views import DealerStockAPIView
 router = DefaultRouter()
 
 router.register(r'regional-manager', views.RegionalManagerViewSet,
@@ -18,5 +18,7 @@ router.register(r'collector', views.CollectorViewSet,
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('dealer/stock/<int:edition_id>/',
+         DealerStockAPIView.as_view(), name='dealer-stock'),
 
 ]

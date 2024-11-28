@@ -2,7 +2,9 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import TestCase
 from django.contrib.auth import get_user_model
-from ..models import BaseProfile, RegionalManager
+from ..models import BaseProfile, RegionalManager, Dealer
+from authentication.test.factories import UserFactory
+from .factories import DealerFactory
 
 User = get_user_model()
 
@@ -139,3 +141,15 @@ class RegionalManagerTest(TestCase):
         self.assertFalse(user.is_sponsor)
         self.assertFalse(user.is_dealer)
         self.assertFalse(user.is_collector)
+
+
+class DealerTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = UserFactory()
+        cls.dealer = DealerFactory(user=cls.user, email=cls.user.email)
+
+    def test_dealer_data(self):
+        self.assertEqual(Dealer.objects.all().count(), 1)
+        self.assertEqual(self.dealer.email, self.user.email)
+        self.assertEqual(self.dealer.user, self.user)

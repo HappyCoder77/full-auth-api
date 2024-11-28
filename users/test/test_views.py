@@ -6,12 +6,16 @@ from rest_framework.test import (
 from rest_framework import status
 from rest_framework import status
 
+from promotions.test.factories import PromotionFactory
+from promotions.models import Promotion
+from editions.test.factories import EditionFactory
 from authentication.test.factories import UserFactory
 from ..models import RegionalManager, LocalManager, Sponsor, Dealer, Collector
 from .factories import (RegionalManagerFactory, LocalManagerFactory,
                         SponsorFactory, DealerFactory, CollectorFactory)
 from ..permissions import DetailedPermissionDenied
 from ..views import CollectorViewSet
+from commerce.test.factories import Orderfactory
 
 
 User = get_user_model()
@@ -994,3 +998,88 @@ class CollectorViewSetTestCase(APITestCase):
                          status.HTTP_500_INTERNAL_SERVER_ERROR)
         self.assertEqual(
             response.data, {'detail': 'Se produjo un error inesperado.'})
+
+
+class DealerStockAPIViewAPITestCase(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+
+        cls.superuser = UserFactory(is_superuser=True)
+        dealer_user = UserFactory()
+        cls.dealer = DealerFactory(user=dealer_user)
+        cls.basic_user = UserFactory()
+
+    def setUp(self):
+        self.promotion = PromotionFactory()
+        self.edition = EditionFactory(promotion=self.promotion)
+        self.url = reverse(
+            'dealer-stock', kwargs={'edition_id': self.edition.id})
+
+    def test_dealer_can_get_initial_stock(self):
+        self.client.force_authenticate(user=self.dealer.user)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['stock'], 0)
+
+    def test_superuser_cannot_get_stock(self):
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data['detail'], "Sólo los detallistas pueden realizar esta acción")
+
+    def test_basic_user_cannot_get_stock(self):
+        self.client.force_authenticate(user=self.basic_user)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data['detail'], "Sólo los detallistas pueden realizar esta acción")
+
+    def test_unauthenticated_user_cannot_get_stock(self):
+        self.client.logout()
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data['detail'], "Debe iniciar sesión para realizar esta accion")
+
+    def test_get_updated_stock_after_order(self):
+        Orderfactory(dealer=self.dealer.user, edition=self.edition)
+        self.client.force_authenticate(user=self.dealer.user)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['stock'], 15)
+
+    def test_get_stock_without_current_promotion(self):
+        Promotion.objects.all().delete()
+        self.client.force_authenticate(user=self.dealer.user)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['stock'], 0)
+
+    def test_get_stock_with_past_edition(self):
+        promotion = PromotionFactory(past=True)
+        edition = EditionFactory(
+            promotion=promotion, collection__name='Angela')
+        Orderfactory(dealer=self.dealer.user, edition=edition)
+        self.client.force_authenticate(user=self.dealer.user)
+        url = reverse(
+            'dealer-stock', kwargs={'edition_id': edition.id})
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['stock'], 0)
+
+    def test_get_stock_with_expired_promotion(self):
+
+        PromotionFactory(past=True)
+        self.client.force_authenticate(user=self.dealer.user)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['stock'], 0)

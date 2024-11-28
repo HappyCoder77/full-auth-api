@@ -95,3 +95,24 @@ class CollectorPermission(permissions.BasePermission):
                 )
 
             return True
+
+
+class IsAuthenticatedDealer(permissions.BasePermission):
+    """
+    Permite el acceso solo a los dealers.
+    """
+
+    def has_permission(self, request, view):
+
+        if not request.user.is_authenticated:
+            raise DetailedPermissionDenied(
+                "Debe iniciar sesión para realizar esta accion",
+                status_code=status.HTTP_401_UNAUTHORIZED
+            )
+
+        if not request.user.is_dealer:
+            raise DetailedPermissionDenied(
+                "Sólo los detallistas pueden realizar esta acción"
+            )
+
+        return True

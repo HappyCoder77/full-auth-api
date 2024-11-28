@@ -1,10 +1,18 @@
+from django.utils import timezone
 from django.conf import settings
 from django.http import Http404
 from rest_framework.exceptions import MethodNotAllowed
+from django.core.exceptions import ValidationError as DjangoValidationError
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from django.shortcuts import get_object_or_404
+
+from promotions.models import Promotion
+from promotions.utils import promotion_is_running
+from editions.models import Edition
 
 from .models import (RegionalManager, LocalManager,
                      Sponsor, Dealer, Collector)
@@ -14,7 +22,10 @@ from .serializers import (RegionalManagerSerializer,
                           DealerSerializer, CollectorSerializer)
 
 from .permissions import (IsSuperUser, IsRegionalManagerOrSuperUser,
-                          IsLocalManagerOrSuperUser, IsSponsorOrSuperUser, CollectorPermission, DetailedPermissionDenied)
+                          IsLocalManagerOrSuperUser, IsSponsorOrSuperUser,
+                          CollectorPermission, DetailedPermissionDenied,
+                          IsAuthenticatedDealer
+                          )
 
 # TODO: agregar docstrings a las actions para mejorar la documentacion
 
@@ -111,6 +122,50 @@ class DealerViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=None, created_by=self.request.user)
+
+
+class DealerStockAPIView(APIView):
+    permission_classes = [IsAuthenticatedDealer]
+
+    def get_current_promotion(self):
+        now = timezone.now()
+
+        try:
+            promotion = Promotion.objects.get(
+                start_date__lte=now,
+                end_date__gte=now
+            )
+        except Promotion.DoesNotExist:  # pragma: no cover
+            return None
+
+        return promotion
+
+    def edition_exists(self, edition_id):
+        return Edition.objects.filter(
+            promotion=self.get_current_promotion(),
+            pk=edition_id
+        ).exists()
+
+    def get(self, request, edition_id):
+
+        if not promotion_is_running():
+            return Response({'stock': 0})
+
+        if not self.edition_exists(edition_id):
+            return Response({'stock': 0})
+
+        dealer = Dealer.objects.get(user=request.user)
+        stock = dealer.get_pack_stock(edition_id)
+        return Response({'stock': stock})
+
+    def handle_exception(self, exc):
+        status_code = getattr(exc, 'status_code',
+                              status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response(
+            {'detail': str(exc)},
+            status=status_code
+        )
 
 
 class CollectorViewSet(viewsets.ModelViewSet):

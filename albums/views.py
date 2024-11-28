@@ -53,7 +53,7 @@ class UserAlbumListRetrieveView(
                 {'detail': 'No hay ninguna promoción en curso, no es posible la consulta.'},
                 status=status.HTTP_200_OK
             )
-
+        # TODO: puede acceder a albumes de ediciones posteriores?
         edition_id = self.kwargs.get('edition_id')
 
         if edition_id:

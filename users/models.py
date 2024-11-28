@@ -1,7 +1,7 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from albums.models import Slot
+from editions.models import Pack
 from authentication.models import UserAccount
 
 GENERO_CHOICES = [
@@ -46,6 +46,13 @@ class Sponsor(BaseProfile):
 class Dealer(BaseProfile):
     created_by = models.ForeignKey(
         UserAccount, on_delete=models.SET_NULL, null=True, related_name='created_dealers')
+
+    def get_pack_stock(self, edition_id):
+        return Pack.objects.filter(
+            box__order__dealer=self.user,
+            box__edition_id=edition_id,
+            sale__isnull=True
+        ).count()
 
 
 class Collector(BaseProfile):
