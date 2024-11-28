@@ -146,15 +146,20 @@ class DealerStockAPIView(APIView):
             pk=edition_id
         ).exists()
 
-    def get(self, request, edition_id):
+    def get(self, request, edition_id=None):
 
         if not promotion_is_running():
             return Response({'stock': 0})
 
+        dealer = Dealer.objects.get(user=request.user)
+
+        if not edition_id:
+            stock = dealer.get_pack_stock()
+            return Response({'stock': stock})
+
         if not self.edition_exists(edition_id):
             return Response({'stock': 0})
 
-        dealer = Dealer.objects.get(user=request.user)
         stock = dealer.get_pack_stock(edition_id)
         return Response({'stock': stock})
 

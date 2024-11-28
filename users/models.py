@@ -47,12 +47,16 @@ class Dealer(BaseProfile):
     created_by = models.ForeignKey(
         UserAccount, on_delete=models.SET_NULL, null=True, related_name='created_dealers')
 
-    def get_pack_stock(self, edition_id):
-        return Pack.objects.filter(
+    def get_pack_stock(self, edition_id=None):
+        query = Pack.objects.filter(
             box__order__dealer=self.user,
-            box__edition_id=edition_id,
             sale__isnull=True
-        ).count()
+        )
+
+        if edition_id:
+            query = query.filter(box__edition_id=edition_id)
+
+        return query.count()
 
 
 class Collector(BaseProfile):

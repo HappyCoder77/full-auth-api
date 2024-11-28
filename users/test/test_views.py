@@ -1013,7 +1013,7 @@ class DealerStockAPIViewAPITestCase(APITestCase):
         self.promotion = PromotionFactory()
         self.edition = EditionFactory(promotion=self.promotion)
         self.url = reverse(
-            'dealer-stock', kwargs={'edition_id': self.edition.id})
+            'dealer-edition-stock', kwargs={'edition_id': self.edition.id})
 
     def test_dealer_can_get_initial_stock(self):
         self.client.force_authenticate(user=self.dealer.user)
@@ -1069,7 +1069,7 @@ class DealerStockAPIViewAPITestCase(APITestCase):
         Orderfactory(dealer=self.dealer.user, edition=edition)
         self.client.force_authenticate(user=self.dealer.user)
         url = reverse(
-            'dealer-stock', kwargs={'edition_id': edition.id})
+            'dealer-edition-stock', kwargs={'edition_id': edition.id})
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -1083,3 +1083,24 @@ class DealerStockAPIViewAPITestCase(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['stock'], 0)
+
+    def test_get_all_editions_stock(self):
+        edition = EditionFactory(
+            promotion=self.promotion, collection__name='Angela', circulation=2)
+        Orderfactory(dealer=self.dealer.user, edition=self.edition)
+        Orderfactory(dealer=self.dealer.user, edition=edition)
+        url = reverse('dealer-total-stock')
+        self.client.force_authenticate(user=self.dealer.user)
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['stock'], 45)
+
+    def test_method_not_allowed(self):
+        self.client.force_authenticate(user=self.dealer.user)
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code,
+                         status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.data['detail'],
+                         'Método "POST" no permitido.')

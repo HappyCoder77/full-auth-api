@@ -18,7 +18,8 @@ router.register(r'collector', views.CollectorViewSet,
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('dealer/stock/total/',
+         DealerStockAPIView.as_view(), name='dealer-total-stock'),
     path('dealer/stock/<int:edition_id>/',
-         DealerStockAPIView.as_view(), name='dealer-stock'),
-
+         DealerStockAPIView.as_view(), name='dealer-edition-stock'),
 ]
