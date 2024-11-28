@@ -41,7 +41,7 @@ class EditionViewSet(ReadOnlyModelViewSet):
                 if not editions.exists():
                     return Response(
                         {'detail': 'No hay ediciones activas para la promoción en curso'},
-                        status=status.HTTP_200_OK
+                        status=status.HTTP_404_NOT_FOUND
                     )
 
                 return Response(serializer.data)
@@ -53,7 +53,7 @@ class EditionViewSet(ReadOnlyModelViewSet):
 
         return Response(
             {'detail': 'No hay ninguna promoción en curso'},
-            status=status.HTTP_200_OK
+            status=status.HTTP_404_NOT_FOUND
         )
 
     def handle_exception(self, exc):

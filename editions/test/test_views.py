@@ -44,14 +44,14 @@ class EditionViewSetTestCase(APITestCase):
     def test_current_list_with_active_promotion_and_no_editions(self):
         PromotionFactory()
         response = self.client.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertIn('detail', response.data)
         self.assertEqual(
             response.data['detail'], 'No hay ediciones activas para la promoción en curso')
 
     def test_current_list_no_active_promotion(self):
         response = self.client.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertIn('detail', response.data)
         self.assertEqual(response.data['detail'],
                          'No hay ninguna promoción en curso')
