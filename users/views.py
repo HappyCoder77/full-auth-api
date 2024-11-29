@@ -131,14 +131,12 @@ class DealerStockAPIView(APIView):
         now = timezone.now()
 
         try:
-            promotion = Promotion.objects.get(
+            return Promotion.objects.get(
                 start_date__lte=now,
                 end_date__gte=now
             )
         except Promotion.DoesNotExist:  # pragma: no cover
             return None
-
-        return promotion
 
     def edition_exists(self, edition_id):
         return Edition.objects.filter(
@@ -162,6 +160,62 @@ class DealerStockAPIView(APIView):
 
         stock = dealer.get_pack_stock(edition_id)
         return Response({'stock': stock})
+
+    def handle_exception(self, exc):
+        status_code = getattr(exc, 'status_code',
+                              status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response(
+            {'detail': str(exc)},
+            status=status_code
+        )
+
+
+class DealerListStockAPIView(APIView):
+    permission_classes = [IsAuthenticatedDealer]
+
+    def get_current_promotion(self):
+        now = timezone.now()
+
+        try:
+            return Promotion.objects.get(
+                start_date__lte=now,
+                end_date__gte=now
+            )
+        except Promotion.DoesNotExist:  # pragma: no cover
+            return None
+
+    def get_current_editions(self):
+        promotion = self.get_current_promotion()
+
+        if promotion:
+            return Edition.objects.filter(promotion=promotion)
+
+        return Edition.objects.none()
+
+    def get(self, request):
+
+        if not promotion_is_running():
+            return Response({'detail': 'No hay ninguna promoción en curso.'},
+                            status=status.HTTP_404_NOT_FOUND
+                            )
+
+        dealer = Dealer.objects.get(user=request.user)
+        editionsStockList = []
+        editions = self.get_current_editions()
+
+        if not editions.exists():
+            return Response({'detail': 'No se han creado ediciones para la promoción en curso.'},
+                            status=status.HTTP_404_NOT_FOUND
+                            )
+        for edition in self.get_current_editions():
+            editionsStockList.append(
+                {'id': edition.id,
+                 'name': edition.collection.name,
+                 'stock': dealer.get_pack_stock(edition.id)
+                 })
+
+        return Response(editionsStockList)
 
     def handle_exception(self, exc):
         status_code = getattr(exc, 'status_code',
