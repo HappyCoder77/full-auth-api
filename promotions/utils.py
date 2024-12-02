@@ -8,3 +8,15 @@ def promotion_is_running():
         start_date__lte=now,
         end_date__gte=now
     ).exists()
+
+
+def get_current_promotion():
+    now = timezone.now()
+
+    try:
+        return Promotion.objects.get(
+            start_date__lte=now,
+            end_date__gte=now
+        )
+    except Promotion.DoesNotExist:  # pragma: no cover
+        return None

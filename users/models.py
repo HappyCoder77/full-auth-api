@@ -3,6 +3,7 @@ from django.utils.translation import gettext_lazy as _
 
 from editions.models import Pack
 from authentication.models import UserAccount
+from promotions.utils import promotion_is_running, get_current_promotion
 
 GENERO_CHOICES = [
     ("M", "Masculino"),
@@ -48,8 +49,14 @@ class Dealer(BaseProfile):
         UserAccount, on_delete=models.SET_NULL, null=True, related_name='created_dealers')
 
     def get_pack_stock(self, edition_id=None):
+        if not promotion_is_running():
+            return 0
+
+        promotion = get_current_promotion()
+
         query = Pack.objects.filter(
             box__order__dealer=self.user,
+            box__edition__promotion=promotion,
             sale__isnull=True
         )
 

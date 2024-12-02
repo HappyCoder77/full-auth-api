@@ -16,6 +16,7 @@ from .factories import (RegionalManagerFactory, LocalManagerFactory,
 from ..permissions import DetailedPermissionDenied
 from ..views import CollectorViewSet
 from commerce.test.factories import Orderfactory
+from commerce.models import Order
 
 
 User = get_user_model()
@@ -1003,11 +1004,15 @@ class CollectorViewSetTestCase(APITestCase):
 class DealerStockAPIViewAPITestCase(APITestCase):
     @classmethod
     def setUpTestData(cls):
-
         cls.superuser = UserFactory(is_superuser=True)
         dealer_user = UserFactory()
         cls.dealer = DealerFactory(user=dealer_user)
         cls.basic_user = UserFactory()
+        cls.past_promotion = PromotionFactory(past=True)
+        cls.past_edition = EditionFactory(
+            promotion=cls.past_promotion, collection__name='Roblox')
+        cls.past_edition2 = EditionFactory(
+            promotion=cls.past_promotion, collection__name='Talking Tom')
 
     def setUp(self):
         self.promotion = PromotionFactory()
@@ -1062,7 +1067,7 @@ class DealerStockAPIViewAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['stock'], 0)
 
-    def test_get_stock_with_past_edition(self):
+    def test_get_stock_from_past_edition(self):
         promotion = PromotionFactory(past=True)
         edition = EditionFactory(
             promotion=promotion, collection__name='Angela')
@@ -1076,12 +1081,16 @@ class DealerStockAPIViewAPITestCase(APITestCase):
         self.assertEqual(response.data['stock'], 0)
 
     def test_get_stock_with_expired_promotion(self):
-
-        PromotionFactory(past=True)
+        self.promotion.delete()
+        Orderfactory(dealer=self.dealer.user,
+                     edition=self.past_edition, skip_validation=True)
+        Orderfactory(dealer=self.dealer.user,
+                     edition=self.past_edition2, skip_validation=True)
         self.client.force_authenticate(user=self.dealer.user)
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Order.objects.all().count(), 2)
         self.assertEqual(response.data['stock'], 0)
 
     def test_get_all_editions_stock(self):

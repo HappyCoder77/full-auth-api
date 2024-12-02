@@ -127,36 +127,12 @@ class DealerViewSet(viewsets.ModelViewSet):
 class DealerStockAPIView(APIView):
     permission_classes = [IsAuthenticatedDealer]
 
-    def get_current_promotion(self):
-        now = timezone.now()
-
-        try:
-            return Promotion.objects.get(
-                start_date__lte=now,
-                end_date__gte=now
-            )
-        except Promotion.DoesNotExist:  # pragma: no cover
-            return None
-
-    def edition_exists(self, edition_id):
-        return Edition.objects.filter(
-            promotion=self.get_current_promotion(),
-            pk=edition_id
-        ).exists()
-
     def get(self, request, edition_id=None):
-
-        if not promotion_is_running():
-            return Response({'stock': 0})
-
         dealer = Dealer.objects.get(user=request.user)
 
         if not edition_id:
             stock = dealer.get_pack_stock()
             return Response({'stock': stock})
-
-        if not self.edition_exists(edition_id):
-            return Response({'stock': 0})
 
         stock = dealer.get_pack_stock(edition_id)
         return Response({'stock': stock})
