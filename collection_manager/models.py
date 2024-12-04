@@ -167,6 +167,7 @@ class Coordinate(models.Model):
 
 
 class SurprisePrize(models.Model):
+    #TODO: agregar undefined como valor por defecto
     collection = models.ForeignKey(
         Collection, on_delete=models.CASCADE, null=True, related_name='surprise_prizes')
     number = models.SmallIntegerField(default=0)

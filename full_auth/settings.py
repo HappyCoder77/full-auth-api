@@ -210,14 +210,14 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
 }
 
-# Detectar si estamos en modo testing
-TESTING = 'test' in sys.argv
+# # Detectar si estamos en modo testing
+# TESTING = 'test' in sys.argv
 
-# Añadir SessionAuthentication solo en desarrollo y no en testing
-if DEVELOPMENT_MODE and not TESTING:
-    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'].append(
-        'rest_framework.authentication.SessionAuthentication'
-    )
+# # Añadir SessionAuthentication solo en desarrollo y no en testing
+# if DEVELOPMENT_MODE and not TESTING:
+#     REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'].append(
+#         'rest_framework.authentication.SessionAuthentication'
+#     )
 
 DJOSER = {
     'SERIALIZERS': {

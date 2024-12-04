@@ -13,7 +13,7 @@ class CoordinateAdmin(admin.ModelAdmin):
     list_display = ('id', 'collection', 'page', 'slot_number',
                     'absolute_number', 'ordinal', 'rarity_factor')
     ordering = ('id', 'collection',)
-    list_filter = ('page', 'slot_number', 'rarity_factor')
+    list_filter = ('page', 'slot_number', 'rarity_factor', 'collection')
     search_fields = ('rarity_factor',)
 
     def has_add_permission(self, request):
