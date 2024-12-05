@@ -1,13 +1,28 @@
 from django.contrib import admin
 
 
-from .models import (BaseProfile, RegionalManager,
-                     LocalManager, Sponsor, Dealer, Collector)
+from .models import (
+    BaseProfile,
+    RegionalManager,
+    LocalManager,
+    Sponsor,
+    Dealer,
+    Collector,
+)
 
 
 class RegionalManagerAdmin(admin.ModelAdmin):
-    fields = ["user", 'email', 'first_name', 'middle_name', 'last_name',
-              'second_last_name', 'gender', 'birthdate', 'created_by',]
+    fields = [
+        "user",
+        "email",
+        "first_name",
+        "middle_name",
+        "last_name",
+        "second_last_name",
+        "gender",
+        "birthdate",
+        "created_by",
+    ]
     readonly_fields = ["user", "created_by"]
 
     def save_model(self, request, obj, form, change):
@@ -17,13 +32,30 @@ class RegionalManagerAdmin(admin.ModelAdmin):
 
 
 class BaseProfileAdmin(admin.ModelAdmin):
-    fields = ["user", 'email', 'first_name', 'middle_name', 'last_name',
-              'second_last_name', 'gender', 'birthdate']
+    fields = [
+        "user",
+        "email",
+        "first_name",
+        "middle_name",
+        "last_name",
+        "second_last_name",
+        "gender",
+        "birthdate",
+    ]
 
 
 class LocalManagerAdmin(admin.ModelAdmin):
-    fields = ["user", 'email', 'first_name', 'middle_name', 'last_name',
-              'second_last_name', 'gender', 'birthdate', 'created_by']
+    fields = [
+        "user",
+        "email",
+        "first_name",
+        "middle_name",
+        "last_name",
+        "second_last_name",
+        "gender",
+        "birthdate",
+        "created_by",
+    ]
     readonly_fields = ["user", "created_by"]
 
     def save_model(self, request, obj, form, change):
@@ -33,8 +65,17 @@ class LocalManagerAdmin(admin.ModelAdmin):
 
 
 class SponsorAdmin(admin.ModelAdmin):
-    fields = ["user", 'email', 'first_name', 'middle_name', 'last_name',
-              'second_last_name', 'gender', 'birthdate', 'created_by']
+    fields = [
+        "user",
+        "email",
+        "first_name",
+        "middle_name",
+        "last_name",
+        "second_last_name",
+        "gender",
+        "birthdate",
+        "created_by",
+    ]
     readonly_fields = ["user", "created_by"]
 
     def save_model(self, request, obj, form, change):
@@ -44,9 +85,19 @@ class SponsorAdmin(admin.ModelAdmin):
 
 
 class DealerAdmin(admin.ModelAdmin):
-    fields = ["user", 'id', 'email', 'first_name', 'middle_name', 'last_name',
-              'second_last_name', 'gender', 'birthdate', 'created_by']
-    list_display = ('id', 'email')
+    list_display = (
+        "user",
+        "id",
+        "email",
+        "first_name",
+        "middle_name",
+        "last_name",
+        "second_last_name",
+        "gender",
+        "birthdate",
+        "created_by",
+    )
+    readonly_fields = ("id",)
     readonly_fields = ["user", "created_by"]
 
     def save_model(self, request, obj, form, change):
@@ -56,8 +107,16 @@ class DealerAdmin(admin.ModelAdmin):
 
 
 class CollectorAdmin(admin.ModelAdmin):
-    fields = ["user", 'email', 'first_name', 'middle_name', 'last_name',
-              'second_last_name', 'gender', 'birthdate']
+    fields = [
+        "user",
+        "email",
+        "first_name",
+        "middle_name",
+        "last_name",
+        "second_last_name",
+        "gender",
+        "birthdate",
+    ]
 
 
 admin.site.register(RegionalManager, RegionalManagerAdmin)

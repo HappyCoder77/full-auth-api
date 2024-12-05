@@ -20,60 +20,54 @@ class EditionViewSet(ReadOnlyModelViewSet):
     def get_current_promotion(self):
         now = timezone.now()
         try:
-            promotion = Promotion.objects.get(
-                start_date__lte=now,
-                end_date__gte=now
-            )
+            promotion = Promotion.objects.get(start_date__lte=now, end_date__gte=now)
         except Promotion.DoesNotExist:
             return None
 
         return promotion
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def current_list(self, request):
         promotion = self.get_current_promotion()
 
-        if promotion:
-            try:
-                editions = Edition.objects.filter(promotion=promotion)
-                serializer = self.get_serializer(editions, many=True)
+        if not promotion:
+            return Response(
+                {"detail": "No hay ninguna promoción en curso"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
-                if not editions.exists():
-                    return Response(
-                        {'detail': 'No hay ediciones activas para la promoción en curso'},
-                        status=status.HTTP_404_NOT_FOUND
-                    )
+        editions = Edition.objects.filter(promotion=promotion)
 
-                return Response(serializer.data)
-            except Exception as e:
-                return Response(
-                    {'detail': 'Se produjo un error al obtener las ediciones'},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
+        if not editions.exists():
+            return Response(
+                {"detail": "No hay ediciones activas para la promoción en curso"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
-        return Response(
-            {'detail': 'No hay ninguna promoción en curso'},
-            status=status.HTTP_404_NOT_FOUND
-        )
+        try:
+            serializer = self.get_serializer(editions, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response(
+                {"detail": "Se produjo un error al obtener las ediciones"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     def handle_exception(self, exc):
 
         if isinstance(exc, DetailedPermissionDenied):
-            return Response({'detail': str(exc.detail)}, status=exc.status_code)
+            return Response({"detail": str(exc.detail)}, status=exc.status_code)
         elif isinstance(exc, Http404):
             return Response(
-                {'detail': 'No encontrado.'},
-                status=status.HTTP_404_NOT_FOUND
+                {"detail": "No encontrado."}, status=status.HTTP_404_NOT_FOUND
             )
         elif isinstance(exc, MethodNotAllowed):
             return Response(
-                {'detail': 'Método no permitido.'},
-                status=status.HTTP_405_METHOD_NOT_ALLOWED
+                {"detail": "Método no permitido."},
+                status=status.HTTP_405_METHOD_NOT_ALLOWED,
             )
         else:
             return Response(
-                {
-                    'detail': 'Se produjo un error inesperado.',
-                    "error": str(exc)
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                {"detail": "Se produjo un error inesperado.", "error": str(exc)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
