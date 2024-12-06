@@ -1,6 +1,10 @@
+from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.core.validators import RegexValidator
+from django.core.validators import (
+    RegexValidator,
+    FileExtensionValidator,
+)
 from django.db import models, transaction
 from django.utils import timezone
 
@@ -8,8 +12,6 @@ from editions.models import Edition, Box, Pack
 from promotions.utils import promotion_is_running
 
 User = get_user_model()
-
-# TODO: terminar....
 
 
 class Sale(models.Model):
@@ -183,7 +185,10 @@ class Payment(models.Model):
     date = models.DateTimeField(default=timezone.now, db_index=True)
     payment_date = models.DateField()
     bank = models.CharField(max_length=4, choices=BANKS)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+    )
     reference = models.CharField(max_length=20, unique=True)
     id_number = models.CharField(
         max_length=8,
@@ -194,11 +199,23 @@ class Payment(models.Model):
             )
         ],
     )
-    capture = models.ImageField(upload_to="captures/payments")
+    capture = models.ImageField(
+        upload_to="captures/payments",
+        validators=[
+            FileExtensionValidator(
+                allowed_extensions=["jpg", "jpeg", "png"],
+                message="Solo se permiten archivos de imagen (jpg, jpeg, png)",
+            )
+        ],
+    )
     payment_type = models.CharField(max_length=6, choices=PAYMENT_TYPES, default="bank")
 
     def __str__(self) -> str:
         return f"{self.dealer.email} - {self.amount} - {self.date.date()}"
+
+    def save(self, *args, **kwargs):
+        self.amount = Decimal(str(self.amount)).quantize(Decimal("0.01"))
+        super().save(*args, **kwargs)
 
 
 class MobilePayment(Payment):
@@ -220,6 +237,5 @@ class MobilePayment(Payment):
     )
 
     def save(self, *args, **kwargs):
-        if not self.pk:
-            self.payment_type = "mobile"
+        self.payment_type = "mobile"
         super().save(*args, **kwargs)
