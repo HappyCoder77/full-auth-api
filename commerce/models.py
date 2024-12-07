@@ -127,9 +127,12 @@ class Order(models.Model):
 
         if not Edition.objects.filter(pk=self.edition_id).exists():
             raise ValidationError("No existe ninguna edición con el id suministrado")
+
         box = Box.objects.filter(edition=self.edition, order__isnull=True).first()
+
         if not box:
             raise ValidationError(f"No hay paquetes disponibles para esta edición")
+
         self.box = box
         self.pack_cost = self.box.edition.promotion.pack_cost
 
