@@ -192,7 +192,13 @@ class Payment(models.Model):
         max_digits=10,
         decimal_places=2,
     )
-    reference = models.CharField(max_length=20, unique=True)
+    reference = models.CharField(
+        max_length=20,
+        unique=True,
+        error_messages={
+            "unique": "Esta referencia ya existe.",
+        },
+    )
     id_number = models.CharField(
         max_length=8,
         help_text="Cédula del titular de la cuenta (sin letra inicial, guiones ni puntos)",

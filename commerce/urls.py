@@ -1,11 +1,21 @@
 from django.urls import path
-from rest_framework.routers import DefaultRouter
-from .views import OrderListCreateAPIView, OrderRetrieveAPIView
+from .views import (
+    OrderListCreateAPIView,
+    OrderRetrieveAPIView,
+    PaymentListAPIView,
+    PaymentCreateView,
+    MobilePaymentCreateView,
+)
 
 
 urlpatterns = [
-    path('orders/',
-         OrderListCreateAPIView.as_view(), name='order-list-create'),
-    path('orders/<int:pk>/',
-         OrderRetrieveAPIView.as_view(), name='order-retrieve')
+    path("orders/", OrderListCreateAPIView.as_view(), name="order-list-create"),
+    path("orders/<int:pk>/", OrderRetrieveAPIView.as_view(), name="order-retrieve"),
+    path("payments/", PaymentListAPIView.as_view(), name="payment-list"),
+    path("payments/create/", PaymentCreateView.as_view(), name="payment-create"),
+    path(
+        "payments/mobile/create/",
+        MobilePaymentCreateView.as_view(),
+        name="mobile-payment-create",
+    ),
 ]

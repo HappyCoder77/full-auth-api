@@ -42,7 +42,14 @@ class PaymentSerializer(serializers.ModelSerializer):
             "payment_type",
             "status_display",
         ]
-        read_only_fields = ["id", "date", "dealer_email", "bank_name", "status_display"]
+        read_only_fields = [
+            "id",
+            "dealer",
+            "date",
+            "dealer_email",
+            "bank_name",
+            "status_display",
+        ]
 
     def validate_payment_date(self, value):
         if value > timezone.now().date():
@@ -54,11 +61,6 @@ class PaymentSerializer(serializers.ModelSerializer):
     def validate_amount(self, value):
         if value <= 0:
             raise serializers.ValidationError("El monto debe ser mayor que cero.")
-        return value
-
-    def validate_reference(self, value):
-        if Payment.objects.filter(reference=value).exists():
-            raise serializers.ValidationError("Esta referencia ya existe.")
         return value
 
 
@@ -74,10 +76,3 @@ class MobilePaymentSerializer(PaymentSerializer):
                 "El tipo de pago debe ser 'mobile' para pagos móviles."
             )
         return data
-
-    def validate_phone_number(self, value):
-        if not value.isdigit() or len(value) != 7:
-            raise serializers.ValidationError(
-                "El número de teléfono debe contener exactamente 7 dígitos."
-            )
-        return value
