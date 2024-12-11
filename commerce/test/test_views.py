@@ -829,3 +829,106 @@ class MobilePaymentCreateViewAPITestCase(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
         self.assertEqual(str(response.data["detail"]), 'Método "GET" no permitido.')
+
+
+class PaymentOptionsViewTestCase(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.client = APIClient()
+        cls.url = reverse("payment-options")
+        cls.superuser = UserFactory(is_superuser=True)
+        cls.basic_user = UserFactory()
+        cls.dealer_user = UserFactory()
+        cls.dealer = DealerFactory(user=cls.dealer_user)
+
+    def test_dealer_can_get_payment_options(self):
+        self.client.force_authenticate(user=self.dealer.user)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("banks", response.data)
+        self.assertIn("payment_status", response.data)
+
+        self.assertEqual(response.data["banks"], dict(Payment.BANKS))
+        self.assertEqual(response.data["payment_status"], dict(Payment.PAYMENT_STATUS))
+
+    def test_superuser_cannot_get_payment_options(self):
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"], "Solo los detallistas pueden realizar esta acción"
+        )
+
+    def test_basic_user_cannot_get_payment_options(self):
+        self.client.force_authenticate(user=self.basic_user)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"], "Solo los detallistas pueden realizar esta acción"
+        )
+
+    def test_unauthenticated_user_cannot_get_payment_options(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data["detail"], "Debe iniciar sesión para realizar esta acción"
+        )
+
+    def test_post_not_allowed(self):
+        self.client.force_authenticate(user=self.dealer.user)
+        response = self.client.post(self.url, {})
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+class MobilePaymentOptionsViewTestCase(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.client = APIClient()
+        cls.url = reverse("mobile-payment-options")
+        cls.superuser = UserFactory(is_superuser=True)
+        cls.basic_user = UserFactory()
+        cls.dealer_user = UserFactory()
+        cls.dealer = DealerFactory(user=cls.dealer_user)
+
+    def test_dealer_can_get__mobile_payment_options(self):
+        self.client.force_authenticate(user=self.dealer.user)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("phone_codes", response.data)
+        self.assertEqual(response.data["phone_codes"], dict(MobilePayment.PHONE_CODES))
+
+    def test_superuser_cannot_get__mobile_payment_options(self):
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"], "Solo los detallistas pueden realizar esta acción"
+        )
+
+    def test_basic_user_cannot_get__mobile_payment_options(self):
+        self.client.force_authenticate(user=self.basic_user)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"], "Solo los detallistas pueden realizar esta acción"
+        )
+
+    def test_unauthenticated_user_cannot_get__mobile_payment_options(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data["detail"], "Debe iniciar sesión para realizar esta acción"
+        )
+
+    def test_post_not_allowed(self):
+        self.client.force_authenticate(user=self.dealer.user)
+        response = self.client.post(self.url, {})
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)

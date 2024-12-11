@@ -5,6 +5,8 @@ from .views import (
     PaymentListAPIView,
     PaymentCreateView,
     MobilePaymentCreateView,
+    PaymentOptionsView,
+    MobilePaymentOptionsView,
 )
 
 
@@ -17,5 +19,11 @@ urlpatterns = [
         "payments/mobile/create/",
         MobilePaymentCreateView.as_view(),
         name="mobile-payment-create",
+    ),
+    path("payments/options/", PaymentOptionsView.as_view(), name="payment-options"),
+    path(
+        "payments/mobile/options/",
+        MobilePaymentOptionsView.as_view(),
+        name="mobile-payment-options",
     ),
 ]

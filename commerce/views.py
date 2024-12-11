@@ -2,6 +2,7 @@ from rest_framework import status
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.mixins import ListModelMixin
+from rest_framework.views import APIView
 from rest_framework.generics import (
     GenericAPIView,
     ListCreateAPIView,
@@ -109,3 +110,24 @@ class MobilePaymentCreateView(CreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(dealer=self.request.user, payment_type="mobile")
+
+
+class PaymentOptionsView(APIView):
+    http_method_names = ["get"]
+    permission_classes = [IsAuthenticatedDealer]
+
+    def get(self, request, format=None):
+        options = {
+            "banks": dict(Payment.BANKS),
+            "payment_status": dict(Payment.PAYMENT_STATUS),
+        }
+        return Response(options, status=status.HTTP_200_OK)
+
+
+class MobilePaymentOptionsView(PaymentOptionsView):
+
+    def get(self, request, format=None):
+        options = {
+            "phone_codes": dict(MobilePayment.PHONE_CODES),
+        }
+        return Response(options, status=status.HTTP_200_OK)
