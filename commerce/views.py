@@ -111,6 +111,15 @@ class MobilePaymentCreateView(CreateAPIView):
     def perform_create(self, serializer):
         serializer.save(dealer=self.request.user, payment_type="mobile")
 
+    def handle_exception(self, exc):
+        if isinstance(exc, DRFValidationError):
+            if hasattr(exc.detail, "get") and exc.detail.get("reference"):
+                return Response(
+                    {"detail": "Esta referencia ya existe."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        return super().handle_exception(exc)
+
 
 class PaymentOptionsView(APIView):
     http_method_names = ["get"]

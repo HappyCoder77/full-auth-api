@@ -196,7 +196,7 @@ class Payment(models.Model):
         max_length=20,
         unique=True,
         error_messages={
-            "unique": "Esta referencia ya existe.",
+            "unique": "La referencia del pago ya existe",
         },
     )
     id_number = models.CharField(
