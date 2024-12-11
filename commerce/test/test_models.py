@@ -291,6 +291,15 @@ class MobilePaymentModelTest(TestCase):
             "phone_number": "1234567",
         }
 
+    def tearDown(self):
+        """Limpia los archivos de prueba después de cada test"""
+        for payment in Payment.objects.all():
+            if payment.capture and os.path.exists(payment.capture.path):
+                try:
+                    os.remove(payment.capture.path)
+                except FileNotFoundError:
+                    pass
+
     def test_mobile_payment_creation(self):
         mobile_payment = MobilePaymentFactory(**self.mobile_payment_data)
         self.assertTrue(isinstance(mobile_payment, MobilePayment))

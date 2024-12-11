@@ -299,6 +299,7 @@ class PaymentListAPIViewTestCase(APITestCase):
         self.assertEqual(len(response.data), 2)
 
     def test_payment_list_view_with_active_promotion_no_payments(self):
+        self.tearDown()
         Payment.objects.all().delete()
         self.client.force_authenticate(user=self.dealer.user)
         response = self.client.get(self.url)
