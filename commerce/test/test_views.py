@@ -537,7 +537,7 @@ class PaymentCreateViewAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
             str(response.data["reference"][0]),
-            "Esta referencia ya existe.",
+            "La referencia del pago ya existe",
         )
 
     def test_payment_create_view_with_invalid_status(self):

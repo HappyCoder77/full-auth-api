@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Order, Payment
+from .models import Order, Payment, DealerBalance
 
 
 @admin.register(Order)
@@ -23,4 +23,19 @@ class PaymentAdmin(admin.ModelAdmin):
         "id_number",
         "capture",
         "payment_type",
+    )
+
+
+@admin.register(DealerBalance)
+class DealerBalanceAdmin(admin.ModelAdmin):
+    model = DealerBalance
+    list_display = (
+        "id",
+        "dealer",
+        "promotion",
+        "initial_balance",
+        "created_at",
+        "orders_total",
+        "payments_total",
+        "current_balance",
     )

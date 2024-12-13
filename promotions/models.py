@@ -23,17 +23,18 @@ class Promotion(models.Model):
         end_date (DateTimeField): La date y hora de finalización de la promoción.
         pack_cost (DecimalField): El costo unitario del pack para esta promoción.
     """
+
     start_date = models.DateTimeField(
-        "Date de Inicio", default=timezone.now, editable=False)
+        "Date de Inicio", default=timezone.now, editable=False
+    )
     duration = models.PositiveSmallIntegerField(
-        'duración en días', default=1, )
-    end_date = models.DateTimeField(
-        "Date de finalización")
-    pack_cost = models.DecimalField(verbose_name='costo unitario de pack',
-                                    decimal_places=2,
-                                    max_digits=4,
-                                    default=0
-                                    )
+        "duración en días",
+        default=1,
+    )
+    end_date = models.DateTimeField("Date de finalización")
+    pack_cost = models.DecimalField(
+        verbose_name="costo unitario de pack", decimal_places=2, max_digits=4, default=0
+    )
 
     def __init__(self, *args, **kwargs):
         """
@@ -46,7 +47,7 @@ class Promotion(models.Model):
                     en cálculos de tiempo restante. Si no se proporciona, se usa
                     el tiempo actual del sistema.
         """
-        self._current_time = kwargs.pop('current_time', None)
+        self._current_time = kwargs.pop("current_time", None)
         super().__init__(*args, **kwargs)
 
     @property
@@ -66,18 +67,18 @@ class Promotion(models.Model):
 
     def translate_month(self, value):
         months = {
-            'January': 'Enero',
-            'February': 'Febrero',
-            'March': 'Marzo',
-            'April': 'Abril',
-            'May': 'Mayo',
-            'June': 'Junio',
-            'July': 'Julio',
-            'August': 'Agosto',
-            'September': 'Septiembre',
-            'October': 'Octubre',
-            'November': 'Noviembre',
-            'December': 'Diciembre'
+            "January": "Enero",
+            "February": "Febrero",
+            "March": "Marzo",
+            "April": "Abril",
+            "May": "Mayo",
+            "June": "Junio",
+            "July": "Julio",
+            "August": "Agosto",
+            "September": "Septiembre",
+            "October": "Octubre",
+            "November": "Noviembre",
+            "December": "Diciembre",
         }
         return months.get(value, value)
 
@@ -117,11 +118,15 @@ class Promotion(models.Model):
         if total_seconds < 86400:  # Menos de un día
             hours, remainder = divmod(int(total_seconds), 3600)
             minutes, seconds = divmod(remainder, 60)
-            return f'Esta promoción termina en {hours} horas, {minutes} minutos y {seconds} segundos.'
+            return f"Esta promoción termina en {hours} horas, {minutes} minutos y {seconds} segundos."
         elif period.months < 1:
-            return f'Esta promoción termina en {period.days} días y {period.hours} horas.'
+            return (
+                f"Esta promoción termina en {period.days} días y {period.hours} horas."
+            )
         else:
-            return f'Esta promoción termina en {period.months} meses y {period.days} días.'
+            return (
+                f"Esta promoción termina en {period.months} meses y {period.days} días."
+            )
         # if period.seconds < 0:
         #     mensaje = "Esta promoción ha terminado."
         # elif period.months < 1 and period.days < 1:
@@ -144,22 +149,22 @@ class Promotion(models.Model):
 
         if self.pack_cost < 0:
             raise ValidationError(
-                'El costo del pack no puede ser una cantidad negativa')
+                "El costo del pack no puede ser una cantidad negativa"
+            )
         # Validación de solapamiento de dates
         end_date = self.calculate_end_date()
         overlapping_promotions = self.__class__.objects.filter(
-            models.Q(start_date__lt=end_date) & models.Q(
-                end_date__gt=self.start_date)
+            models.Q(start_date__lt=end_date) & models.Q(end_date__gt=self.start_date)
         ).exclude(pk=self.pk)
 
         if overlapping_promotions.exists():
-            raise ValidationError('Ya hay una promoción en curso')
+            raise ValidationError("Ya hay una promoción en curso")
 
     @transaction.atomic
     def save(self, *args, **kwargs):
         # self.reiniciar_rescue_options()
         date = self.calculate_end_date()
-        date.replace(tzinfo=tz.gettz('America/Caracas'))
+        date.replace(tzinfo=tz.gettz("America/Caracas"))
         # Nota: current_time no afecta el cálculo de end_date, solo se usa
         # para calcular el tiempo restante en el método remaining_time
         self.end_date = date

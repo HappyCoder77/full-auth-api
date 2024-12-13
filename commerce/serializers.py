@@ -23,6 +23,9 @@ class PaymentSerializer(serializers.ModelSerializer):
     dealer_email = serializers.EmailField(source="dealer.email", read_only=True)
     bank_name = serializers.CharField(source="get_bank_display", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
+    payment_type_display = serializers.CharField(
+        source="get_payment_type_display", read_only=True
+    )
 
     class Meta:
         model = Payment
@@ -40,6 +43,7 @@ class PaymentSerializer(serializers.ModelSerializer):
             "id_number",
             "capture",
             "payment_type",
+            "payment_type_display",
             "status_display",
         ]
         read_only_fields = [
@@ -49,6 +53,7 @@ class PaymentSerializer(serializers.ModelSerializer):
             "dealer_email",
             "bank_name",
             "status_display",
+            "payment_type_display",
         ]
 
     def validate_payment_date(self, value):
