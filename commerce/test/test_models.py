@@ -1,6 +1,7 @@
+import json
 import os
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
@@ -8,9 +9,16 @@ from django.utils import timezone
 from authentication.test.factories import UserFactory
 from editions.test.factories import EditionFactory
 from promotions.test.factories import PromotionFactory
+from users.test.factories import DealerFactory
 
-from ..models import Payment, MobilePayment
-from .factories import SaleFactory, Orderfactory, PaymentFactory, MobilePaymentFactory
+from ..models import Payment, MobilePayment, DealerBalance, Order
+from .factories import (
+    SaleFactory,
+    Orderfactory,
+    PaymentFactory,
+    MobilePaymentFactory,
+    DealerBalanceFactory,
+)
 
 
 NOW = timezone.now()
@@ -349,3 +357,161 @@ class MobilePaymentModelTest(TestCase):
         mobile_payment.refresh_from_db()
 
         self.assertEqual(mobile_payment.payment_type, "mobile")
+
+
+class DealerBalanceTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.past_promotion = PromotionFactory(past=True)
+        cls.current_promotion = PromotionFactory()
+        cls.user = UserFactory()
+        cls.dealer = DealerFactory(user=cls.user, email=cls.user.email)
+        cls.past_edition = EditionFactory(promotion=cls.past_promotion)
+        cls.current_edition = EditionFactory(
+            promotion=cls.current_promotion, collection__name="Angela", circulation=2
+        )
+        Orderfactory(
+            date=cls.past_promotion.start_date.date(),
+            dealer=cls.dealer.user,
+            edition=cls.past_edition,
+        )
+        Orderfactory(
+            date=cls.current_promotion.start_date.date(),
+            dealer=cls.dealer.user,
+            edition=cls.current_edition,
+        )
+
+    def setUp(self):
+        self.past_dealer_balance = DealerBalanceFactory(
+            dealer=self.dealer.user,
+            promotion=self.past_promotion,
+            initial_balance=Decimal("100.00"),
+        )
+        self.current_dealer_balance = DealerBalanceFactory(
+            dealer=self.dealer.user, promotion=self.current_promotion
+        )
+
+    def test_dealer_balance_data(self):
+
+        self.assertEqual(DealerBalance.objects.count(), 2)
+        self.assertEqual(self.past_dealer_balance.dealer, self.dealer.user)
+        self.assertEqual(self.current_dealer_balance.dealer, self.dealer.user)
+        self.assertEqual(self.past_dealer_balance.promotion, self.past_promotion)
+        self.assertEqual(self.current_dealer_balance.promotion, self.current_promotion)
+        self.assertEqual(self.past_dealer_balance.initial_balance, 100)
+        self.assertEqual(self.current_dealer_balance.initial_balance, 122.50)
+        self.assertEqual(
+            self.past_dealer_balance.start_date, self.past_promotion.start_date.date()
+        )
+        self.assertEqual(
+            self.current_dealer_balance.start_date,
+            self.past_promotion.end_date.date() + timedelta(days=1),
+        )
+        self.assertEqual(
+            self.past_dealer_balance.end_date,
+            self.past_promotion.end_date.date() + timedelta(days=1),
+        )
+        self.assertEqual(
+            self.current_dealer_balance.end_date,
+            self.current_promotion.end_date.date() + timedelta(days=1),
+        )
+        self.assertEqual(self.past_dealer_balance.orders_total, 22.50)
+        self.assertEqual(self.current_dealer_balance.orders_total, 45)
+        self.assertEqual(self.past_dealer_balance.payments_total, 0)
+        self.assertEqual(self.current_dealer_balance.payments_total, 0)
+        self.assertEqual(self.past_dealer_balance.current_balance, 122.50)
+        self.assertEqual(self.current_dealer_balance.current_balance, 167.50)
+        self.assertIsNone(self.past_dealer_balance.get_previous_balance())
+        self.assertEqual(
+            self.current_dealer_balance.get_previous_balance(), self.past_dealer_balance
+        )
+
+    def test_balance_data_after_add_orders_to_past_balance(self):
+        PaymentFactory(
+            dealer=self.dealer.user,
+            payment_date=self.past_promotion.start_date.date(),
+            amount="25",
+            status="completed",
+        )
+        self.current_dealer_balance.refresh_from_db()
+        self.assertEqual(self.past_dealer_balance.orders_total, 22.50)
+        self.assertEqual(self.past_dealer_balance.payments_total, 25)
+        self.assertEqual(self.current_dealer_balance.orders_total, 45)
+        self.assertEqual(self.current_dealer_balance.payments_total, 0)
+        self.assertEqual(self.past_dealer_balance.current_balance, 97.50)
+        self.assertEqual(self.current_dealer_balance.initial_balance, 97.50)
+        self.assertEqual(self.current_dealer_balance.current_balance, 142.50)
+
+    def test_balance_data_after_add_orders_to_current_balance(self):
+        PaymentFactory(
+            dealer=self.dealer.user,
+            payment_date=self.current_promotion.start_date.date(),
+            amount="25",
+            status="completed",
+        )
+        self.current_dealer_balance.refresh_from_db()
+        self.assertEqual(self.past_dealer_balance.orders_total, 22.50)
+        self.assertEqual(self.past_dealer_balance.payments_total, 0)
+        self.assertEqual(self.current_dealer_balance.orders_total, 45)
+        self.assertEqual(self.current_dealer_balance.payments_total, 25)
+        self.assertEqual(self.past_dealer_balance.current_balance, 122.50)
+        self.assertEqual(self.current_dealer_balance.initial_balance, 122.50)
+        self.assertEqual(self.current_dealer_balance.current_balance, 142.50)
+
+    def test_balance_data_after_add_payments_out_of_promotions_ranges(self):
+        PaymentFactory(
+            dealer=self.dealer.user,
+            payment_date=self.past_promotion.start_date.date() - timedelta(days=1),
+            amount="25",
+            status="completed",
+        )
+        PaymentFactory(
+            dealer=self.dealer.user,
+            payment_date=self.past_promotion.end_date.date() + timedelta(days=1),
+            amount="15",
+            status="completed",
+        )
+        PaymentFactory(
+            dealer=self.dealer.user,
+            payment_date=self.current_promotion.end_date.date() + timedelta(days=1),
+            amount="50",
+            status="completed",
+        )
+        self.current_dealer_balance.refresh_from_db()
+        self.assertEqual(Payment.objects.count(), 3)
+        self.assertEqual(self.past_dealer_balance.orders_total, 22.50)
+        self.assertEqual(self.current_dealer_balance.orders_total, 45)
+        self.assertEqual(self.past_dealer_balance.payments_total, 0)
+        self.assertEqual(self.current_dealer_balance.payments_total, 15.00)
+        self.assertEqual(self.past_dealer_balance.current_balance, 122.50)
+        self.assertEqual(self.current_dealer_balance.initial_balance, 122.50)
+        self.assertEqual(self.current_dealer_balance.current_balance, 152.50)
+
+    def test_balance_data_after_add_no_completed_payments(self):
+        PaymentFactory(
+            dealer=self.dealer.user,
+            payment_date=self.past_promotion.start_date.date(),
+            amount="25",
+            status="pending",
+        )
+        PaymentFactory(
+            dealer=self.dealer.user,
+            payment_date=self.past_promotion.end_date.date() + timedelta(days=1),
+            amount="15",
+            status="rejected",
+        )
+        PaymentFactory(
+            dealer=self.dealer.user,
+            payment_date=self.current_promotion.end_date.date(),
+            amount="50",
+            status="pending",
+        )
+        self.current_dealer_balance.refresh_from_db()
+        self.assertEqual(Payment.objects.count(), 3)
+        self.assertEqual(self.past_dealer_balance.orders_total, 22.50)
+        self.assertEqual(self.current_dealer_balance.orders_total, 45)
+        self.assertEqual(self.past_dealer_balance.payments_total, 0)
+        self.assertEqual(self.current_dealer_balance.payments_total, 0)
+        self.assertEqual(self.past_dealer_balance.current_balance, 122.50)
+        self.assertEqual(self.current_dealer_balance.initial_balance, 122.50)
+        self.assertEqual(self.current_dealer_balance.current_balance, 167.50)

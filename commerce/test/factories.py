@@ -4,7 +4,8 @@ from django.db import models
 from django.utils import timezone
 from editions.test.factories import EditionFactory
 from authentication.test.factories import UserFactory
-from ..models import Sale, Order, Payment, MobilePayment
+from promotions.test.factories import PromotionFactory
+from ..models import Sale, Order, Payment, MobilePayment, DealerBalance
 
 
 class SaleFactory(factory.django.DjangoModelFactory):
@@ -59,3 +60,14 @@ class MobilePaymentFactory(PaymentFactory):
     phone_code = "0414"
     phone_number = factory.Faker("random_number", digits=7, fix_len=True)
     payment_type = "mobile"
+
+
+class DealerBalanceFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = DealerBalance
+
+    dealer = factory.SubFactory(UserFactory)
+    promotion = factory.SubFactory(PromotionFactory)
+    initial_balance = factory.Faker(
+        "pydecimal", left_digits=4, right_digits=2, positive=True
+    )
