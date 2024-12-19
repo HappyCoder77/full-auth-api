@@ -86,9 +86,9 @@ class SponsorAdmin(admin.ModelAdmin):
 
 class DealerAdmin(admin.ModelAdmin):
     list_display = (
+        "email",
         "user",
         "id",
-        "email",
         "first_name",
         "middle_name",
         "last_name",

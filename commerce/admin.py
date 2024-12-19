@@ -31,9 +31,11 @@ class DealerBalanceAdmin(admin.ModelAdmin):
     model = DealerBalance
     list_display = (
         "id",
+        "start_date",
         "dealer",
         "promotion",
         "initial_balance",
+        "end_date",
         "created_at",
         "orders_total",
         "payments_total",

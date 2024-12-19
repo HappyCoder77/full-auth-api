@@ -273,7 +273,11 @@ class DealerBalance(models.Model):
         User, on_delete=models.CASCADE, related_name="promotion_balances"
     )
     promotion = models.ForeignKey(
-        Promotion, on_delete=models.CASCADE, related_name="balances"
+        Promotion,
+        on_delete=models.CASCADE,
+        related_name="balances",
+        null=True,
+        blank=True,
     )
     initial_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     start_date = models.DateField(null=True, blank=True)
@@ -283,24 +287,35 @@ class DealerBalance(models.Model):
     class Meta:
         unique_together = ["dealer", "promotion"]
 
+    """la fecha final es un dia despues de la fecha final de la promocion
+    para evitar fallos en casos extremos como promociones
+    de un dia consecutivas"""
+
     @property
     def end_date(self):
-        return self.promotion.end_date.date() + timedelta(days=1)
+
+        if self.promotion:
+            return self.promotion.end_date.date() + timedelta(days=1)
+
+        return None
 
     @property
     def payments_total(self):
-        return sum(
-            payment.amount
-            for payment in Payment.objects.filter(
-                dealer=self.dealer,
-                payment_date__gte=self.start_date,
-                payment_date__lt=self.end_date,
-                status="completed",
-            )
-        )
+        filters = {
+            "dealer": self.dealer,
+            "payment_date__gte": self.start_date,
+            "status": "completed",
+        }
+
+        if self.end_date:
+            filters["payment_date__lt"] = self.end_date
+
+        return sum(payment.amount for payment in Payment.objects.filter(**filters))
 
     @property
     def orders_total(self):
+        if not self.promotion:
+            return Decimal("0.00")
         return sum(
             order.amount
             for order in Order.objects.filter(
@@ -313,14 +328,14 @@ class DealerBalance(models.Model):
     def current_balance(self):
         return self.initial_balance + self.orders_total - self.payments_total
 
-    def get_previous_balance(self):
-        return (
-            DealerBalance.objects.filter(
-                dealer=self.dealer, promotion__end_date__lt=self.promotion.start_date
-            )
-            .order_by("-promotion__end_date")
-            .first()
-        )
+    # def get_previous_balance(self):
+    #     return (
+    #         DealerBalance.objects.filter(
+    #             dealer=self.dealer, promotion__end_date__lt=self.promotion.start_date
+    #         )
+    #         .order_by("-promotion__end_date")
+    #         .first()
+    #     )
 
     def update_subsequent_balances(self):
         """Actualiza los balances posteriores cuando hay cambios en pagos"""
@@ -337,20 +352,21 @@ class DealerBalance(models.Model):
             next_balance.save()
             next_balance.update_subsequent_balances()
 
-    @transaction.atomic
-    def save(self, *args, **kwargs):
+    # @transaction.atomic
+    # def save(self, *args, **kwargs):
 
-        if not self.pk:
-            previous_balance = self.get_previous_balance()
-            if previous_balance:
-                self.start_date = (
-                    previous_balance.promotion.end_date.date() + timedelta(days=1)
-                )
+    #     if not self.pk:
+    #         previous_balance = self.get_previous_balance()
 
-                if previous_balance.current_balance > 0:
-                    self.initial_balance = previous_balance.current_balance
+    #         if previous_balance:
+    #             self.start_date = (
+    #                 previous_balance.promotion.end_date.date() + timedelta(days=1)
+    #             )
 
-            else:
-                self.start_date = self.promotion.start_date.date()
+    #             if previous_balance.current_balance > 0:
+    #                 self.initial_balance = previous_balance.current_balance
 
-        super().save(*args, **kwargs)
+    #         else:
+    #             self.start_date = self.promotion.start_date.date()
+
+    #     super().save(*args, **kwargs)

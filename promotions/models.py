@@ -127,19 +127,6 @@ class Promotion(models.Model):
             return (
                 f"Esta promoción termina en {period.months} meses y {period.days} días."
             )
-        # if period.seconds < 0:
-        #     mensaje = "Esta promoción ha terminado."
-        # elif period.months < 1 and period.days < 1:
-        #     mensaje = (
-        #         f'Esta promoción termina en {period.hours} horas, {period.minutes} minutos y {period.seconds} segundos.')
-        # elif period.months < 1:
-        #     mensaje = (
-        #         f'Esta promoción termina en {period.days} días y {period.hours} horas.')
-        # else:
-        #     mensaje = (
-        #         f'Esta promoción termina en {period.months} meses y {period.days} días.')
-
-        # return mensaje
 
     class Meta:
         verbose_name = "promotion"

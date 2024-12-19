@@ -22,27 +22,32 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
 
     @property
     def is_regionalmanager(self):
-        return hasattr(self, 'baseprofile') and hasattr(self.baseprofile, 'regionalmanager')
+        return hasattr(self, "baseprofile") and hasattr(
+            self.baseprofile, "regionalmanager"
+        )
 
     @property
     def is_localmanager(self):
-        return hasattr(self, 'baseprofile') and hasattr(self.baseprofile, 'localmanager')
+        return hasattr(self, "baseprofile") and hasattr(
+            self.baseprofile, "localmanager"
+        )
 
     @property
     def is_sponsor(self):
-        return hasattr(self, 'baseprofile') and hasattr(self.baseprofile, 'sponsor')
+        return hasattr(self, "baseprofile") and hasattr(self.baseprofile, "sponsor")
 
     @property
     def is_dealer(self):
-        return hasattr(self, 'baseprofile') and hasattr(self.baseprofile, 'dealer')
+        return hasattr(self, "baseprofile") and hasattr(self.baseprofile, "dealer")
 
     @property
     def is_collector(self):
-        return self.has_profile and hasattr(self.baseprofile, 'collector')
+        return self.has_profile and hasattr(self.baseprofile, "collector")
 
     @property
     def has_profile(self):
-        return hasattr(self, 'baseprofile')
+        return hasattr(self, "baseprofile")
+
 
 # TODO: add Address model
 # TODO: add region Model
