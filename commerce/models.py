@@ -13,7 +13,8 @@ from django.utils import timezone
 
 from editions.models import Edition, Box, Pack
 from promotions.models import Promotion
-from promotions.utils import promotion_is_running, get_last_promotion
+from promotions.utils import promotion_is_running
+from editions.utils import get_current_editions
 
 User = get_user_model()
 
@@ -127,6 +128,10 @@ class Order(models.Model):
         if not promotion_is_running():
             raise ValidationError(
                 "No hay ninguna promoción en curso; no se puede realizar esta acción"
+            )
+        if not get_current_editions():
+            raise ValidationError(
+                "No hay ninguna edición en curso; no se puede realizar esta acción"
             )
 
         if not Edition.objects.filter(pk=self.edition_id).exists():

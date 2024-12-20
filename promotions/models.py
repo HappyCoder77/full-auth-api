@@ -36,6 +36,8 @@ class Promotion(models.Model):
         verbose_name="costo unitario de pack", decimal_places=2, max_digits=4, default=0
     )
 
+    balances_created = models.BooleanField(default=False)
+
     def __init__(self, *args, **kwargs):
         """
         Inicializa una nueva instancia de Promotion.
