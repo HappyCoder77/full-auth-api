@@ -383,12 +383,16 @@ class DealerBalanceTestCase(TestCase):
 
     def setUp(self):
         self.past_dealer_balance = DealerBalanceFactory(
+            start_date=self.past_promotion.start_date.date(),
             dealer=self.dealer.user,
             promotion=self.past_promotion,
             initial_balance=Decimal("100.00"),
         )
         self.current_dealer_balance = DealerBalanceFactory(
-            dealer=self.dealer.user, promotion=self.current_promotion
+            dealer=self.dealer.user,
+            promotion=self.current_promotion,
+            start_date=self.past_promotion.end_date.date() + timedelta(days=1),
+            initial_balance=self.past_dealer_balance.current_balance,
         )
 
     def test_dealer_balance_data(self):
@@ -421,10 +425,6 @@ class DealerBalanceTestCase(TestCase):
         self.assertEqual(self.current_dealer_balance.payments_total, 0)
         self.assertEqual(self.past_dealer_balance.current_balance, 122.50)
         self.assertEqual(self.current_dealer_balance.current_balance, 167.50)
-        self.assertIsNone(self.past_dealer_balance.get_previous_balance())
-        self.assertEqual(
-            self.current_dealer_balance.get_previous_balance(), self.past_dealer_balance
-        )
 
     def test_balance_data_after_add_orders_to_past_balance(self):
         PaymentFactory(

@@ -147,8 +147,17 @@ class Order(models.Model):
 
     @transaction.atomic
     def save(self, *args, **kwargs):
-        self.full_clean()
+        if not self.pk:
+            self.full_clean()
         super(Order, self).save(*args, **kwargs)
+
+    @classmethod
+    def create(cls, **kwargs):
+        # Asegurarse de que 'box' no está en los datos, incluso si alguien intenta incluirlo
+        kwargs.pop("box", None)
+        instance = cls(**kwargs)
+        instance.save()
+        return instance
 
 
 class Payment(models.Model):
@@ -285,7 +294,7 @@ class DealerBalance(models.Model):
         blank=True,
     )
     initial_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    start_date = models.DateField(null=True, blank=True)
+    start_date = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -333,15 +342,6 @@ class DealerBalance(models.Model):
     def current_balance(self):
         return self.initial_balance + self.orders_total - self.payments_total
 
-    # def get_previous_balance(self):
-    #     return (
-    #         DealerBalance.objects.filter(
-    #             dealer=self.dealer, promotion__end_date__lt=self.promotion.start_date
-    #         )
-    #         .order_by("-promotion__end_date")
-    #         .first()
-    #     )
-
     def update_subsequent_balances(self):
         """Actualiza los balances posteriores cuando hay cambios en pagos"""
         next_balance = (
@@ -356,22 +356,3 @@ class DealerBalance(models.Model):
             next_balance.initial_balance = self.current_balance
             next_balance.save()
             next_balance.update_subsequent_balances()
-
-    # @transaction.atomic
-    # def save(self, *args, **kwargs):
-
-    #     if not self.pk:
-    #         previous_balance = self.get_previous_balance()
-
-    #         if previous_balance:
-    #             self.start_date = (
-    #                 previous_balance.promotion.end_date.date() + timedelta(days=1)
-    #             )
-
-    #             if previous_balance.current_balance > 0:
-    #                 self.initial_balance = previous_balance.current_balance
-
-    #         else:
-    #             self.start_date = self.promotion.start_date.date()
-
-    #     super().save(*args, **kwargs)

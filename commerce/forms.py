@@ -8,6 +8,7 @@ class OrderForm(forms.ModelForm):
     class Meta:
         model = Order
         fields = "__all__"
+        exclude = ("pack_cost",)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

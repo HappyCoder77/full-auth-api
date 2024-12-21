@@ -17,8 +17,8 @@ def handle_promotion_signals(sender, instance, created, **kwargs):
             balance.promotion = instance
             balance.save()
     else:
-        # Check if this promotion is ending today or has already ended
-        if instance.end_date.date() <= timezone.now().date():
+        # Check if this promotion has already ended
+        if instance.end_date.date() < timezone.now().date():
             # Query the Dealer table directly
             dealers = Dealer.objects.all()
 
