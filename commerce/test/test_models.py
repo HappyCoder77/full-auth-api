@@ -515,3 +515,13 @@ class DealerBalanceTestCase(TestCase):
         self.assertEqual(self.past_dealer_balance.current_balance, 122.50)
         self.assertEqual(self.current_dealer_balance.initial_balance, 122.50)
         self.assertEqual(self.current_dealer_balance.current_balance, 167.50)
+
+    def test_negative_balance(self):
+        PaymentFactory(
+            dealer=self.dealer.user,
+            payment_date=self.past_promotion.start_date.date(),
+            amount="200",
+            status="completed",
+        )
+        self.past_dealer_balance.refresh_from_db()
+        self.assertEqual(self.past_dealer_balance.current_balance, -77.50)
