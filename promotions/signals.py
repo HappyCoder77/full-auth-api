@@ -8,18 +8,37 @@ from users.models import Dealer  # Import the Dealer model directly
 
 
 @receiver(post_save, sender=Promotion)
-def handle_promotion_signals(sender, instance, created, **kwargs):
+def handle_promotion_ending(sender, instance, created, **kwargs):
+    """
+    Signal handler for the Promotion model.
+
+    This function handles the post_save signal for the Promotion model. It performs
+    different actions based on whether the promotion instance was created or updated.
+
+    If a new promotion is created:
+    - It assigns the new promotion to all DealerBalance instances that do not have a promotion.
+
+    If an existing promotion is updated:
+    - It checks if the promotion has ended.
+    - If the promotion has ended and there are no open balances for the dealers, it creates a new balance for each dealer.
+    - The start date of the balnce depends on the existence or not of aprevious balance.
+
+    Args:
+        sender (Model): The model class that sent the signal.
+        instance (Promotion): The instance of the Promotion model that triggered the signal.
+        created (bool): A boolean indicating whether a new record was created.
+        **kwargs: Additional keyword arguments.
+    """
+
     if created:
-        # Assign the new promotion to balances without promotion
         open_balances = DealerBalance.objects.filter(promotion__isnull=True)
 
         for balance in open_balances:
             balance.promotion = instance
             balance.save()
     else:
-        # Check if this promotion has already ended
+
         if instance.end_date.date() < timezone.now().date():
-            # Query the Dealer table directly
             dealers = Dealer.objects.all()
 
             for dealer in dealers:
@@ -27,14 +46,20 @@ def handle_promotion_signals(sender, instance, created, **kwargs):
                     dealer=dealer.user, promotion=instance
                 ).first()
 
-                # Create new balance period starting right after promotion ends
-                DealerBalance.objects.create(
+                open_balance = DealerBalance.objects.filter(
                     dealer=dealer.user,
-                    promotion=None,  # No promotion assigned yet
-                    initial_balance=(
-                        last_balance.current_balance
-                        if last_balance and last_balance.current_balance is not None
-                        else 0
-                    ),
+                    promotion=None,
                     start_date=instance.end_date.date() + timedelta(days=1),
-                )
+                ).first()
+
+                if not open_balance:
+                    DealerBalance.objects.create(
+                        dealer=dealer.user,
+                        promotion=None,
+                        initial_balance=(
+                            last_balance.current_balance
+                            if last_balance and last_balance.current_balance is not None
+                            else 0
+                        ),
+                        start_date=instance.end_date.date() + timedelta(days=1),
+                    )

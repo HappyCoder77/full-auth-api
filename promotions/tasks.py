@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 @shared_task
 def check_ended_promotions():
+    print("------------------check_ended_promotions")
     logger.info("Ejecutando tarea para verificar promociones finalizadas")
     today = timezone.now().date()
     logger.info(f"Today's date: {today}")
@@ -16,6 +17,7 @@ def check_ended_promotions():
         end_date__date__lte=today,
         balances_created=False,
     )
+    print("ended_promotions", ended_promotions)
     logger.info(f"Found {ended_promotions.count()} ended promotions")
 
     for promotion in ended_promotions:

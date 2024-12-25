@@ -15,9 +15,14 @@ from promotions.utils import (
     get_current_promotion,
     get_last_promotion,
 )
-from .models import Order, Payment, MobilePayment
+from .models import Order, Payment, MobilePayment, DealerBalance
 from .permissions import IsAuthenticatedDealer
-from .serializers import OrderSerializer, PaymentSerializer, MobilePaymentSerializer
+from .serializers import (
+    OrderSerializer,
+    PaymentSerializer,
+    MobilePaymentSerializer,
+    DealerBalanceSerializer,
+)
 
 
 class OrderListCreateAPIView(ListCreateAPIView):
@@ -140,3 +145,37 @@ class MobilePaymentOptionsView(PaymentOptionsView):
             "phone_codes": dict(MobilePayment.PHONE_CODES),
         }
         return Response(options, status=status.HTTP_200_OK)
+
+
+class LastDealerBalanceView(APIView):
+    permission_classes = [IsAuthenticatedDealer]
+
+    def get(self, request):
+        """
+        Retrieve the last balance for the current dealer.
+
+        This method fetches the most recent balance entry for the dealer
+        associated with the current request user. If a balance entry is found,
+        it is serialized and returned in the response. If no balance entry is
+        found, a 404 Not Found response is returned with an appropriate message.
+
+        Args:
+            request (Request): The HTTP request object.
+
+        Returns:
+            Response: A Response object containing the serialized balance data
+            or an error message.
+        """
+        user = request.user
+        last_balance = (
+            DealerBalance.objects.filter(dealer=user).order_by("-start_date").first()
+        )
+
+        if last_balance:
+            serializer = DealerBalanceSerializer(last_balance)
+            return Response(serializer.data)
+
+        return Response(
+            {"detail": "No se encontró balance para el usuario actual."},
+            status=status.HTTP_404_NOT_FOUND,
+        )

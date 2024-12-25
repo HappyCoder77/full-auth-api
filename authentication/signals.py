@@ -67,6 +67,8 @@ def link_user_to_profile(user):
 
 
 def create_balance_for_new_dealer(user):
+    print("-----------------create_balance_for_new_dealer")
+    print("user", user)
     """
     Creates a balance entry for a new dealer.
 
@@ -93,10 +95,8 @@ def create_balance_for_new_dealer(user):
     )
 
     if current_promotion:
-        # Si hay promoción activa, crear balance con promoción
         DealerBalance.objects.create(
             dealer=user, promotion=current_promotion, start_date=start_date
         )
     else:
-        # Si no hay promoción activa, crear balance sin promoción
         DealerBalance.objects.create(dealer=user, start_date=start_date)

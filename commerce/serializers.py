@@ -1,6 +1,6 @@
 from django.utils import timezone
 from rest_framework import serializers
-from .models import Order, Box, Payment, MobilePayment
+from .models import Order, Box, Payment, MobilePayment, DealerBalance
 from django.contrib.auth import get_user_model
 
 
@@ -81,3 +81,20 @@ class MobilePaymentSerializer(PaymentSerializer):
                 "El tipo de pago debe ser 'mobile' para pagos móviles."
             )
         return data
+
+
+class DealerBalanceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DealerBalance
+        fields = [
+            "dealer",
+            "promotion",
+            "initial_balance",
+            "start_date",
+            "end_date",
+            "payments_total",
+            "orders_total",
+            "current_balance",
+            "created_at",
+            "updated_at",
+        ]

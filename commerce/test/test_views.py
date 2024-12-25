@@ -12,10 +12,13 @@ from editions.test.factories import EditionFactory
 from authentication.test.factories import UserFactory
 from users.test.factories import DealerFactory
 from commerce.models import Order
+from promotions.tasks import check_ended_promotions
 from .factories import Orderfactory, PaymentFactory
 from rest_framework import status
 from ..serializers import OrderSerializer, PaymentSerializer
 from ..models import Payment, MobilePayment
+from commerce.models import DealerBalance
+from commerce.test.factories import DealerBalanceFactory
 
 
 class OrderListCreateAPIViewAPITestCase(APITestCase):
@@ -933,3 +936,75 @@ class MobilePaymentOptionsViewTestCase(APITestCase):
         self.client.force_authenticate(user=self.dealer.user)
         response = self.client.post(self.url, {})
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+class DealerBalanceViewTestCase(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.client = APIClient()
+        cls.past_promotion = PromotionFactory(past=True)
+        cls.superuser = UserFactory(is_superuser=True)
+        cls.basic_user = UserFactory()
+        cls.dealer = DealerFactory(email="dealer@test.com")
+        # Se crea el primer balance con sin promocion
+        cls.dealer_user = UserFactory(email=cls.dealer.email)
+        check_ended_promotions()
+        # se agrega la promotion al balance
+        cls.promotion = PromotionFactory()
+        cls.dealer.refresh_from_db()
+        cls.url = reverse("last-dealer-balance")
+
+    def setUp(self):
+        self.client.force_authenticate(user=self.dealer.user)
+
+    def test_get_last_dealer_balance(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(DealerBalance.objects.count(), 1)
+        self.assertEqual(response.data["dealer"], self.dealer.user.id)
+        self.assertEqual(response.data["promotion"], self.promotion.id)
+        self.assertEqual(response.data["initial_balance"], "0.00")
+        self.assertEqual(response.data["initial_balance"], "0.00")
+
+    def test_superuser_cannot_get_last_dealer_balance(self):
+        self.client.logout()
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"], "Solo los detallistas pueden realizar esta acción"
+        )
+
+    def test_basic_user_cannot_get_last_dealer_balance(self):
+        self.client.logout()
+        self.client.force_authenticate(user=self.basic_user)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"], "Solo los detallistas pueden realizar esta acción"
+        )
+
+    def test_unauthenticated_user_cannot_get_last_dealer_balance(self):
+        self.client.logout()
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data["detail"], "Debe iniciar sesión para realizar esta acción"
+        )
+
+    def test_method_not_allowed(self):
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.data["detail"], 'Método "POST" no permitido.')
+
+    def test_no_balance_found(self):
+        DealerBalance.objects.all().delete()
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(
+            response.data["detail"], "No se encontró balance para el usuario actual."
+        )
