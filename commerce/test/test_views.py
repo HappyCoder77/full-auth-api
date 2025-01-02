@@ -952,7 +952,7 @@ class DealerBalanceViewTestCase(APITestCase):
         # se agrega la promotion al balance
         cls.promotion = PromotionFactory()
         cls.dealer.refresh_from_db()
-        cls.url = reverse("last-dealer-balance")
+        cls.url = reverse("dealer-balance")
 
     def setUp(self):
         self.client.force_authenticate(user=self.dealer.user)
