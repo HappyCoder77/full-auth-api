@@ -1006,5 +1006,6 @@ class DealerBalanceViewTestCase(APITestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(
-            response.data["detail"], "No se encontró balance para el usuario actual."
+            response.data["detail"],
+            "No se encontró ningún balance para el usuario actual.",
         )

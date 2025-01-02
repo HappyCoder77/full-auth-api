@@ -7,7 +7,7 @@ from .views import (
     MobilePaymentCreateView,
     PaymentOptionsView,
     MobilePaymentOptionsView,
-    LastDealerBalanceView,
+    DealerBalanceView,
 )
 
 
@@ -27,5 +27,5 @@ urlpatterns = [
         MobilePaymentOptionsView.as_view(),
         name="mobile-payment-options",
     ),
-    path("last-balance/", LastDealerBalanceView.as_view(), name="last-dealer-balance"),
+    path("last-balance/", DealerBalanceView.as_view(), name="last-dealer-balance"),
 ]

@@ -147,7 +147,7 @@ class MobilePaymentOptionsView(PaymentOptionsView):
         return Response(options, status=status.HTTP_200_OK)
 
 
-class LastDealerBalanceView(APIView):
+class DealerBalanceView(APIView):
     permission_classes = [IsAuthenticatedDealer]
 
     def get(self, request):
@@ -167,15 +167,15 @@ class LastDealerBalanceView(APIView):
             or an error message.
         """
         user = request.user
-        last_balance = (
+        balance = (
             DealerBalance.objects.filter(dealer=user).order_by("-start_date").first()
         )
 
-        if last_balance:
-            serializer = DealerBalanceSerializer(last_balance)
+        if balance:
+            serializer = DealerBalanceSerializer(balance)
             return Response(serializer.data)
 
         return Response(
-            {"detail": "No se encontró balance para el usuario actual."},
+            {"detail": "No se encontró ningún balance para el usuario actual."},
             status=status.HTTP_404_NOT_FOUND,
         )
