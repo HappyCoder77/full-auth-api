@@ -31,7 +31,7 @@ class Promotion(models.Model):
         "duración en días",
         default=1,
     )
-    end_date = models.DateTimeField("Date de finalización")
+    end_date = models.DateTimeField("Date de finalización", null=True, blank=True)
     pack_cost = models.DecimalField(
         verbose_name="costo unitario de pack", decimal_places=2, max_digits=4, default=0
     )
@@ -134,8 +134,13 @@ class Promotion(models.Model):
         verbose_name = "promotion"
         verbose_name_plural = "promotions"
 
-    def clean(self):  # validacion de las dates de la promotion
+    def clean(self):
+        unclose_promotions = self.__class__.objects.filter(balances_created=False)
 
+        if unclose_promotions.exists():
+            raise ValidationError(
+                "Hay promociones sin cerrar, no se puede crear una neva promoción."
+            )
         if self.pack_cost < 0:
             raise ValidationError(
                 "El costo del pack no puede ser una cantidad negativa"

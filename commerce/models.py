@@ -8,7 +8,7 @@ from django.core.validators import (
 )
 from django.db import models, transaction
 from django.dispatch import receiver
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.utils import timezone
 
 from editions.models import Edition, Box, Pack
@@ -238,25 +238,46 @@ class Payment(models.Model):
     payment_type = models.CharField(max_length=6, choices=PAYMENT_TYPES, default="bank")
 
     def __str__(self) -> str:
-        return f"{self.dealer.email} - {self.amount} - {self.date.date()}"
+        return (
+            f"{self.dealer.email} - {self.amount} - {self.payment_date} - {self.status}"
+        )
 
     def save(self, *args, **kwargs):
         self.amount = Decimal(str(self.amount)).quantize(Decimal("0.01"))
+        status_changed = False
+        if not self.pk:
+            # Enforce default status value on creation
+            self.status = "pending"
+        else:
+            # Only if the field status has changed the signal will be triggered
+            old_payment = Payment.objects.get(pk=self.pk)
+            if old_payment.status != self.status:
+                status_changed = True
         super().save(*args, **kwargs)
+        if status_changed:
+            self.handle_status_change()
+
+    def handle_status_change(self):
+        # Determine balances to update
+        affected_balances = DealerBalance.objects.filter(
+            dealer=self.dealer,
+            start_date__gte=self.payment_date,
+        ).order_by("start_date")
+
+        for idx, balance in enumerate(affected_balances):
+            balance.refresh_from_db()
+            current_balance = balance.current_balance
+
+            if idx < len(affected_balances) - 1:
+                next_balance = affected_balances[idx + 1]
+                next_balance.initial_balance = current_balance
+                next_balance.save()
 
 
-@receiver(post_save, sender=Payment)
-def handle_payment_save(sender, instance, created, **kwargs):
-
+@receiver(post_delete, sender=Payment)
+def handle_payment_delete(sender, instance, **kwargs):
     if instance.status == "completed":
-        affected_balance = DealerBalance.objects.filter(
-            dealer=instance.dealer,
-            start_date__lte=instance.payment_date,
-            promotion__end_date__date__gte=instance.payment_date,
-        ).first()
-
-        if affected_balance:
-            affected_balance.update_subsequent_balances()
+        instance.handle_status_change()
 
 
 class MobilePayment(Payment):
@@ -305,6 +326,9 @@ class DealerBalance(models.Model):
     para evitar fallos en casos extremos como promociones
     de un dia consecutivas"""
 
+    def __str__(self):
+        return f"{self.dealer.email} - {self.start_date} - {self.promotion.end_date.date()}"
+
     @property
     def end_date(self):
 
@@ -324,7 +348,11 @@ class DealerBalance(models.Model):
         if self.end_date:
             filters["payment_date__lt"] = self.end_date
 
-        return sum(payment.amount for payment in Payment.objects.filter(**filters))
+        result = Payment.objects.filter(**filters).aggregate(
+            total=models.Sum("amount")
+        )["total"] or Decimal("0.00")
+
+        return result
 
     @property
     def orders_total(self):
@@ -341,18 +369,3 @@ class DealerBalance(models.Model):
     @property
     def current_balance(self):
         return self.initial_balance + self.orders_total - self.payments_total
-
-    def update_subsequent_balances(self):
-        """Actualiza los balances posteriores cuando hay cambios en pagos"""
-        next_balance = (
-            DealerBalance.objects.filter(
-                dealer=self.dealer, promotion__start_date__gt=self.promotion.end_date
-            )
-            .order_by("promotion__start_date")
-            .first()
-        )
-
-        if next_balance and self.current_balance > 0:
-            next_balance.initial_balance = self.current_balance
-            next_balance.save()
-            next_balance.update_subsequent_balances()

@@ -17,7 +17,7 @@ def check_ended_promotions():
         end_date__date__lte=today,
         balances_created=False,
     )
-    print("ended_promotions", ended_promotions)
+    logger.info(f"ended_promotions: {ended_promotions}")
     logger.info(f"Found {ended_promotions.count()} ended promotions")
 
     for promotion in ended_promotions:

@@ -42,16 +42,17 @@ def handle_promotion_ending(sender, instance, created, **kwargs):
             dealers = Dealer.objects.all()
 
             for dealer in dealers:
+                print("dealer: ", dealer.user)
                 last_balance = DealerBalance.objects.filter(
                     dealer=dealer.user, promotion=instance
                 ).first()
-
+                print("last balance: ", last_balance)
                 open_balance = DealerBalance.objects.filter(
                     dealer=dealer.user,
                     promotion=None,
                     start_date=instance.end_date.date() + timedelta(days=1),
                 ).first()
-
+                print(open_balance)
                 if not open_balance:
                     DealerBalance.objects.create(
                         dealer=dealer.user,
