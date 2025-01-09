@@ -8,7 +8,8 @@ from django.core.validators import (
 )
 from django.db import models, transaction
 from django.dispatch import receiver
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_delete
+from django.db.models import Q
 from django.utils import timezone
 
 from editions.models import Edition, Box, Pack
@@ -279,19 +280,30 @@ class Payment(models.Model):
 
     def handle_status_change(self):
         # Determine balances to update
-        affected_balances = DealerBalance.objects.filter(
-            dealer=self.dealer,
-            start_date__gte=self.payment_date,
-        ).order_by("start_date")
-
+        affected_balances = (
+            DealerBalance.objects.filter(
+                dealer=self.dealer,
+            )
+            .filter(
+                Q(promotion__end_date__gte=self.payment_date)  # Balances with promotion
+                | Q(promotion__isnull=True)  # The single open balance, if exists
+            )
+            .order_by("start_date")
+        )
+        print(("affected_balances: ", affected_balances))
         for idx, balance in enumerate(affected_balances):
+            print("idx: ", idx)
+            print("balance: ", balance)
             balance.refresh_from_db()
             current_balance = balance.current_balance
+            print("current_balance: ", current_balance)
 
             if idx < len(affected_balances) - 1:
                 next_balance = affected_balances[idx + 1]
+                print("next_balance: ", next_balance)
                 next_balance.initial_balance = current_balance
                 next_balance.save()
+                print("next_balance.initial_balance: ", next_balance.initial_balance)
 
 
 @receiver(post_delete, sender=Payment)
@@ -324,9 +336,7 @@ class MobilePayment(Payment):
 
 
 class DealerBalance(models.Model):
-    dealer = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="promotion_balances"
-    )
+    dealer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="balances")
     promotion = models.ForeignKey(
         Promotion,
         on_delete=models.CASCADE,
@@ -354,7 +364,7 @@ class DealerBalance(models.Model):
     def end_date(self):
 
         if self.promotion:
-            return self.promotion.end_date.date() + timedelta(days=1)
+            return self.promotion.end_date.date()
 
         return None
 
@@ -367,7 +377,7 @@ class DealerBalance(models.Model):
         }
 
         if self.end_date:
-            filters["payment_date__lt"] = self.end_date
+            filters["payment_date__lte"] = self.end_date
 
         result = Payment.objects.filter(**filters).aggregate(
             total=models.Sum("amount")

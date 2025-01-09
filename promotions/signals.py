@@ -4,7 +4,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from .models import Promotion
 from commerce.models import DealerBalance
-from users.models import Dealer  # Import the Dealer model directly
+from users.models import Dealer
 
 
 @receiver(post_save, sender=Promotion)
@@ -37,22 +37,19 @@ def handle_promotion_ending(sender, instance, created, **kwargs):
             balance.promotion = instance
             balance.save()
     else:
-
-        if instance.end_date.date() < timezone.now().date():
+        if instance.end_date.date() <= timezone.now().date():
             dealers = Dealer.objects.all()
 
             for dealer in dealers:
-                print("dealer: ", dealer.user)
                 last_balance = DealerBalance.objects.filter(
                     dealer=dealer.user, promotion=instance
                 ).first()
-                print("last balance: ", last_balance)
                 open_balance = DealerBalance.objects.filter(
                     dealer=dealer.user,
                     promotion=None,
                     start_date=instance.end_date.date() + timedelta(days=1),
                 ).first()
-                print(open_balance)
+
                 if not open_balance:
                     DealerBalance.objects.create(
                         dealer=dealer.user,
