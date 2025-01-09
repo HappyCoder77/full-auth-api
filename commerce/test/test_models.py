@@ -29,17 +29,21 @@ class SaleTestCase(TestCase):
     def setUpTestData(cls):
         cls.promotion = PromotionFactory()
         cls.edition = EditionFactory(promotion=cls.promotion)
-        cls.dealer = UserFactory()
+        cls.user = UserFactory()
+        cls.dealer = DealerFactory(user=cls.user, email=cls.user.email)
         cls.collector = UserFactory()
-        cls.order = Orderfactory(dealer=cls.dealer, edition=cls.edition)
+        cls.order = Orderfactory(dealer=cls.dealer.user, edition=cls.edition)
         cls.sale = SaleFactory(
-            date=NOW, edition=cls.edition, dealer=cls.dealer, collector=cls.collector
+            date=NOW,
+            edition=cls.edition,
+            dealer=cls.dealer.user,
+            collector=cls.collector,
         )
 
     def test_sale_data(self):
         self.assertEqual(self.sale.date, NOW)
         self.assertEqual(self.sale.edition, self.edition)
-        self.assertEqual(self.sale.dealer, self.dealer)
+        self.assertEqual(self.sale.dealer, self.dealer.user)
         self.assertEqual(self.sale.collector, self.collector)
         self.assertEqual(self.sale.quantity, 1)
         self.assertEqual(
@@ -55,7 +59,7 @@ class SaleTestCase(TestCase):
         sale = SaleFactory(
             date=NOW,
             edition=self.edition,
-            dealer=self.dealer,
+            dealer=self.dealer.user,
             collector=self.collector,
             quantity=15,
         )
@@ -74,12 +78,13 @@ class OrderTestCase(TestCase):
     def setUp(self):
         self.promotion = PromotionFactory()
         self.edition = EditionFactory(promotion=self.promotion)
-        self.dealer = UserFactory()
+        self.user = UserFactory()
+        self.dealer = DealerFactory(user=self.user, email=self.user.email)
 
     def test_order_data(self):
         # TODO: eliminar tal vez el dealer ya que el factory lo agrega
         order = Orderfactory.build(
-            dealer=self.dealer,
+            dealer=self.dealer.user,
             edition=self.edition,
         )
         order.full_clean()
@@ -87,7 +92,7 @@ class OrderTestCase(TestCase):
         amount = order.pack_cost * order.box.packs.all().count()
         self.assertEqual(order.date, NOW.date())
         self.assertEqual(order.box, self.edition.boxes.first())
-        self.assertEqual(order.dealer, self.dealer)
+        self.assertEqual(order.dealer, self.dealer.user)
         self.assertEqual(order.pack_cost, 1.5)
         self.assertEqual(order.__str__(), f"{order.id} / {order.date}")
         self.assertEqual(order.amount, amount)
@@ -96,7 +101,7 @@ class OrderTestCase(TestCase):
         self.promotion.delete()
         PromotionFactory(past=True)
         order = Orderfactory.build(
-            dealer=self.dealer,
+            dealer=self.dealer.user,
             edition=self.edition,
         )
         with self.assertRaises(ValidationError):
@@ -105,7 +110,7 @@ class OrderTestCase(TestCase):
     def test_create_order_with_invalid_edition(self):
         PromotionFactory(past=True)
         order = Orderfactory.build(
-            dealer=self.dealer,
+            dealer=self.dealer.user,
             edition_id=10000,
         )
         with self.assertRaises(ValidationError):
@@ -113,17 +118,96 @@ class OrderTestCase(TestCase):
 
     def test_create_order_without_available_box(self):
         Orderfactory(
-            dealer=self.dealer,
+            dealer=self.dealer.user,
             edition=self.edition,
         )
 
         order = Orderfactory.build(
-            dealer=self.dealer,
+            dealer=self.dealer.user,
             edition=self.edition,
         )
 
         with self.assertRaises(ValidationError):
             order.full_clean()
+
+    def test_create_order_with_existing_stock(self):
+        # First order to create initial stock
+        first_order = Orderfactory(
+            dealer=self.dealer.user,
+            edition=self.edition,
+        )
+
+        # Attempt to create second order while having stock
+        second_order = Orderfactory.build(
+            dealer=self.dealer.user,
+            edition=self.edition,
+        )
+
+        with self.assertRaises(ValidationError) as context:
+            second_order.full_clean()
+
+        self.assertIn(
+            "No puedes comprar mas sobres mientras tengas inventario disponible",
+            str(context.exception),
+        )
+
+    def test_create_order_with_pending_balance(self):
+        # Create dealer balance with pending amount
+        DealerBalanceFactory(
+            start_date=self.promotion.start_date.date(),
+            dealer=self.dealer.user,
+            promotion=self.promotion,
+            initial_balance=100,
+        )
+
+        order = Orderfactory.build(
+            dealer=self.dealer.user,
+            edition=self.edition,
+        )
+
+        with self.assertRaises(ValidationError) as context:
+            order.full_clean()
+
+        self.assertIn(
+            "No puedes realizar nuevas compras mientras tengas saldo pendiente",
+            str(context.exception),
+        )
+
+    def test_create_order_with_zero_balance(self):
+        # Create dealer balance with zero balance
+        balance = DealerBalanceFactory(
+            start_date=self.promotion.start_date.date(),
+            dealer=self.dealer.user,
+            promotion=self.promotion,
+            initial_balance=0,
+        )
+
+        order = Orderfactory.build(
+            dealer=self.dealer.user,
+            edition=self.edition,
+        )
+        # Should not raise any validation errors
+        order.full_clean()
+
+    def test_create_order_with_negative_balance(self):
+        # Create dealer balance with zero balance
+        balance = DealerBalanceFactory(
+            start_date=self.promotion.start_date.date(),
+            dealer=self.dealer.user,
+            promotion=self.promotion,
+            initial_balance=0,
+        )
+        PaymentFactory(
+            dealer=self.dealer.user,
+            amount=100,
+            payment_date=self.promotion.start_date.date(),
+        )
+        order = Orderfactory.build(
+            dealer=self.dealer.user,
+            edition=self.edition,
+        )
+        # Should not raise any validation errors
+        order.full_clean()
 
 
 class PaymentTestCase(TestCase):

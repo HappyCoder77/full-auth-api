@@ -137,6 +137,26 @@ class Order(models.Model):
         if not Edition.objects.filter(pk=self.edition_id).exists():
             raise ValidationError("No existe ninguna edición con el id suministrado")
 
+        current_pack_stock = self.dealer.baseprofile.dealer.get_pack_stock(
+            edition_id=self.edition_id
+        )
+
+        dealer_balance = (
+            DealerBalance.objects.filter(dealer=self.dealer, promotion__isnull=False)
+            .order_by("-start_date")
+            .first()
+        )
+
+        if dealer_balance and dealer_balance.current_balance > 0:
+            raise ValidationError(
+                "No puedes realizar nuevas compras mientras tengas saldo pendiente"
+            )
+
+        if current_pack_stock > 0:
+            raise ValidationError(
+                "No puedes comprar mas sobres mientras tengas inventario disponible"
+            )
+
         box = Box.objects.filter(edition=self.edition, order__isnull=True).first()
 
         if not box:
@@ -327,7 +347,8 @@ class DealerBalance(models.Model):
     de un dia consecutivas"""
 
     def __str__(self):
-        return f"{self.dealer.email} - {self.start_date} - {self.promotion.end_date.date()}"
+        promotion_date = self.promotion.end_date.date() if self.promotion else "*"
+        return f"{self.dealer.email} - {self.start_date} - {promotion_date}"
 
     @property
     def end_date(self):

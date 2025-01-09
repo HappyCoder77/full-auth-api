@@ -158,7 +158,8 @@ class OrderListCreateAPIViewAPITestCase(APITestCase):
         )
 
     def test_create_order_with_no_available_box(self):
-        Orderfactory(edition=self.edition)
+        dealer = DealerFactory(user=UserFactory())
+        Orderfactory(edition=self.edition, dealer=dealer.user)
         self.client.force_authenticate(user=self.dealer.user)
         data = {"edition": self.edition.id}
 
