@@ -14,7 +14,7 @@ def check_ended_promotions():
     logger.info(f"Today's date: {today}")
 
     ended_promotions = Promotion.objects.filter(
-        end_date__date__lte=today,
+        end_date__lte=today,
         balances_created=False,
     )
     logger.info(f"ended_promotions: {ended_promotions}")

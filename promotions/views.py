@@ -14,24 +14,23 @@ class PromotionViewSet(viewsets.ModelViewSet):
     """
     Vista para manejar las promociones
     """
+
     # evitar borrado o actualizacion del registro
     queryset = Promotion.objects.all()
     serializer_class = PromotionSerializer
     permission_classes = [PromotionPermission]
 
     def get_current_promotion(self):
-        now = timezone.now()
+        now = timezone.now().date()
+
         try:
-            promotion = Promotion.objects.get(
-                start_date__lte=now,
-                end_date__gte=now
-            )
+            promotion = Promotion.objects.get(start_date__lte=now, end_date__gte=now)
         except Promotion.DoesNotExist:
             return None
 
         return promotion
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def current(self, request):
         promotion = self.get_current_promotion()
 
@@ -42,19 +41,26 @@ class PromotionViewSet(viewsets.ModelViewSet):
         return Response(None)
 
     def handle_exception(self, exc):
+
         if isinstance(exc, DetailedPermissionDenied):
-            return Response({'detail': str(exc.detail)}, status=exc.status_code)
+            return Response({"detail": str(exc.detail)}, status=exc.status_code)
 
         elif isinstance(exc, Http404):
-            return Response({'detail': 'No encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "No encontrado."}, status=status.HTTP_404_NOT_FOUND
+            )
 
         elif isinstance(exc, MethodNotAllowed):
-            return Response({'detail': 'Método no permitido.'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+            return Response(
+                {"detail": "Método no permitido."},
+                status=status.HTTP_405_METHOD_NOT_ALLOWED,
+            )
 
         return Response(
-            {'detail': 'Se produjo un error inesperado.'},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            {"detail": "Se produjo un error inesperado."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def force_error(self, request):
         raise APIException("Error forzado para prueba.")

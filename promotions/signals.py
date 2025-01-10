@@ -37,7 +37,7 @@ def handle_promotion_ending(sender, instance, created, **kwargs):
             balance.promotion = instance
             balance.save()
     else:
-        if instance.end_date.date() <= timezone.now().date():
+        if instance.end_date <= timezone.now().date():
             dealers = Dealer.objects.all()
 
             for dealer in dealers:

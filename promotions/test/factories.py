@@ -14,13 +14,20 @@ class PromotionFactory(factory.django.DjangoModelFactory):
         model = Promotion
 
     class Params:
-        now = timezone.now()
         past = factory.Trait(
-            start_date=now - timedelta(days=3),
-            end_date=now - timedelta(days=2),
+            start_date=factory.LazyAttribute(
+                lambda o: timezone.now().date() - timedelta(days=3)
+            ),
+            end_date=factory.LazyAttribute(
+                lambda o: timezone.now().date() - timedelta(days=2)
+            ),
         )
 
         future = factory.Trait(
-            start_date=now + timedelta(days=2),
-            end_date=now + timedelta(days=2),
+            start_date=factory.LazyAttribute(
+                lambda o: timezone.now().date() + timedelta(days=2)
+            ),
+            end_date=factory.LazyAttribute(
+                lambda o: timezone.now().date() + timedelta(days=3)
+            ),
         )

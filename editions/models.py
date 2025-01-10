@@ -14,17 +14,21 @@ from collection_manager.models import Collection, Coordinate
 User = get_user_model()
 
 
-class Edition(models.Model):  # clase para crear las editiones que se haran en cada promoción
+class Edition(
+    models.Model
+):  # clase para crear las editiones que se haran en cada promoción
     """TODO: Explorar una mecanica de creacion mas eficiente y menos propensa a errores.
     Podria ser creando pack y boxes
     sobre la marcha,consolidando el atributo edition en un solo lugar,
     Se podria crear un clase diagramado o algo asi para contener la configuracion del album
     crear rama para este trabajo exclusivamente"""
+
     promotion = models.ForeignKey(Promotion, on_delete=models.CASCADE)
     # TODO: este campo deberia null True porque se establece a traves del metodo clean
     collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
     circulation = models.DecimalField(
-        max_digits=20, decimal_places=0, default=Decimal('1'))
+        max_digits=20, decimal_places=0, default=Decimal("1")
+    )
 
     class Meta:
         verbose_name = "Edition"
@@ -35,44 +39,46 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
 
     def clean(self):
         try:  # verifica que exista una promotion
-            last_promotion = Promotion.objects.latest(
-                'end_date')
+            last_promotion = Promotion.objects.latest("end_date")
         except Promotion.DoesNotExist:
             last_promotion = None
         # valida la creación del registro dependiendo de si existe o no una promoción
         # anterior o, en caso de existir, que la misma no haya terminado
 
-        if last_promotion == None or last_promotion.end_date < timezone.now():
+        if last_promotion == None or last_promotion.end_date < timezone.now().date():
             raise ValidationError(
-                '''No hay ninguna promoción en curso.
+                """No hay ninguna promoción en curso.
             Por lo tanto, debe crearla primero y luego
-            intentar de nuevo agregar este registro'''
+            intentar de nuevo agregar este registro"""
             )
         else:
             try:  # verifica que no exista otra collection con el mismo name
                 collection = self.__class__.objects.get(
-                    collection=self.collection, promotion=last_promotion)
+                    collection=self.collection, promotion=last_promotion
+                )
             except self.__class__.DoesNotExist:
                 collection = None
 
             if collection != None:
                 raise ValidationError(
-                    '''Ya existe una edición con la misma colección;
-                    quiza deberia considerar realizar una reedición.'''
+                    """Ya existe una edición con la misma colección;
+                    quiza deberia considerar realizar una reedición."""
                 )
             else:
                 standard_prize = self.collection.standard_prizes.first()
-                if standard_prize.description == 'descripción de premio standard':
+                if standard_prize.description == "descripción de premio standard":
                     raise ValidationError(
-                        '''La edición a la que se hace referencia parece no tener definidos los premios
-                        standard. Revise e intente de nuevo guardar el registro''')
+                        """La edición a la que se hace referencia parece no tener definidos los premios
+                        standard. Revise e intente de nuevo guardar el registro"""
+                    )
 
                 surprise_prize = self.collection.surprise_prizes.first()
 
-                if surprise_prize.description == 'descripción de premio sorpresa':
+                if surprise_prize.description == "descripción de premio sorpresa":
                     raise ValidationError(
-                        '''La edición a la que se hace referencia parece no tener definidos los prizes
-                        sorpresa. Revise e intente de nuevo guardar el registro''')
+                        """La edición a la que se hace referencia parece no tener definidos los prizes
+                        sorpresa. Revise e intente de nuevo guardar el registro"""
+                    )
 
             self.promotion = last_promotion
 
@@ -105,19 +111,18 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
             # asigna el limit de circulation, dependiendo de si
             # es una barajia premiada o no
             if each_coordinate.rarity_factor == prize_rarity:
-                limit = (each_coordinate.rarity_factor *
-                         self.circulation).quantize(Decimal('1'), rounding=ROUND_CEILING)
+                limit = (each_coordinate.rarity_factor * self.circulation).quantize(
+                    Decimal("1"), rounding=ROUND_CEILING
+                )
             else:
-                limit = (each_coordinate.rarity_factor *
-                         self.circulation).quantize(Decimal('1'), rounding=ROUND_DOWN)
+                limit = (each_coordinate.rarity_factor * self.circulation).quantize(
+                    Decimal("1"), rounding=ROUND_DOWN
+                )
 
             sticker_list = []
 
             while circulation_counter <= limit:
-                sticker = Sticker(
-                    coordinate=each_coordinate,
-                    ordinal=ordinal
-                )
+                sticker = Sticker(coordinate=each_coordinate, ordinal=ordinal)
 
                 sticker_list.append(sticker)
 
@@ -132,7 +137,7 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
     # aplica orden aleatorio a los valores del atributo ordinal de los stickers
 
     def shuffle_stickers(self):
-        stickers = Sticker.objects.filter(pack__isnull=True).only('ordinal')
+        stickers = Sticker.objects.filter(pack__isnull=True).only("ordinal")
         list = []
         counter = 1
 
@@ -154,7 +159,8 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
         pack_list = []
         stickers = Decimal(Sticker.objects.filter(pack__isnull=True).count())
         limit = (stickers / self.collection.STICKERS_PER_PACK).quantize(
-            Decimal('1'), rounding=ROUND_CEILING)
+            Decimal("1"), rounding=ROUND_CEILING
+        )
 
         counter = 1
 
@@ -175,19 +181,18 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
         sticker_list = []
         packs = iter(Pack.objects.filter(box__isnull=True))
 
-        stickers = iter(Sticker.objects.filter(
-            pack__isnull=True).order_by('ordinal'))
+        stickers = iter(Sticker.objects.filter(pack__isnull=True).order_by("ordinal"))
         counter_stickers = 1
 
         while True:
-            pack = next(packs, 'end_of_packs')
+            pack = next(packs, "end_of_packs")
 
-            if pack != 'end_of_packs':
+            if pack != "end_of_packs":
 
                 while True:
-                    sticker = next(stickers, 'end_of_stickers')
+                    sticker = next(stickers, "end_of_stickers")
 
-                    if sticker != 'end_of_stickers':
+                    if sticker != "end_of_stickers":
                         sticker.pack = pack
                         sticker_list.append(sticker)
                         counter_stickers += 1
@@ -202,21 +207,27 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
             else:
                 break
 
-        Sticker.objects.bulk_update(sticker_list, ['pack'])
+        Sticker.objects.bulk_update(sticker_list, ["pack"])
 
     def shuffle_packs(self):  # desordena el atributo ordinal de los packs
         packs = Pack.objects.filter(box__isnull=True)
         list = []
         counter = 1
 
-        while counter <= packs.count():  # llena una list auxiliar con los ordinales de los packs
+        while (
+            counter <= packs.count()
+        ):  # llena una list auxiliar con los ordinales de los packs
             list.append(counter)
             counter += 1
 
         random.shuffle(list)  # desordena la list auxiliar
         counter = 0
 
-        for each_pack in packs:  # reasigna los valores desordenados al atributo ordinal de cada pack
+        for (
+            each_pack
+        ) in (
+            packs
+        ):  # reasigna los valores desordenados al atributo ordinal de cada pack
             each_pack.ordinal = list[counter]
             each_pack.save()
             counter += 1
@@ -224,8 +235,9 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
     def create_boxes(self):  # crea los boxes correspondientes a la edition
         box_list = []
         total_packs = Pack.objects.filter(box__isnull=True).count()
-        limit = Decimal(
-            total_packs / self.collection.PACKS_PER_BOX).quantize(Decimal('1'), rounding=ROUND_CEILING)
+        limit = Decimal(total_packs / self.collection.PACKS_PER_BOX).quantize(
+            Decimal("1"), rounding=ROUND_CEILING
+        )
         counter = 1
 
         while counter <= limit:
@@ -246,41 +258,35 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
         boxes = list(self.boxes.all())
         # print("available boxes: ", len(boxes))
         standard_packs = list(
-            Pack.objects.filter(
-                box__isnull=True
-            ).annotate(
-                Count('stickers')
-            ).exclude(
-                stickers__coordinate__page=99
-            ).order_by('ordinal')
+            Pack.objects.filter(box__isnull=True)
+            .annotate(Count("stickers"))
+            .exclude(stickers__coordinate__page=99)
+            .order_by("ordinal")
         )
         # print("standars packs: ", len(standard_packs))
         prize_packs = list(
-            Pack.objects.filter(
-                box__isnull=True
-            ).annotate(
-                Count('stickers')
-            ).filter(
-                stickers__coordinate__page=99
-            ).order_by('ordinal')
+            Pack.objects.filter(box__isnull=True)
+            .annotate(Count("stickers"))
+            .filter(stickers__coordinate__page=99)
+            .order_by("ordinal")
         )
         # print("prize packs: ", len(prize_packs))
-        random_number_1 = random.randrange(
-            1, self.collection.PACKS_PER_BOX)
+        random_number_1 = random.randrange(1, self.collection.PACKS_PER_BOX)
         pack_counter = 1
 
         random_number_2 = 0
 
         while True:
             # determina la posicion en el box del segundo pack premiado
-            random_number_2 = random.randrange(
-                1, self.collection.PACKS_PER_BOX)
+            random_number_2 = random.randrange(1, self.collection.PACKS_PER_BOX)
             """Como en el ciclo de llenado de los boxes al agregar un prize pack sea agrega
             un standar pack inmediatamente, se deben evitar aletorios contiuos hacia arriba o
             hacia abajo"""
-            if (random_number_2 != random_number_1 and
-                random_number_2 != (random_number_1 + 1) and
-                    random_number_2 != (random_number_1 - 1)):
+            if (
+                random_number_2 != random_number_1
+                and random_number_2 != (random_number_1 + 1)
+                and random_number_2 != (random_number_1 - 1)
+            ):
                 break
 
         standard_packs_iter = iter(standard_packs)
@@ -292,17 +298,21 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
             # print("random 2: ", random_number_2)
             while True:
                 # iteración pack cada pack
-                standar_pack = next(standard_packs_iter, 'end_of_file')
+                standar_pack = next(standard_packs_iter, "end_of_file")
 
-                if standar_pack != 'end_of_file':
+                if standar_pack != "end_of_file":
 
-                    if pack_counter == random_number_1 or pack_counter == random_number_2:
+                    if (
+                        pack_counter == random_number_1
+                        or pack_counter == random_number_2
+                    ):
                         # print(
                         # f"colocando {standar_pack} en posición {pack_counter}")
-                        prize_pack = next(
-                            prize_packs_iter, 'end_of_file')
+                        prize_pack = next(prize_packs_iter, "end_of_file")
 
-                        if prize_pack != 'end_of_file':  # si la posicion es para pack premiado
+                        if (
+                            prize_pack != "end_of_file"
+                        ):  # si la posicion es para pack premiado
                             # se guarda un pack premiado y uno standard
                             prize_pack.box = box
                             prize_pack.save()
@@ -325,7 +335,9 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
                         pack_list.append(standar_pack)
                         pack_counter += 1
 
-                    if pack_counter > self.collection.PACKS_PER_BOX:  # si se alcanza el number de packs
+                    if (
+                        pack_counter > self.collection.PACKS_PER_BOX
+                    ):  # si se alcanza el number de packs
                         # necesarios, se reinicia el counter
                         # de packs y se adelanta el counter de boxes
                         # print("reiniciando contador para proximo box")
@@ -333,14 +345,18 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
                         # counter_boxes += 1 #adelanto el counter de boxes
                         # se recalculan las posiciones premiadas
                         random_number_1 = random.randrange(
-                            1, self.collection.PACKS_PER_BOX)
+                            1, self.collection.PACKS_PER_BOX
+                        )
 
                         while True:
                             random_number_2 = random.randrange(
-                                1, self.collection.PACKS_PER_BOX)
+                                1, self.collection.PACKS_PER_BOX
+                            )
 
-                            if (random_number_2 != random_number_1
-                                    and random_number_2 != (random_number_1 + 1)):
+                            if (
+                                random_number_2 != random_number_1
+                                and random_number_2 != (random_number_1 + 1)
+                            ):
 
                                 break  # salgo del bucle de los aleatorios
                         break  # y salgo del bucle de los packs
@@ -358,22 +374,18 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
                     # si se acabaron los packs standard y aun quedan premiados, se continúan
                     # colocando en el box
                     remaining_packs = list(
-                        Pack.objects.filter(
-                            box__isnull=True
-                        ).annotate(
-                            Count('stickers')
-                        ).filter(
-                            stickers__coordinate__page=99
-                        ).order_by('ordinal')
+                        Pack.objects.filter(box__isnull=True)
+                        .annotate(Count("stickers"))
+                        .filter(stickers__coordinate__page=99)
+                        .order_by("ordinal")
                     )
                     # print("remaining packs: ", len(remaining_packs))
                     remaining_packs_iter = iter(remaining_packs)
 
                     while True:
-                        prize_pack = next(
-                            remaining_packs_iter, 'end_of_file')
+                        prize_pack = next(remaining_packs_iter, "end_of_file")
 
-                        if prize_pack != 'end_of_file':
+                        if prize_pack != "end_of_file":
                             # print(
                             #     f"colocando {prize_pack} en posición {pack_counter}")
 
@@ -388,7 +400,7 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
             else:  # salgo del bucle de los boxes
                 break
 
-        Pack.objects.bulk_update(pack_list, ['box'])
+        Pack.objects.bulk_update(pack_list, ["box"])
         # print("prize packs boxed: ", len(list(
         #     Pack.objects.filter(
         #         box__isnull=False
@@ -447,35 +459,37 @@ class Edition(models.Model):  # clase para crear las editiones que se haran en c
             cada_box.ordinal = list[counter]
             counter += 1
 
-        Box.objects.bulk_update(boxes, ['ordinal'])
+        Box.objects.bulk_update(boxes, ["ordinal"])
 
 
 class Box(models.Model):
-    edition = models.ForeignKey(
-        Edition, on_delete=models.CASCADE, related_name='boxes')
-    ordinal = models.BigIntegerField('ordinal_box', default=0)
+    edition = models.ForeignKey(Edition, on_delete=models.CASCADE, related_name="boxes")
+    ordinal = models.BigIntegerField("ordinal_box", default=0)
 
     class Meta:
         verbose_name_plural = "boxes"
-        ordering = ['ordinal',]
+        ordering = [
+            "ordinal",
+        ]
 
     def __str__(self):
-        return f'Box N°: {self.id}, ordinal: {self.ordinal}'
+        return f"Box N°: {self.id}, ordinal: {self.ordinal}"
 
 
 class Pack(models.Model):
     box = models.ForeignKey(
-        Box, null=True, blank=True, on_delete=models.CASCADE, related_name='packs')
-    ordinal = models.BigIntegerField('pack_ordinal', default=0)
+        Box, null=True, blank=True, on_delete=models.CASCADE, related_name="packs"
+    )
+    ordinal = models.BigIntegerField("pack_ordinal", default=0)
     # sale = models.ForeignKey(
     #     Sale, on_delete=models.CASCADE, null=True, related_name='packs')
 
-    @ property
+    @property
     def edition(self):
         return self.box.edition
 
     def __str__(self):
-        return f'Pack N°: {self.id}'
+        return f"Pack N°: {self.id}"
 
     def open(self, user):
         """
@@ -491,14 +505,19 @@ class Pack(models.Model):
             each_sticker.save()
 
 
-class Sticker(models.Model):  # instancia ejemplares de cada sticker definida en las coordinates
-    pack = models.ForeignKey(Pack, null=True, blank=True,
-                             on_delete=models.CASCADE, related_name='stickers')
+class Sticker(
+    models.Model
+):  # instancia ejemplares de cada sticker definida en las coordinates
+    pack = models.ForeignKey(
+        Pack, null=True, blank=True, on_delete=models.CASCADE, related_name="stickers"
+    )
     coordinate = models.ForeignKey(
-        Coordinate, on_delete=models.CASCADE, null=True, related_name='stickers')
-    ordinal = models.IntegerField('Number ordinal de sticker')
+        Coordinate, on_delete=models.CASCADE, null=True, related_name="stickers"
+    )
+    ordinal = models.IntegerField("Number ordinal de sticker")
     collector = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='stickers', null=True, blank=True)
+        User, on_delete=models.CASCADE, related_name="stickers", null=True, blank=True
+    )
     on_the_board = models.BooleanField(default=False)
 
     def __str__(self):
@@ -519,12 +538,12 @@ class Sticker(models.Model):  # instancia ejemplares de cada sticker definida en
         return self.coordinate.absolute_number
 
     @property
-    @admin.display(ordering='sticker__page')
+    @admin.display(ordering="sticker__page")
     def page(self):
         return self.coordinate.page
 
     @property
-    @admin.display(ordering='sticker__rarity_factor')
+    @admin.display(ordering="sticker__rarity_factor")
     def rarity(self):
         return self.coordinate.rarity_factor
 

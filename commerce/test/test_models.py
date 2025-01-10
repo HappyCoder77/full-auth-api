@@ -154,7 +154,7 @@ class OrderTestCase(TestCase):
     def test_create_order_with_pending_balance(self):
         # Create dealer balance with pending amount
         DealerBalanceFactory(
-            start_date=self.promotion.start_date.date(),
+            start_date=self.promotion.start_date,
             dealer=self.dealer.user,
             promotion=self.promotion,
             initial_balance=100,
@@ -176,7 +176,7 @@ class OrderTestCase(TestCase):
     def test_create_order_with_zero_balance(self):
         # Create dealer balance with zero balance
         balance = DealerBalanceFactory(
-            start_date=self.promotion.start_date.date(),
+            start_date=self.promotion.start_date,
             dealer=self.dealer.user,
             promotion=self.promotion,
             initial_balance=0,
@@ -192,7 +192,7 @@ class OrderTestCase(TestCase):
     def test_create_order_with_negative_balance(self):
         # Create dealer balance with zero balance
         balance = DealerBalanceFactory(
-            start_date=self.promotion.start_date.date(),
+            start_date=self.promotion.start_date,
             dealer=self.dealer.user,
             promotion=self.promotion,
             initial_balance=0,
@@ -200,7 +200,7 @@ class OrderTestCase(TestCase):
         PaymentFactory(
             dealer=self.dealer.user,
             amount=100,
-            payment_date=self.promotion.start_date.date(),
+            payment_date=self.promotion.start_date,
         )
         order = Orderfactory.build(
             dealer=self.dealer.user,
@@ -455,19 +455,19 @@ class DealerBalanceTestCase(TestCase):
             promotion=cls.current_promotion, collection__name="Angela", circulation=2
         )
         Orderfactory(
-            date=cls.past_promotion.start_date.date(),
+            date=cls.past_promotion.start_date,
             dealer=cls.dealer.user,
             edition=cls.past_edition,
         )
         Orderfactory(
-            date=cls.current_promotion.start_date.date(),
+            date=cls.current_promotion.start_date,
             dealer=cls.dealer.user,
             edition=cls.current_edition,
         )
 
     def setUp(self):
         self.past_dealer_balance = DealerBalanceFactory(
-            start_date=self.past_promotion.start_date.date(),
+            start_date=self.past_promotion.start_date,
             dealer=self.dealer.user,
             promotion=self.past_promotion,
             initial_balance=Decimal("100.00"),
@@ -476,7 +476,7 @@ class DealerBalanceTestCase(TestCase):
         self.current_dealer_balance = DealerBalanceFactory(
             dealer=self.dealer.user,
             promotion=self.current_promotion,
-            start_date=self.past_promotion.end_date.date() + timedelta(days=1),
+            start_date=self.past_promotion.end_date + timedelta(days=1),
             initial_balance=self.past_dealer_balance.current_balance,
         )
 
@@ -490,19 +490,18 @@ class DealerBalanceTestCase(TestCase):
         self.assertEqual(self.past_dealer_balance.initial_balance, 100)
         self.assertEqual(self.current_dealer_balance.initial_balance, 122.50)
         self.assertEqual(
-            self.past_dealer_balance.start_date, self.past_promotion.start_date.date()
+            self.past_dealer_balance.start_date, self.past_promotion.start_date
         )
         self.assertEqual(
             self.current_dealer_balance.start_date,
-            self.past_promotion.end_date.date() + timedelta(days=1),
+            self.past_promotion.end_date + timedelta(days=1),
         )
         self.assertEqual(
-            self.past_dealer_balance.end_date,
-            self.past_promotion.end_date.date() + timedelta(days=1),
+            self.past_dealer_balance.end_date, self.past_promotion.end_date
         )
         self.assertEqual(
             self.current_dealer_balance.end_date,
-            self.current_promotion.end_date.date() + timedelta(days=1),
+            self.current_promotion.end_date,
         )
         self.assertEqual(self.past_dealer_balance.orders_total, 22.50)
         self.assertEqual(self.current_dealer_balance.orders_total, 45)
@@ -515,7 +514,7 @@ class DealerBalanceTestCase(TestCase):
 
         payment = PaymentFactory(
             dealer=self.dealer.user,
-            payment_date=self.past_promotion.start_date.date(),
+            payment_date=self.past_promotion.start_date,
             amount="25",
         )
         payment.status = "completed"
@@ -535,7 +534,7 @@ class DealerBalanceTestCase(TestCase):
     def test_balance_data_after_add_payment_to_current_balance(self):
         payment = PaymentFactory(
             dealer=self.dealer.user,
-            payment_date=self.current_promotion.start_date.date(),
+            payment_date=self.current_promotion.start_date,
             amount="25",
         )
         payment.status = "completed"
@@ -552,7 +551,7 @@ class DealerBalanceTestCase(TestCase):
     def test_balance_data_after_add_payments_out_of_promotions_ranges(self):
         payment = PaymentFactory(
             dealer=self.dealer.user,
-            payment_date=self.past_promotion.start_date.date() - timedelta(days=1),
+            payment_date=self.past_promotion.start_date - timedelta(days=1),
             amount="25",
         )
         payment.status = "completed"
@@ -560,7 +559,7 @@ class DealerBalanceTestCase(TestCase):
 
         payment2 = PaymentFactory(
             dealer=self.dealer.user,
-            payment_date=self.past_promotion.end_date.date() + timedelta(days=1),
+            payment_date=self.past_promotion.end_date + timedelta(days=1),
             amount="15",
         )
         payment2.status = "completed"
@@ -568,7 +567,7 @@ class DealerBalanceTestCase(TestCase):
 
         payment3 = PaymentFactory(
             dealer=self.dealer.user,
-            payment_date=self.current_promotion.end_date.date() + timedelta(days=1),
+            payment_date=self.current_promotion.end_date + timedelta(days=1),
             amount="50",
         )
         payment3.status = "completed"
@@ -587,17 +586,17 @@ class DealerBalanceTestCase(TestCase):
     def test_balance_data_after_add_no_completed_payments(self):
         PaymentFactory(
             dealer=self.dealer.user,
-            payment_date=self.past_promotion.start_date.date(),
+            payment_date=self.past_promotion.start_date,
             amount="25",
         )
         PaymentFactory(
             dealer=self.dealer.user,
-            payment_date=self.past_promotion.end_date.date() + timedelta(days=1),
+            payment_date=self.past_promotion.end_date + timedelta(days=1),
             amount="15",
         )
         PaymentFactory(
             dealer=self.dealer.user,
-            payment_date=self.current_promotion.end_date.date(),
+            payment_date=self.current_promotion.end_date,
             amount="50",
         )
         self.current_dealer_balance.refresh_from_db()
@@ -613,7 +612,7 @@ class DealerBalanceTestCase(TestCase):
     def test_negative_balance(self):
         payment = PaymentFactory(
             dealer=self.dealer.user,
-            payment_date=self.past_promotion.start_date.date(),
+            payment_date=self.past_promotion.start_date,
             amount="200",
         )
         payment.status = "completed"
@@ -625,7 +624,7 @@ class DealerBalanceTestCase(TestCase):
     def test_balance_data_after_change_payment_status(self):
         payment = PaymentFactory(
             dealer=self.dealer.user,
-            payment_date=self.past_promotion.start_date.date(),
+            payment_date=self.past_promotion.start_date,
             amount="25",
         )
         payment.status = "completed"
@@ -633,7 +632,7 @@ class DealerBalanceTestCase(TestCase):
 
         payment_2 = PaymentFactory(
             dealer=self.dealer.user,
-            payment_date=self.current_promotion.start_date.date(),
+            payment_date=self.current_promotion.start_date,
             amount="25",
         )
         payment_2.status = "completed"
@@ -669,7 +668,7 @@ class DealerBalanceTestCase(TestCase):
     def test_balance_data_after_delete_payments(self):
         payment = PaymentFactory(
             dealer=self.dealer.user,
-            payment_date=self.past_promotion.start_date.date(),
+            payment_date=self.past_promotion.start_date,
             amount="25",
         )
         payment.status = "completed"
@@ -677,7 +676,7 @@ class DealerBalanceTestCase(TestCase):
 
         payment_2 = PaymentFactory(
             dealer=self.dealer.user,
-            payment_date=self.current_promotion.start_date.date(),
+            payment_date=self.current_promotion.start_date,
             amount="25",
         )
         payment_2.status = "completed"

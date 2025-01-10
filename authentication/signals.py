@@ -67,8 +67,6 @@ def link_user_to_profile(user):
 
 
 def create_balance_for_new_dealer(user):
-    print("-----------------create_balance_for_new_dealer")
-    print("user", user)
     """
     Creates a balance entry for a new dealer.
 

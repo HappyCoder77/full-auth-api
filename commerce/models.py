@@ -290,20 +290,15 @@ class Payment(models.Model):
             )
             .order_by("start_date")
         )
-        print(("affected_balances: ", affected_balances))
+
         for idx, balance in enumerate(affected_balances):
-            print("idx: ", idx)
-            print("balance: ", balance)
             balance.refresh_from_db()
             current_balance = balance.current_balance
-            print("current_balance: ", current_balance)
 
             if idx < len(affected_balances) - 1:
                 next_balance = affected_balances[idx + 1]
-                print("next_balance: ", next_balance)
                 next_balance.initial_balance = current_balance
                 next_balance.save()
-                print("next_balance.initial_balance: ", next_balance.initial_balance)
 
 
 @receiver(post_delete, sender=Payment)
@@ -357,14 +352,14 @@ class DealerBalance(models.Model):
     de un dia consecutivas"""
 
     def __str__(self):
-        promotion_date = self.promotion.end_date.date() if self.promotion else "*"
+        promotion_date = self.promotion.end_date if self.promotion else "*"
         return f"{self.dealer.email} - {self.start_date} - {promotion_date}"
 
     @property
     def end_date(self):
 
         if self.promotion:
-            return self.promotion.end_date.date()
+            return self.promotion.end_date
 
         return None
 
