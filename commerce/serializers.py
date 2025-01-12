@@ -101,12 +101,17 @@ class DealerBalanceSerializer(serializers.ModelSerializer):
 
 
 class SaleSerializer(serializers.ModelSerializer):
-    collection_name = serializers.CharField(source="collection.name", read_only=True)
-    dealer_name = serializers.CharField(source="dealer.get_full_name", read_only=True)
-    collector_name = serializers.CharField(
-        source="collector.get_full_name", read_only=True
+    date = serializers.DateField(read_only=True)
+    dealer = serializers.PrimaryKeyRelatedField(read_only=True)
+    dealer_name = serializers.CharField(
+        source="dealer.baseprofile.get_full_name", read_only=True
     )
-    edition_name = serializers.CharField(source="edition.name", read_only=True)
+    collector_name = serializers.CharField(
+        source="collector.baseprofile.get_full_name", read_only=True
+    )
+    edition_name = serializers.CharField(
+        source="edition.collection.name", read_only=True
+    )
 
     class Meta:
         model = Sale
@@ -120,16 +125,15 @@ class SaleSerializer(serializers.ModelSerializer):
             "collector",
             "collector_name",
             "quantity",
-            "collection_name",
         ]
-        read_only_fields = ["date"]
 
     def validate(self, data):
+        dealer = self.context["request"].user
         available_packs = (
             Pack.objects.filter(
                 sale__isnull=True,
                 box__edition=data["edition"],
-                box__order__dealer=data["dealer"],
+                box__order__dealer=dealer,
             )
             .order_by("ordinal")
             .count()

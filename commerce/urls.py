@@ -8,6 +8,7 @@ from .views import (
     PaymentOptionsView,
     MobilePaymentOptionsView,
     DealerBalanceView,
+    SaleCreateView,
 )
 
 
@@ -28,4 +29,5 @@ urlpatterns = [
         name="mobile-payment-options",
     ),
     path("dealer-balance/", DealerBalanceView.as_view(), name="dealer-balance"),
+    path("sales/create/", SaleCreateView.as_view(), name="sale-create"),
 ]

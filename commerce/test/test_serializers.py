@@ -1,13 +1,14 @@
 from rest_framework import serializers
-from rest_framework.test import APITestCase
+from rest_framework.test import APITestCase, APIRequestFactory
 from promotions.test.factories import PromotionFactory
 from rest_framework.exceptions import ValidationError
 from editions.test.factories import EditionFactory
 from authentication.test.factories import UserFactory
 from users.test.factories import DealerFactory, CollectorFactory
 from commerce.test.factories import OrderFactory
-from commerce.models import Order, Box, Pack, Edition
+from commerce.models import Order, Box, Pack, Edition, Sale
 from commerce.serializers import OrderSerializer, SaleSerializer
+from django.utils import timezone
 
 
 # TODO: Add tests for the rest of the serializers
@@ -66,15 +67,45 @@ class SaleSerializerTestCase(APITestCase):
         self.edition = EditionFactory(promotion=PromotionFactory())
         self.order = OrderFactory(dealer=self.dealer.user, edition=self.edition)
 
-    def test_valid_sale_serialization(self):
+    def test_serialization(self):
+        sale = Sale.objects.create(
+            date=timezone.now().date(),
+            edition=self.edition,
+            dealer=self.dealer.user,
+            collector=self.collector.user,
+            quantity=1,
+        )
+
+        serializer = SaleSerializer(sale)
+        serialized_data = serializer.data
+
+        self.assertIn("id", serialized_data)
+        self.assertIn("date", serialized_data)
+        self.assertEqual(serialized_data["edition"], self.edition.id)
+        self.assertEqual(serialized_data["edition_name"], self.edition.collection.name)
+        self.assertEqual(serialized_data["dealer"], self.dealer.user.id)
+        self.assertEqual(serialized_data["dealer_name"], self.dealer.get_full_name)
+        self.assertEqual(serialized_data["collector"], self.collector.user.id)
+        self.assertEqual(
+            serialized_data["collector_name"], self.collector.get_full_name
+        )
+        self.assertEqual(serialized_data["quantity"], 1)
+
+    def test_input_validation(self):
         data = {
             "edition": self.edition.id,
-            "dealer": self.dealer.id,
             "collector": self.collector.id,
             "quantity": 1,
         }
-        serializer = SaleSerializer(data=data)
-        self.assertTrue(serializer.is_valid())
+
+        request = APIRequestFactory().get("/")
+        request.user = self.dealer.user
+        serializer = SaleSerializer(data=data, context={"request": request})
+        serializer.is_valid()
+        serialized_data = serializer.validated_data
+        self.assertEqual(serialized_data["edition"].id, self.edition.id)
+        self.assertEqual(serialized_data["collector"].id, self.collector.id)
+        self.assertEqual(serialized_data["quantity"], 1)
 
     def test_insufficient_packs(self):
         Order.objects.all().delete()
@@ -84,6 +115,10 @@ class SaleSerializerTestCase(APITestCase):
             "collector": self.collector.id,
             "quantity": 10,
         }
-        serializer = SaleSerializer(data=data)
+
+        request = APIRequestFactory().get("/")
+        request.user = self.dealer.user
+        serializer = SaleSerializer(data=data, context={"request": request})
+
         with self.assertRaises(ValidationError):
             serializer.is_valid(raise_exception=True)

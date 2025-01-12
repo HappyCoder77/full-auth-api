@@ -22,6 +22,7 @@ from .serializers import (
     PaymentSerializer,
     MobilePaymentSerializer,
     DealerBalanceSerializer,
+    SaleSerializer,
 )
 
 
@@ -179,3 +180,11 @@ class DealerBalanceView(APIView):
             {"detail": "No se encontró ningún balance para el usuario actual."},
             status=status.HTTP_404_NOT_FOUND,
         )
+
+
+class SaleCreateView(CreateAPIView):
+    serializer_class = SaleSerializer
+    permission_classes = [IsAuthenticatedDealer]
+
+    def perform_create(self, serializer):
+        serializer.save(dealer=self.request.user)

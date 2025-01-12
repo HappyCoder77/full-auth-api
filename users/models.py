@@ -5,17 +5,15 @@ from editions.models import Pack
 from authentication.models import UserAccount
 from promotions.utils import promotion_is_running, get_current_promotion
 
-GENERO_CHOICES = [
-    ("M", "Masculino"),
-    ("F", "Femenino")
-]
+GENERO_CHOICES = [("M", "Masculino"), ("F", "Femenino")]
 
 
 class BaseProfile(models.Model):
     # TODO: add address field
     # TODO: añadir validacion a la fecha de nacimiento para que usuarios distintos de coleccionistas deban ser mayores de edad
     user = models.OneToOneField(
-        UserAccount, on_delete=models.CASCADE, null=True, blank=True)
+        UserAccount, on_delete=models.CASCADE, null=True, blank=True
+    )
     first_name = models.CharField(max_length=50)
     middle_name = models.CharField(max_length=50, null=True, blank=True)
     last_name = models.CharField(max_length=50)
@@ -25,28 +23,48 @@ class BaseProfile(models.Model):
     birthdate = models.DateField(null=True, blank=True)
     email = models.EmailField(_("Email field"), unique=True)
 
+    @property
+    def get_full_name(self):
+        return f"{self.first_name} {self.last_name}"
+
     def __str__(self) -> str:
         return self.first_name + " " + self.last_name
 
 
 class RegionalManager(BaseProfile):
     created_by = models.ForeignKey(
-        UserAccount, on_delete=models.SET_NULL, null=True, related_name='created_regionalmanagers')
+        UserAccount,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="created_regionalmanagers",
+    )
 
 
 class LocalManager(BaseProfile):
     created_by = models.ForeignKey(
-        UserAccount, on_delete=models.SET_NULL, null=True, related_name='created_localmanagers')
+        UserAccount,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="created_localmanagers",
+    )
 
 
 class Sponsor(BaseProfile):
     created_by = models.ForeignKey(
-        UserAccount, on_delete=models.SET_NULL, null=True, related_name='created_sponsors')
+        UserAccount,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="created_sponsors",
+    )
 
 
 class Dealer(BaseProfile):
     created_by = models.ForeignKey(
-        UserAccount, on_delete=models.SET_NULL, null=True, related_name='created_dealers')
+        UserAccount,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="created_dealers",
+    )
 
     def get_pack_stock(self, edition_id=None):
         if not promotion_is_running():
@@ -57,7 +75,7 @@ class Dealer(BaseProfile):
         query = Pack.objects.filter(
             box__order__dealer=self.user,
             box__edition__promotion=promotion,
-            sale__isnull=True
+            sale__isnull=True,
         )
 
         if edition_id:
