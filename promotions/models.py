@@ -43,7 +43,7 @@ class Promotion(models.Model):
 
     def calculate_end_date(self):
         # Calcula la date de finalización basada en la duración
-        return self.start_date + timedelta(days=self.duration)
+        return self.start_date + timedelta(days=self.duration - 1)
 
     def __str__(self):
         start_year = self.start_date.strftime("%Y")
@@ -83,15 +83,17 @@ class Promotion(models.Model):
     def remaining_time(self):
         today = timezone.now().date()
 
-        if self.end_date <= today:
+        if self.end_date < today:
             return "Esta promoción ha terminado."
 
         period = relativedelta(self.end_date, today)
 
-        if self.end_date == today + timedelta(days=1):
+        if self.end_date == today:
             return "Esta promoción termina hoy a la medianoche."
+
         elif period.months < 1:
-            return f"Esta promoción termina en {period.days} días."
+            days_remaining = (self.end_date - today).days + 1
+            return f"Esta promoción termina en {days_remaining} días."
         else:
             return (
                 f"Esta promoción termina en {period.months} meses y {period.days} días."
@@ -115,7 +117,7 @@ class Promotion(models.Model):
         # Validación de solapamiento de dates
         end_date = self.calculate_end_date()
         overlapping_promotions = self.__class__.objects.filter(
-            models.Q(start_date__lt=end_date) & models.Q(end_date__gt=self.start_date)
+            models.Q(start_date__lte=end_date) & models.Q(end_date__gte=self.start_date)
         ).exclude(pk=self.pk)
 
         if overlapping_promotions.exists():

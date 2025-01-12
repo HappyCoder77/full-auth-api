@@ -27,7 +27,8 @@ class PromotionTestCase(TestCase):
             return "Esta promoción termina hoy a la medianoche."
 
         elif period.months < 1:
-            return f"Esta promoción termina en {period.days} días."
+            remaining_days = (promotion.end_date - promotion.start_date).days + 1
+            return f"Esta promoción termina en {remaining_days} días."
         else:
             return (
                 f"Esta promoción termina en {period.months} meses y {period.days} días."
@@ -41,17 +42,17 @@ class PromotionTestCase(TestCase):
         promotion_today3 = PromotionFactory(duration=90, pack_cost=5)
 
         promotion_end_date = promotion_today.start_date + relativedelta(
-            days=+promotion_today.duration
+            days=+(promotion_today.duration - 1)
         )
         promotion_today_two_days_end_date = (
             promotion_today_two_days.start_date
-            + relativedelta(days=+promotion_today_two_days.duration)
+            + relativedelta(days=+promotion_today_two_days.duration - 1)
         )
         promotion_end_date2 = promotion_today2.start_date + relativedelta(
-            days=+promotion_today2.duration
+            days=+promotion_today2.duration - 1
         )
         promotion_end_date3 = promotion_today3.start_date + relativedelta(
-            days=+promotion_today3.duration
+            days=+promotion_today3.duration - 1
         )
 
         self.assertEqual(
@@ -102,11 +103,11 @@ class PromotionTestCase(TestCase):
 
         self.assertEqual(
             promotion_january.end_date,
-            datetime.date(2022, 4, 5),
+            datetime.date(2022, 4, 4),
         )
 
         self.assertEqual(promotion_january.duration, 90)
-        self.assertEqual(promotion_january.__str__(), "05 Enero 2022 / 05 Abril 2022")
+        self.assertEqual(promotion_january.__str__(), "05 Enero 2022 / 04 Abril 2022")
         self.assertEqual(promotion_january.pack_cost, 1.5)
         self.check_remaining_time(promotion_january),
 
@@ -117,12 +118,11 @@ class PromotionTestCase(TestCase):
         )
 
         self.assertEqual(promotion_february.start_date, datetime.date(2022, 2, 28))
-        self.assertEqual(promotion_february.end_date, datetime.date(2022, 5, 29)),
+        self.assertEqual(promotion_february.end_date, datetime.date(2022, 5, 28)),
 
         self.assertEqual(promotion_february.duration, 90)
-        self.assertEqual(promotion_february.__str__(), "28 Febrero 2022 / 29 Mayo 2022")
+        self.assertEqual(promotion_february.__str__(), "28 Febrero 2022 / 28 Mayo 2022")
         self.assertEqual(promotion_february.pack_cost, 1.5)
-        self.assertEqual(promotion_february.__str__(), "28 Febrero 2022 / 29 Mayo 2022")
         self.check_remaining_time(promotion_february)
 
     def test_promotion_march_data(self):
@@ -137,12 +137,11 @@ class PromotionTestCase(TestCase):
         )
         self.assertEqual(
             promotion_march.end_date,
-            datetime.date(2022, 6, 17),
+            datetime.date(2022, 6, 16),
         )
         self.assertEqual(promotion_march.duration, 90)
-        self.assertEqual(promotion_march.__str__(), "19 Marzo 2022 / 17 Junio 2022")
+        self.assertEqual(promotion_march.__str__(), "19 Marzo 2022 / 16 Junio 2022")
         self.assertEqual(promotion_march.pack_cost, 1.5)
-        self.assertEqual(promotion_march.__str__(), "19 Marzo 2022 / 17 Junio 2022")
         self.check_remaining_time(promotion_march)
 
     def test_promotion_july_data(self):
@@ -157,12 +156,11 @@ class PromotionTestCase(TestCase):
         )
         self.assertEqual(
             promotion_july.end_date,
-            datetime.date(2022, 10, 22),
+            datetime.date(2022, 10, 21),
         )
         self.assertEqual(promotion_july.duration, 90)
-        self.assertEqual(promotion_july.__str__(), "24 Julio 2022 / 22 Octubre 2022")
+        self.assertEqual(promotion_july.__str__(), "24 Julio 2022 / 21 Octubre 2022")
         self.assertEqual(promotion_july.pack_cost, 1.5)
-        self.assertEqual(promotion_july.__str__(), "24 Julio 2022 / 22 Octubre 2022")
         self.check_remaining_time(promotion_july)
 
     def test_promotion_august_data(self):
@@ -178,16 +176,13 @@ class PromotionTestCase(TestCase):
 
         self.assertEqual(
             promotion_august.end_date,
-            datetime.date(2022, 11, 8),
+            datetime.date(2022, 11, 7),
         )
         self.assertEqual(promotion_august.duration, 90)
         self.assertEqual(
-            promotion_august.__str__(), "10 Agosto 2022 / 08 Noviembre 2022"
+            promotion_august.__str__(), "10 Agosto 2022 / 07 Noviembre 2022"
         )
         self.assertEqual(promotion_august.pack_cost, 1.5)
-        self.assertEqual(
-            promotion_august.__str__(), "10 Agosto 2022 / 08 Noviembre 2022"
-        )
         self.check_remaining_time(promotion_august)
 
     def test_promotion_september_data(self):
@@ -202,16 +197,13 @@ class PromotionTestCase(TestCase):
         )
         self.assertEqual(
             promotion_september.end_date,
-            datetime.date(2022, 12, 8),
+            datetime.date(2022, 12, 7),
         )
         self.assertEqual(promotion_september.duration, 90)
         self.assertEqual(
-            promotion_september.__str__(), "09 Septiembre 2022 / 08 Diciembre 2022"
+            promotion_september.__str__(), "09 Septiembre 2022 / 07 Diciembre 2022"
         )
         self.assertEqual(promotion_september.pack_cost, 1.5)
-        self.assertEqual(
-            promotion_september.__str__(), "09 Septiembre 2022 / 08 Diciembre 2022"
-        )
         self.check_remaining_time(promotion_september)
 
 

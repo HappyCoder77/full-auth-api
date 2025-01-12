@@ -47,7 +47,7 @@ def handle_promotion_ending(sender, instance, created, **kwargs):
                 open_balance = DealerBalance.objects.filter(
                     dealer=dealer.user,
                     promotion=None,
-                    start_date=instance.end_date.date() + timedelta(days=1),
+                    start_date=instance.end_date + timedelta(days=1),
                 ).first()
 
                 if not open_balance:
@@ -59,5 +59,5 @@ def handle_promotion_ending(sender, instance, created, **kwargs):
                             if last_balance and last_balance.current_balance is not None
                             else 0
                         ),
-                        start_date=instance.end_date.date() + timedelta(days=1),
+                        start_date=instance.end_date + timedelta(days=1),
                     )
