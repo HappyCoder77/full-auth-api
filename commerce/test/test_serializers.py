@@ -1,11 +1,13 @@
 from rest_framework import serializers
 from rest_framework.test import APITestCase
 from promotions.test.factories import PromotionFactory
+from rest_framework.exceptions import ValidationError
 from editions.test.factories import EditionFactory
 from authentication.test.factories import UserFactory
-from users.test.factories import DealerFactory
-from commerce.models import Order
-from commerce.serializers import OrderSerializer
+from users.test.factories import DealerFactory, CollectorFactory
+from commerce.test.factories import OrderFactory
+from commerce.models import Order, Box, Pack, Edition
+from commerce.serializers import OrderSerializer, SaleSerializer
 
 
 # TODO: Add tests for the rest of the serializers
@@ -55,3 +57,33 @@ class OrderSerializerTestCase(APITestCase):
         serializer = OrderSerializer(data=data)
         self.assertFalse(serializer.is_valid())
         self.assertIn("edition", serializer.errors)
+
+
+class SaleSerializerTestCase(APITestCase):
+    def setUp(self):
+        self.dealer = DealerFactory(user=UserFactory())
+        self.collector = CollectorFactory(user=UserFactory())
+        self.edition = EditionFactory(promotion=PromotionFactory())
+        self.order = OrderFactory(dealer=self.dealer.user, edition=self.edition)
+
+    def test_valid_sale_serialization(self):
+        data = {
+            "edition": self.edition.id,
+            "dealer": self.dealer.id,
+            "collector": self.collector.id,
+            "quantity": 1,
+        }
+        serializer = SaleSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+
+    def test_insufficient_packs(self):
+        Order.objects.all().delete()
+        data = {
+            "edition": self.edition.id,
+            "dealer": self.dealer.id,
+            "collector": self.collector.id,
+            "quantity": 10,
+        }
+        serializer = SaleSerializer(data=data)
+        with self.assertRaises(ValidationError):
+            serializer.is_valid(raise_exception=True)

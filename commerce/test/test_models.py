@@ -1,4 +1,3 @@
-import json
 import os
 from decimal import Decimal
 from datetime import datetime, timedelta
@@ -14,7 +13,7 @@ from users.test.factories import DealerFactory
 from ..models import Payment, MobilePayment, DealerBalance, Order
 from .factories import (
     SaleFactory,
-    Orderfactory,
+    OrderFactory,
     PaymentFactory,
     MobilePaymentFactory,
     DealerBalanceFactory,
@@ -32,7 +31,7 @@ class SaleTestCase(TestCase):
         cls.user = UserFactory()
         cls.dealer = DealerFactory(user=cls.user, email=cls.user.email)
         cls.collector = UserFactory()
-        cls.order = Orderfactory(dealer=cls.dealer.user, edition=cls.edition)
+        cls.order = OrderFactory(dealer=cls.dealer.user, edition=cls.edition)
         cls.sale = SaleFactory(
             date=NOW,
             edition=cls.edition,
@@ -83,7 +82,7 @@ class OrderTestCase(TestCase):
 
     def test_order_data(self):
         # TODO: eliminar tal vez el dealer ya que el factory lo agrega
-        order = Orderfactory.build(
+        order = OrderFactory.build(
             dealer=self.dealer.user,
             edition=self.edition,
         )
@@ -100,7 +99,7 @@ class OrderTestCase(TestCase):
     def test_create_order_without_current_promotion(self):
         self.promotion.delete()
         PromotionFactory(past=True)
-        order = Orderfactory.build(
+        order = OrderFactory.build(
             dealer=self.dealer.user,
             edition=self.edition,
         )
@@ -109,7 +108,7 @@ class OrderTestCase(TestCase):
 
     def test_create_order_with_invalid_edition(self):
         PromotionFactory(past=True)
-        order = Orderfactory.build(
+        order = OrderFactory.build(
             dealer=self.dealer.user,
             edition_id=10000,
         )
@@ -117,12 +116,12 @@ class OrderTestCase(TestCase):
             order.full_clean()
 
     def test_create_order_without_available_box(self):
-        Orderfactory(
+        OrderFactory(
             dealer=self.dealer.user,
             edition=self.edition,
         )
 
-        order = Orderfactory.build(
+        order = OrderFactory.build(
             dealer=self.dealer.user,
             edition=self.edition,
         )
@@ -132,13 +131,13 @@ class OrderTestCase(TestCase):
 
     def test_create_order_with_existing_stock(self):
         # First order to create initial stock
-        first_order = Orderfactory(
+        first_order = OrderFactory(
             dealer=self.dealer.user,
             edition=self.edition,
         )
 
         # Attempt to create second order while having stock
-        second_order = Orderfactory.build(
+        second_order = OrderFactory.build(
             dealer=self.dealer.user,
             edition=self.edition,
         )
@@ -160,7 +159,7 @@ class OrderTestCase(TestCase):
             initial_balance=100,
         )
 
-        order = Orderfactory.build(
+        order = OrderFactory.build(
             dealer=self.dealer.user,
             edition=self.edition,
         )
@@ -182,7 +181,7 @@ class OrderTestCase(TestCase):
             initial_balance=0,
         )
 
-        order = Orderfactory.build(
+        order = OrderFactory.build(
             dealer=self.dealer.user,
             edition=self.edition,
         )
@@ -202,7 +201,7 @@ class OrderTestCase(TestCase):
             amount=100,
             payment_date=self.promotion.start_date,
         )
-        order = Orderfactory.build(
+        order = OrderFactory.build(
             dealer=self.dealer.user,
             edition=self.edition,
         )
@@ -454,12 +453,12 @@ class DealerBalanceTestCase(TestCase):
         cls.current_edition = EditionFactory(
             promotion=cls.current_promotion, collection__name="Angela", circulation=2
         )
-        Orderfactory(
+        OrderFactory(
             date=cls.past_promotion.start_date,
             dealer=cls.dealer.user,
             edition=cls.past_edition,
         )
-        Orderfactory(
+        OrderFactory(
             date=cls.current_promotion.start_date,
             dealer=cls.dealer.user,
             edition=cls.current_edition,

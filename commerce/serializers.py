@@ -1,6 +1,6 @@
 from django.utils import timezone
 from rest_framework import serializers
-from .models import Order, Box, Payment, MobilePayment, DealerBalance
+from .models import Order, Box, Payment, MobilePayment, DealerBalance, Pack, Sale
 from django.contrib.auth import get_user_model
 
 
@@ -98,3 +98,45 @@ class DealerBalanceSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+
+class SaleSerializer(serializers.ModelSerializer):
+    collection_name = serializers.CharField(source="collection.name", read_only=True)
+    dealer_name = serializers.CharField(source="dealer.get_full_name", read_only=True)
+    collector_name = serializers.CharField(
+        source="collector.get_full_name", read_only=True
+    )
+    edition_name = serializers.CharField(source="edition.name", read_only=True)
+
+    class Meta:
+        model = Sale
+        fields = [
+            "id",
+            "date",
+            "edition",
+            "edition_name",
+            "dealer",
+            "dealer_name",
+            "collector",
+            "collector_name",
+            "quantity",
+            "collection_name",
+        ]
+        read_only_fields = ["date"]
+
+    def validate(self, data):
+        available_packs = (
+            Pack.objects.filter(
+                sale__isnull=True,
+                box__edition=data["edition"],
+                box__order__dealer=data["dealer"],
+            )
+            .order_by("ordinal")
+            .count()
+        )
+
+        if available_packs < data["quantity"]:
+            raise serializers.ValidationError(
+                f"Inventario insuficiente: quedan {available_packs} packs disponibles"
+            )
+        return data

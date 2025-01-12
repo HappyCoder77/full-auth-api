@@ -13,7 +13,7 @@ from authentication.test.factories import UserFactory
 from users.test.factories import DealerFactory
 from commerce.models import Order
 from promotions.tasks import check_ended_promotions
-from .factories import Orderfactory, PaymentFactory
+from .factories import OrderFactory, PaymentFactory
 from rest_framework import status
 from ..serializers import OrderSerializer, PaymentSerializer
 from ..models import Payment, MobilePayment
@@ -40,8 +40,8 @@ class OrderListCreateAPIViewAPITestCase(APITestCase):
         Order.objects.all().delete()
 
     def test_dealer_can_get_order_list(self):
-        Orderfactory(dealer=self.dealer.user, edition=self.edition)
-        Orderfactory(dealer=self.dealer.user, edition=self.edition_2)
+        OrderFactory(dealer=self.dealer.user, edition=self.edition)
+        OrderFactory(dealer=self.dealer.user, edition=self.edition_2)
 
         self.client.force_authenticate(user=self.dealer.user)
         response = self.client.get(self.url)
@@ -159,7 +159,7 @@ class OrderListCreateAPIViewAPITestCase(APITestCase):
 
     def test_create_order_with_no_available_box(self):
         dealer = DealerFactory(user=UserFactory())
-        Orderfactory(edition=self.edition, dealer=dealer.user)
+        OrderFactory(edition=self.edition, dealer=dealer.user)
         self.client.force_authenticate(user=self.dealer.user)
         data = {"edition": self.edition.id}
 

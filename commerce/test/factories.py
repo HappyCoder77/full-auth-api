@@ -17,7 +17,7 @@ class SaleFactory(factory.django.DjangoModelFactory):
     quantity = 1
 
 
-class Orderfactory(factory.django.DjangoModelFactory):
+class OrderFactory(factory.django.DjangoModelFactory):
 
     class Meta:
         model = Order
