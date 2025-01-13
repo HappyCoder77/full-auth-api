@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path
 from django.http import JsonResponse
-from .models import Order, Payment, DealerBalance, Box
+from .models import Order, Payment, DealerBalance, Box, Sale
 from .forms import OrderForm
 from editions.models import Edition
 
@@ -64,3 +64,8 @@ class DealerBalanceAdmin(admin.ModelAdmin):
         "payments_total",
         "current_balance",
     )
+
+
+@admin.register(Sale)
+class SaleAdmin(admin.ModelAdmin):
+    model = Sale

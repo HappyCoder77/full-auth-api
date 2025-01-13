@@ -1,7 +1,10 @@
 from django.utils import timezone
 from rest_framework import serializers
 from .models import Order, Box, Payment, MobilePayment, DealerBalance, Pack, Sale
+from editions.models import Edition
 from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 
 class BoxSerializer(serializers.ModelSerializer):
@@ -106,8 +109,14 @@ class SaleSerializer(serializers.ModelSerializer):
     dealer_name = serializers.CharField(
         source="dealer.baseprofile.get_full_name", read_only=True
     )
+    collector = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), required=True
+    )
     collector_name = serializers.CharField(
         source="collector.baseprofile.get_full_name", read_only=True
+    )
+    edition = serializers.PrimaryKeyRelatedField(
+        queryset=Edition.objects.all(), required=True
     )
     edition_name = serializers.CharField(
         source="edition.collection.name", read_only=True
