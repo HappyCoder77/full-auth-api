@@ -111,7 +111,6 @@ class SaleSerializerTestCase(APITestCase):
         Order.objects.all().delete()
         data = {
             "edition": self.edition.id,
-            "dealer": self.dealer.id,
             "collector": self.collector.id,
             "quantity": 10,
         }

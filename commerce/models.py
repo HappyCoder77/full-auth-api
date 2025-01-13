@@ -1,10 +1,11 @@
-from datetime import timedelta
+from datetime import date
 from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.validators import (
     RegexValidator,
     FileExtensionValidator,
+    MinValueValidator,
 )
 from django.db import models, transaction
 from django.dispatch import receiver
@@ -29,7 +30,7 @@ class Sale(models.Model):
     Esto se debe a la política de vender packs de solo una collection por sale
     """
 
-    date = models.DateField(default=timezone.now)
+    date = models.DateField(default=date.today)
     edition = models.ForeignKey(
         Edition, on_delete=models.CASCADE, related_name="sales", null=True
     )
@@ -41,7 +42,7 @@ class Sale(models.Model):
         User, on_delete=models.CASCADE, related_name="purchases", null=True
     )
 
-    quantity = models.SmallIntegerField()
+    quantity = models.PositiveSmallIntegerField(validators=[MinValueValidator(1)])
 
     def __str__(self):
         return f"{self.id} / {self.date} / {self.collector}"

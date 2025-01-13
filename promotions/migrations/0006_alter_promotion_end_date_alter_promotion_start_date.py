@@ -2,23 +2,30 @@
 
 import promotions.models
 from django.db import migrations, models
+from datetime import date
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('promotions', '0005_alter_promotion_end_date'),
+        ("promotions", "0005_alter_promotion_end_date"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='promotion',
-            name='end_date',
-            field=models.DateField(blank=True, null=True, verbose_name='Fecha de finalización'),
+            model_name="promotion",
+            name="end_date",
+            field=models.DateField(
+                blank=True, null=True, verbose_name="Fecha de finalización"
+            ),
         ),
         migrations.AlterField(
-            model_name='promotion',
-            name='start_date',
-            field=models.DateField(default=promotions.models.get_default_date, editable=False, verbose_name='Fecha de Inicio'),
+            model_name="promotion",
+            name="start_date",
+            field=models.DateField(
+                default=date.today,
+                editable=False,
+                verbose_name="Fecha de Inicio",
+            ),
         ),
     ]

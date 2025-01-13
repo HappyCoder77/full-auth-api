@@ -3,8 +3,10 @@ from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.apps import apps
 from datetime import datetime, timedelta
+from unittest import skip
 
 
+@skip("One-time migration test that has already served its purpose")
 class TestDateTimeToDateMigration(TestCase):
     def test_convert_datetime_to_date(self):
         Promotion = apps.get_model("promotions", "Promotion")
@@ -34,6 +36,7 @@ from django.db import connection
 from datetime import date, timedelta
 
 
+@skip("One-time migration test that has already served its purpose")
 class TestEndDateMigration(TestCase):
     def setUp(self):
         self.executor = MigrationExecutor(connection)

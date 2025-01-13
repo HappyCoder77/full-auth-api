@@ -1,6 +1,6 @@
 import io, os
 from PIL import Image
-from datetime import timedelta
+from datetime import timedelta, date
 from decimal import Decimal
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
@@ -1003,7 +1003,6 @@ class SaleCreateViewAPITestCase(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
-        cls.promotion = PromotionFactory()
         cls.edition = EditionFactory(promotion=PromotionFactory())
         cls.superuser = UserFactory(is_superuser=True)
         cls.basic_user = UserFactory()
@@ -1013,8 +1012,7 @@ class SaleCreateViewAPITestCase(APITestCase):
         cls.url = reverse("sale-create")
         cls.sale_data = {
             "edition": cls.edition.id,
-            "dealer": cls.dealer_user.id,
-            "collector": cls.collector.id,
+            "collector": cls.collector.user.id,
             "quantity": 1,
         }
 
@@ -1022,277 +1020,110 @@ class SaleCreateViewAPITestCase(APITestCase):
         self.client.force_authenticate(user=self.dealer.user)
 
     def test_dealer_can_create_sale(self):
+        OrderFactory(dealer=self.dealer.user, edition=self.edition)
         response = self.client.post(self.url, self.sale_data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Sale.objects.count(), 1)
         self.assertEqual(response.data["id"], 1)
-        self.assertEqual(response.data["date"], timezone.now().date())
+        self.assertEqual(response.data["date"], date.today().strftime("%Y-%m-%d"))
         self.assertEqual(response.data["edition"], self.edition.id)
-        self.assertEqual(response.data["edition_name"], self.edition.name)
+        self.assertEqual(response.data["edition_name"], self.edition.collection.name)
         self.assertEqual(response.data["dealer"], self.dealer.user.id)
-        self.assertEqual(response.data["dealer_name"], self.dealer.get_fullname())
-        self.assertEqual(response.data["collector"], self.collector.id)
-        self.assertEqual(
-            response.data["collector_name"], self.collector.get_full_name()
-        )
+        self.assertEqual(response.data["dealer_name"], self.dealer.get_full_name)
+        self.assertEqual(response.data["collector"], self.collector.user.id)
+        self.assertEqual(response.data["collector_name"], self.collector.get_full_name)
         self.assertEqual(response.data["quantity"], 1)
 
-    # def test_superuser_cannot_create_payment(self):
-    #     self.client.force_authenticate(user=self.superuser)
-    #     response = self.client.post(self.url, self.sale_data, format="multipart")
+    def test_superuser_cannot_create_sale(self):
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.post(self.url, self.sale_data, format="multipart")
 
-    #     self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-    #     self.assertEqual(
-    #         response.data["detail"], "Solo los detallistas pueden realizar esta acción"
-    #     )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"], "Solo los detallistas pueden realizar esta acción"
+        )
 
-    # def test_basic_user_cannot_create_payment(self):
-    #     self.client.force_authenticate(user=self.basic_user)
-    #     response = self.client.post(self.url, self.sale_data, format="multipart")
+    def test_basic_user_cannot_create_payment(self):
+        self.client.force_authenticate(user=self.basic_user)
+        response = self.client.post(self.url, self.sale_data, format="multipart")
 
-    #     self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-    #     self.assertEqual(
-    #         response.data["detail"], "Solo los detallistas pueden realizar esta acción"
-    #     )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"], "Solo los detallistas pueden realizar esta acción"
+        )
 
-    # def test_unauthenticated_user_cannot_create_payment(self):
-    #     self.client.logout()
-    #     response = self.client.post(self.url, self.sale_data, format="multipart")
+    def test_unauthenticated_user_cannot_create_payment(self):
+        self.client.logout()
+        response = self.client.post(self.url, self.sale_data, format="multipart")
 
-    #     self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-    #     self.assertEqual(
-    #         response.data["detail"], "Debe iniciar sesión para realizar esta acción"
-    #     )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data["detail"], "Debe iniciar sesión para realizar esta acción"
+        )
 
-    # def test_method_not_allowed(self):
-    #     response = self.client.get(self.url, self.sale_data, format="multipart")
+    def test_method_not_allowed(self):
+        response = self.client.get(self.url, self.sale_data, format="multipart")
 
-    #     self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-    #     self.assertEqual(str(response.data["detail"]), 'Método "GET" no permitido.')
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(str(response.data["detail"]), 'Método "GET" no permitido.')
 
-    # def test_payment_create_view_with_future_payment_date(self):
-    #     invalid_data = self.sale_data.copy()
-    #     invalid_data["payment_date"] = timezone.now().date() + timedelta(days=1)
-    #     response = self.client.post(self.url, invalid_data, format="multipart")
+    def test_dealer_cannot_create_sale_without_inventory(self):
+        response = self.client.post(self.url, self.sale_data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["non_field_errors"][0],
+            "Inventario insuficiente: quedan 0 packs disponibles",
+        )
 
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertEqual(
-    #         str(response.data["payment_date"][0]),
-    #         "La fecha de pago no puede ser en el futuro.",
-    #     )
+    def test_dealer_cannot_create_sale_with_invalid_quantity(self):
+        OrderFactory(dealer=self.dealer.user, edition=self.edition)
+        self.sale_data["quantity"] = 0
+        response = self.client.post(self.url, self.sale_data, format="json")
 
-    # def test_payment_create_view_with_datetime_payment_date(self):
-    #     invalid_data = self.sale_data.copy()
-    #     invalid_data["payment_date"] = timezone.now() + timedelta(days=1)
-    #     response = self.client.post(self.url, invalid_data, format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["quantity"][0],
+            "Asegúrese de que este valor es mayor o igual a 1.",
+        )
 
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertEqual(
-    #         str(response.data["payment_date"][0]),
-    #         "Fecha con formato erróneo. Use uno de los siguientes formatos en su lugar: YYYY-MM-DD.",
-    #     )
+    def test_dealer_cannot_create_sale_with_invalid_edition(self):
+        self.sale_data["edition"] = 99999
+        response = self.client.post(self.url, self.sale_data, format="json")
 
-    # def test_payment_create_view_with_invalid_payment_date_format(self):
-    #     invalid_data = self.sale_data.copy()
-    #     invalid_data["payment_date"] = "invalid"
-    #     response = self.client.post(self.url, invalid_data, format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["edition"][0],
+            'Clave primaria "99999" inválida - objeto no existe.',
+        )
 
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertEqual(
-    #         str(response.data["payment_date"][0]),
-    #         "Fecha con formato erróneo. Use uno de los siguientes formatos en su lugar: YYYY-MM-DD.",
-    #     )
+    def test_dealer_cannot_create_sale_with_invalid_collector(self):
+        self.sale_data["collector"] = 99999
+        response = self.client.post(self.url, self.sale_data, format="json")
 
-    # def test_payment_create_view_with_no_payment_date(self):
-    #     invalid_data = self.sale_data.copy()
-    #     invalid_data.pop("payment_date")
-    #     response = self.client.post(self.url, invalid_data, format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["collector"][0],
+            'Clave primaria "99999" inválida - objeto no existe.',
+        )
 
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertEqual(
-    #         str(response.data["payment_date"][0]),
-    #         "Este campo es requerido.",
-    #     )
+    def test_dealer_cannot_create_sale_with_missing_required_fields(self):
+        incomplete_data = {}
+        response = self.client.post(self.url, incomplete_data, format="json")
 
-    # def test_payment_create_view_with_no_numeric_amount(self):
-    #     invalid_data = self.sale_data.copy()
-    #     invalid_data["amount"] = "invalid"
-    #     response = self.client.post(self.url, invalid_data, format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["quantity"][0],
+            "Este campo es requerido.",
+        )
 
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertEqual(
-    #         str(response.data["amount"][0]), "Se requiere un número válido."
-    #     )
-
-    # def test_payment_create_view_with_negative_amount(self):
-    #     invalid_data = self.sale_data.copy()
-    #     invalid_data["amount"] = Decimal("-125.50")
-    #     response = self.client.post(self.url, invalid_data, format="multipart")
-
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertEqual(
-    #         str(response.data["amount"][0]), "El monto debe ser mayor que cero."
-    #     )
-
-    # def test_payment_create_view_with_no_amount(self):
-    #     invalid_data = self.sale_data.copy()
-    #     invalid_data.pop("amount")
-    #     response = self.client.post(self.url, invalid_data, format="multipart")
-
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertEqual(
-    #         str(response.data["amount"][0]),
-    #         "Este campo es requerido.",
-    #     )
-
-    # def test_payment_create_view_with_big_amount(self):
-    #     data = self.sale_data.copy()
-    #     data["amount"] = Decimal("99999999.99")
-    #     response = self.client.post(self.url, data, format="multipart")
-
-    #     self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-    # def test_payment_create_view_with_too_big_amount(self):
-    #     data = self.sale_data.copy()
-    #     data["amount"] = Decimal("999999991.99")
-    #     response = self.client.post(self.url, data, format="multipart")
-
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertEqual(
-    #         str(response.data["amount"][0]),
-    #         "Asegúrese de que no haya más de 10 dígitos en total.",
-    #     )
-
-    # def test_payment_create_view_with_no_reference(self):
-    #     invalid_data = self.sale_data.copy()
-    #     invalid_data.pop("reference")
-    #     response = self.client.post(self.url, invalid_data, format="multipart")
-
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertEqual(
-    #         str(response.data["reference"][0]),
-    #         "Este campo es requerido.",
-    #     )
-
-    # def test_payment_create_view_too_long_reference(self):
-    #     data = self.sale_data.copy()
-    #     data["reference"] = "refg34567987654323765"
-    #     response = self.client.post(self.url, data, format="multipart")
-
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertEqual(
-    #         str(response.data["reference"][0]),
-    #         "Asegúrese de que este campo no tenga más de 20 caracteres.",
-    #     )
-
-    # def test_payment_create_with_duplicated_reference(self):
-    #     PaymentFactory(reference="1234567890", dealer=self.dealer.user)
-    #     data = self.sale_data.copy()
-    #     data["reference"] = "1234567890"
-    #     response = self.client.post(self.url, data, format="multipart")
-
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertEqual(
-    #         str(response.data["reference"][0]),
-    #         "La referencia del pago ya existe",
-    #     )
-
-    # def test_payment_create_view_with_invalid_status(self):
-    #     invalid_data = self.sale_data.copy()
-    #     invalid_data["status"] = "invalid"
-    #     response = self.client.post(self.url, invalid_data, format="multipart")
-
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertEqual(
-    #         str(response.data["status"][0]),
-    #         '"invalid" no es una elección válida.',
-    #     )
-
-    # def test_payment_create_view_with_no_bank(self):
-    #     invalid_data = self.sale_data.copy()
-    #     invalid_data.pop("bank")
-    #     response = self.client.post(self.url, invalid_data, format="multipart")
-
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertEqual(
-    #         str(response.data["bank"][0]),
-    #         "Este campo es requerido.",
-    #     )
-
-    # def test_payment_create_view_with_invalid_bank(self):
-    #     data = self.sale_data.copy()
-    #     data["bank"] = "10343"
-    #     response = self.client.post(self.url, data, format="multipart")
-
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertEqual(
-    #         str(response.data["bank"][0]),
-    #         '"10343" no es una elección válida.',
-    #     )
-
-    # def test_payment_create_view_with_no_id_number(self):
-    #     invalid_data = self.sale_data.copy()
-    #     invalid_data.pop("id_number")
-    #     response = self.client.post(self.url, invalid_data, format="multipart")
-
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertEqual(
-    #         str(response.data["id_number"][0]),
-    #         "Este campo es requerido.",
-    #     )
-
-    # def test_payment_create_view_with_no_numeric_id_number(self):
-    #     invalid_data = self.sale_data.copy()
-    #     invalid_data["id_number"] = "invalid"
-    #     response = self.client.post(self.url, invalid_data, format="multipart")
-
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertEqual(
-    #         str(response.data["id_number"][0]),
-    #         "Ingrese un número de cédula válido (6 hasta 8 dígitos)",
-    #     )
-
-    # def test_payment_create_view_with_too_short_id_number(self):
-    #     invalid_data = self.sale_data.copy()
-    #     invalid_data["id_number"] = "12345"
-    #     response = self.client.post(self.url, invalid_data, format="multipart")
-
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertEqual(
-    #         str(response.data["id_number"][0]),
-    #         "Ingrese un número de cédula válido (6 hasta 8 dígitos)",
-    #     )
-
-    # def test_payment_create_view_with_too_long_id_number(self):
-    #     invalid_data = self.sale_data.copy()
-    #     invalid_data["id_number"] = "123456789"
-    #     response = self.client.post(self.url, invalid_data, format="multipart")
-
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertEqual(
-    #         str(response.data["id_number"][0]),
-    #         "Ingrese un número de cédula válido (6 hasta 8 dígitos)",
-    #     )
-
-    # def test_payment_create_with_invalid_payment_type(self):
-    #     data = self.sale_data.copy()
-    #     data["payment_type"] = "invalid"
-    #     response = self.client.post(self.url, data, format="multipart")
-
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertEqual(
-    #         str(response.data["payment_type"][0]),
-    #         '"invalid" no es una elección válida.',
-    #     )
-
-    # def test_payment_type_setting(self):
-    #     data = self.sale_data.copy()
-    #     data["payment_type"] = "mobile"
-    #     response = self.client.post(self.url, data, format="multipart")
-
-    #     self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-    #     self.assertEqual(
-    #         response.data["payment_type"],
-    #         "bank",
-    #     )
+    def test_dealer_cannot_create_sale_with_quantity_greater_than_inventory(self):
+        OrderFactory(dealer=self.dealer.user, edition=self.edition)
+        self.sale_data["quantity"] = 999
+        response = self.client.post(self.url, self.sale_data, format="json")
+        print(response.data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["non_field_errors"][0],
+            "Inventario insuficiente: quedan 15 packs disponibles",
+        )

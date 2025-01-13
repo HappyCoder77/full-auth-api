@@ -1,6 +1,6 @@
 from dateutil import tz
 from dateutil.relativedelta import relativedelta
-from datetime import timedelta
+from datetime import timedelta, date
 
 from django.db import models, transaction
 from django.contrib.auth import get_user_model
@@ -9,10 +9,6 @@ from django.utils import timezone
 
 
 User = get_user_model()
-
-
-def get_default_date():
-    return timezone.now().date()
 
 
 class Promotion(models.Model):
@@ -27,9 +23,7 @@ class Promotion(models.Model):
         pack_cost (DecimalField): El costo unitario del pack para esta promoción.
     """
 
-    start_date = models.DateField(
-        "Fecha de Inicio", default=get_default_date, editable=False
-    )
+    start_date = models.DateField("Fecha de Inicio", default=date.today, editable=False)
     duration = models.PositiveSmallIntegerField(
         "duración en días",
         default=1,
