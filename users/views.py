@@ -14,18 +14,25 @@ from promotions.models import Promotion
 from promotions.utils import promotion_is_running
 from editions.models import Edition
 
-from .models import (RegionalManager, LocalManager,
-                     Sponsor, Dealer, Collector)
+from .models import RegionalManager, LocalManager, Sponsor, Dealer, Collector
 
-from .serializers import (RegionalManagerSerializer,
-                          LocalManagerSerializer, SponsorSerializer,
-                          DealerSerializer, CollectorSerializer)
+from .serializers import (
+    RegionalManagerSerializer,
+    LocalManagerSerializer,
+    SponsorSerializer,
+    DealerSerializer,
+    CollectorSerializer,
+)
 
-from .permissions import (IsSuperUser, IsRegionalManagerOrSuperUser,
-                          IsLocalManagerOrSuperUser, IsSponsorOrSuperUser,
-                          CollectorPermission, DetailedPermissionDenied,
-                          IsAuthenticatedDealer
-                          )
+from .permissions import (
+    IsSuperUser,
+    IsRegionalManagerOrSuperUser,
+    IsLocalManagerOrSuperUser,
+    IsSponsorOrSuperUser,
+    CollectorPermission,
+    DetailedPermissionDenied,
+    IsAuthenticatedDealer,
+)
 
 # TODO: agregar docstrings a las actions para mejorar la documentacion
 
@@ -34,16 +41,17 @@ class RegionalManagerViewSet(viewsets.ModelViewSet):
     """
     Vista para crear RegionalManagers.
     """
+
     # evitar borrado o actualizacion del registro
-    http_method_names = ['get', 'post']
+    http_method_names = ["get", "post"]
     queryset = RegionalManager.objects.all()
     serializer_class = RegionalManagerSerializer
     permission_classes = [IsSuperUser]
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def count(self, request):
         total = self.queryset.count()
-        return Response({'total': total})
+        return Response({"total": total})
 
     def perform_create(self, serializer):
         serializer.save(user=None, created_by=self.request.user)
@@ -53,8 +61,9 @@ class LocalManagerViewSet(viewsets.ModelViewSet):
     """
     Vista para crear LocalManagers.
     """
+
     # evitar borrado o actualizacion del registro
-    http_method_names = ['get', 'post']
+    http_method_names = ["get", "post"]
     serializer_class = LocalManagerSerializer
     permission_classes = [IsRegionalManagerOrSuperUser]
 
@@ -65,10 +74,10 @@ class LocalManagerViewSet(viewsets.ModelViewSet):
 
         return LocalManager.objects.all()
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def count(self, request):
         total = self.get_queryset().count()
-        return Response({'total': total})
+        return Response({"total": total})
 
     def perform_create(self, serializer):
         serializer.save(user=None, created_by=self.request.user)
@@ -78,8 +87,9 @@ class SponsorViewSet(viewsets.ModelViewSet):
     """
     Vista para crear Sponsors.
     """
+
     # evitar borrado o actualizacion del registro
-    http_method_names = ['get', 'post']
+    http_method_names = ["get", "post"]
     serializer_class = SponsorSerializer
     permission_classes = [IsLocalManagerOrSuperUser]
 
@@ -90,10 +100,10 @@ class SponsorViewSet(viewsets.ModelViewSet):
 
         return Sponsor.objects.all()
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def count(self, request):
         total = self.get_queryset().count()
-        return Response({'total': total})
+        return Response({"total": total})
 
     def perform_create(self, serializer):
         serializer.save(user=None, created_by=self.request.user)
@@ -103,8 +113,9 @@ class DealerViewSet(viewsets.ModelViewSet):
     """
     Vista para crear Dealers.
     """
+
     # evitar borrado o actualizacion del registro
-    http_method_names = ['get', 'post']
+    http_method_names = ["get", "post"]
     serializer_class = DealerSerializer
     permission_classes = [IsSponsorOrSuperUser]
 
@@ -115,10 +126,10 @@ class DealerViewSet(viewsets.ModelViewSet):
 
         return Dealer.objects.all()
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def count(self, request):
         total = self.get_queryset().count()
-        return Response({'total': total})
+        return Response({"total": total})
 
     def perform_create(self, serializer):
         serializer.save(user=None, created_by=self.request.user)
@@ -132,19 +143,15 @@ class DealerStockAPIView(APIView):
 
         if not edition_id:
             stock = dealer.get_pack_stock()
-            return Response({'stock': stock})
+            return Response({"stock": stock})
 
         stock = dealer.get_pack_stock(edition_id)
-        return Response({'stock': stock})
+        return Response({"stock": stock})
 
     def handle_exception(self, exc):
-        status_code = getattr(exc, 'status_code',
-                              status.HTTP_500_INTERNAL_SERVER_ERROR)
+        status_code = getattr(exc, "status_code", status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response(
-            {'detail': str(exc)},
-            status=status_code
-        )
+        return Response({"detail": str(exc)}, status=status_code)
 
 
 class DealerListStockAPIView(APIView):
@@ -154,10 +161,7 @@ class DealerListStockAPIView(APIView):
         now = timezone.now()
 
         try:
-            return Promotion.objects.get(
-                start_date__lte=now,
-                end_date__gte=now
-            )
+            return Promotion.objects.get(start_date__lte=now, end_date__gte=now)
         except Promotion.DoesNotExist:  # pragma: no cover
             return None
 
@@ -172,74 +176,76 @@ class DealerListStockAPIView(APIView):
     def get(self, request):
 
         if not promotion_is_running():
-            return Response({'detail': 'No hay ninguna promoción en curso.'},
-                            status=status.HTTP_404_NOT_FOUND
-                            )
+            return Response(
+                {"detail": "No hay ninguna promoción en curso."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         dealer = Dealer.objects.get(user=request.user)
         editionsStockList = []
         editions = self.get_current_editions()
 
         if not editions.exists():
-            return Response({'detail': 'No se han creado ediciones para la promoción en curso.'},
-                            status=status.HTTP_404_NOT_FOUND
-                            )
+            return Response(
+                {"detail": "No se han creado ediciones para la promoción en curso."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         for edition in self.get_current_editions():
             editionsStockList.append(
-                {'id': edition.id,
-                 'name': edition.collection.name,
-                 'stock': dealer.get_pack_stock(edition.id)
-                 })
+                {
+                    "id": edition.id,
+                    "name": edition.collection.name,
+                    "stock": dealer.get_pack_stock(edition.id),
+                }
+            )
 
         return Response(editionsStockList)
 
     def handle_exception(self, exc):
-        status_code = getattr(exc, 'status_code',
-                              status.HTTP_500_INTERNAL_SERVER_ERROR)
+        status_code = getattr(exc, "status_code", status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response(
-            {'detail': str(exc)},
-            status=status_code
-        )
+        return Response({"detail": str(exc)}, status=status_code)
 
 
 class CollectorViewSet(viewsets.ModelViewSet):
     """
     Vista para manejar perfiles de Coleccionistas.
     """
-    http_method_names = ['get', 'post', 'put', 'patch']
+
+    http_method_names = ["get", "post", "put", "patch"]
     serializer_class = CollectorSerializer
     permission_classes = [CollectorPermission]
     queryset = Collector.objects.all()
 
-    @ action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def count(self, request):
         """Devuelve el total de collectors existentes"""
         total = self.queryset.count()
-        return Response({'total': total})
+        return Response({"total": total})
 
     def create(self, request, *args, **kwargs):
-        request.data['email'] = request.user.email
+        request.data["email"] = request.user.email
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(
+            serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        )
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
     def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
+        partial = kwargs.pop("partial", False)
         instance = self.get_object()
-        serializer = self.get_serializer(
-            instance, data=request.data, partial=partial)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
 
         return Response(serializer.data)
 
-    @ action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def me(self, request):
         """
         Acción que permite ver el perfil de coleccionista del usuario actual si lo tuviese.
@@ -252,14 +258,47 @@ class CollectorViewSet(viewsets.ModelViewSet):
 
     def handle_exception(self, exc):
         if isinstance(exc, DetailedPermissionDenied):
-            return Response({'detail': str(exc.detail)}, status=exc.status_code)
+            return Response({"detail": str(exc.detail)}, status=exc.status_code)
 
         elif isinstance(exc, Http404):
-            return Response({'detail': 'No encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "No encontrado."}, status=status.HTTP_404_NOT_FOUND
+            )
 
         elif isinstance(exc, MethodNotAllowed):
-            return Response({'detail': 'Método no permitido.'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+            return Response(
+                {"detail": "Método no permitido."},
+                status=status.HTTP_405_METHOD_NOT_ALLOWED,
+            )
 
         return Response(
-            {'detail': 'Se produjo un error inesperado.'},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            {"detail": "Se produjo un error inesperado."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+# from rest_framework.views import APIView
+# from rest_framework.response import Response
+# from rest_framework import status
+# from users.models import User
+# from users.serializers import UserSerializer
+
+
+class CollectorLookupView(APIView):
+
+    def get(self, request):
+        email = request.query_params.get("email")
+
+        try:
+            collector = Collector.objects.get(email=email)
+            data = {
+                "id": collector.user.id,
+                "email": collector.email,
+                "full_name": collector.get_full_name,
+            }
+            return Response(data)
+        except Collector.DoesNotExist:
+            return Response(
+                {"detail": "No existe un coleccionista con el correo ingresado"},
+                status=status.HTTP_404_NOT_FOUND,
+            )

@@ -1096,3 +1096,54 @@ class DealerStockAPIViewAPITestCase(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
         self.assertEqual(response.data["detail"], 'Método "POST" no permitido.')
+
+
+class CollectorLookupViewTestCase(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.client = APIClient()
+        cls.user = UserFactory()
+        cls.collector = CollectorFactory(user=cls.user, email=cls.user.email)
+        cls.url = reverse("collector-lookup")
+
+    def test_can_lookup_collector_by_email(self):
+        self.client.force_authenticate(user=self.collector.user)
+        response = self.client.get(f"{self.url}?email={self.collector.email}")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["id"], self.collector.user.id)
+        self.assertEqual(response.data["email"], self.collector.email)
+        self.assertEqual(response.data["full_name"], self.collector.get_full_name)
+
+    def test_returns_404_for_nonexistent_collector(self):
+        self.client.force_authenticate(user=self.collector.user)
+        response = self.client.get(f"{self.url}?email=nonexistent@email.com")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data["detail"], "Collector not found")
+
+    def test_returns_404_when_email_param_missing(self):
+        self.client.force_authenticate(user=self.collector.user)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data["detail"], "Collector not found")
+
+    def test_unauthenticated_user_cannot_lookup_collector_by_email(self):
+        response = self.client.get(f"{self.url}?email={self.collector.email}")
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data["detail"],
+            "Las credenciales de autenticación no se proveyeron.",
+        )
+
+    def test_method_not_allowed(self):
+        self.client.force_authenticate(user=self.collector.user)
+        response = self.client.post(f"{self.url}?email={self.collector.email}")
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(
+            response.data["detail"],
+            'Método "POST" no permitido.',
+        )
