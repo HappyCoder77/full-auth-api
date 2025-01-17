@@ -2,7 +2,7 @@ from rest_framework.serializers import ModelSerializer
 
 from collection_manager.serializers import CollectionSerializer
 from promotions.serializers import PromotionSerializer
-from .models import Edition
+from .models import Edition, Pack
 
 
 class EditionSerializer(ModelSerializer):
@@ -11,4 +11,10 @@ class EditionSerializer(ModelSerializer):
 
     class Meta:
         model = Edition
-        fields = ('id', 'promotion', 'collection')
+        fields = ("id", "promotion", "collection")
+
+
+class PackSerializer(ModelSerializer):
+    class Meta:
+        model = Pack
+        fields = ("id", "is_open", "collector")

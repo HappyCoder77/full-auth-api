@@ -60,9 +60,15 @@ class Album(models.Model):
             counter += 1
 
     def pack_inbox(self):
-        pass
-        # try:
-        #     Pack.objects.filter(sale_detail__null = false)
+        try:
+            if Pack.objects.filter(
+                collector=self.collector, box__edition=self.edition, is_open=False
+            ).exists():
+                return Pack.objects.filter(collector=self.collector, is_open=False)
+            else:
+                return None
+        except Exception:
+            return None
 
 
 class Page(models.Model):
