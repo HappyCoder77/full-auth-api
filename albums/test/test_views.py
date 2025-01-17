@@ -5,6 +5,7 @@ from rest_framework.test import APIClient, APITestCase
 from rest_framework import status, mixins
 
 from authentication.test.factories import UserFactory
+from editions.models import Pack
 from editions.test.factories import EditionFactory
 from promotions.models import Promotion
 from promotions.test.factories import PromotionFactory
@@ -25,14 +26,15 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
         cls.user = UserFactory()
         cls.collector_user = UserFactory()
         cls.collector = CollectorFactory(
-            user=cls.collector_user, email=cls.collector_user.email)
-        cls.list_url = reverse('user-albums-list')
-        cls.retrieve_url = reverse('user-albums-retrieve', kwargs={
-                                   'edition_id': cls.edition.id})
+            user=cls.collector_user, email=cls.collector_user.email
+        )
+        cls.list_url = reverse("user-albums-list")
+        cls.retrieve_url = reverse(
+            "user-albums-retrieve", kwargs={"edition_id": cls.edition.id}
+        )
 
     def setUp(self):
-        self.album = AlbumFactory(
-            collector=self.collector.user, edition=self.edition)
+        self.album = AlbumFactory(collector=self.collector.user, edition=self.edition)
 
     def test_collector_can_get_user_album_list(self):
         self.client.force_authenticate(user=self.collector.user)
@@ -42,10 +44,10 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0], AlbumSerializer(self.album).data)
         for album in response.data:
-            self.assertIn('id', album)
-            self.assertIn('pages', album)
-            self.assertIn('collector', album)
-            self.assertIn('edition', album)
+            self.assertIn("id", album)
+            self.assertIn("pages", album)
+            self.assertIn("collector", album)
+            self.assertIn("edition", album)
 
     def test_superuser_cannot_get_user_album_list(self):
         self.client.force_authenticate(user=self.superuser)
@@ -53,7 +55,9 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(
-            response.data['detail'], 'Solo los coleccionistas pueden realizar esta acción')
+            response.data["detail"],
+            "Solo los coleccionistas pueden realizar esta acción",
+        )
 
     def test_basic_user_cannot_get_user_album_list(self):
         self.client.force_authenticate(user=self.user)
@@ -61,7 +65,9 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(
-            response.data['detail'], 'Solo los coleccionistas pueden realizar esta acción')
+            response.data["detail"],
+            "Solo los coleccionistas pueden realizar esta acción",
+        )
 
     def test_unauthenticated_user_cannot_get_user_album_list(self):
         self.client.logout()
@@ -69,7 +75,8 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertEqual(
-            response.data['detail'], 'Debe iniciar sesión para realizar esta acción')
+            response.data["detail"], "Debe iniciar sesión para realizar esta acción"
+        )
 
     def test_collector_can_get_user_album(self):
         self.client.force_authenticate(user=self.collector.user)
@@ -84,7 +91,9 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(
-            response.data['detail'], 'Solo los coleccionistas pueden realizar esta acción')
+            response.data["detail"],
+            "Solo los coleccionistas pueden realizar esta acción",
+        )
 
     def test_basic_user_cannot_get_user_album(self):
         self.client.force_authenticate(user=self.user)
@@ -92,7 +101,9 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(
-            response.data['detail'], 'Solo los coleccionistas pueden realizar esta acción')
+            response.data["detail"],
+            "Solo los coleccionistas pueden realizar esta acción",
+        )
 
     def test_unauthenticated_user_cannot_get_user_album(self):
         self.client.logout()
@@ -100,15 +111,18 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertEqual(
-            response.data['detail'], 'Debe iniciar sesión para realizar esta acción')
+            response.data["detail"], "Debe iniciar sesión para realizar esta acción"
+        )
 
     def test_get_album_list_from_past_promotion(self):
         Promotion.objects.all().delete()
         promotion = PromotionFactory(past=True)
         edition_1 = EditionFactory(
-            promotion=promotion, collection__name='past collection')
+            promotion=promotion, collection__name="past collection"
+        )
         edition_2 = EditionFactory(
-            promotion=promotion, collection__name='past collection_2')
+            promotion=promotion, collection__name="past collection_2"
+        )
         user = UserFactory()
         collector = CollectorFactory(user=user)
         AlbumFactory(edition=edition_1, collector=collector.user)
@@ -117,33 +131,33 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
         response = self.client.get(self.list_url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['detail'],
-                         'No hay ninguna promoción en curso, no es posible la consulta.')
+        self.assertEqual(
+            response.data["detail"],
+            "No hay ninguna promoción en curso, no es posible la consulta.",
+        )
 
     def test_get_user_album_with_invalid_edition_id(self):
-        retrieve_url = reverse('user-albums-retrieve', kwargs={
-            'edition_id': 10404})
+        retrieve_url = reverse("user-albums-retrieve", kwargs={"edition_id": 10404})
         self.client.force_authenticate(user=self.collector.user)
 
         response = self.client.get(retrieve_url)
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertEqual(response.data['detail'],
-                         'No existe ninguna edición con el id suministrado')
+        self.assertEqual(
+            response.data["detail"], "No existe ninguna edición con el id suministrado"
+        )
 
     def test_method_not_allowed_list_url(self):
         self.client.force_authenticate(user=self.collector.user)
         response = self.client.post(self.list_url)
 
-        self.assertEqual(response.status_code,
-                         status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def test_method_not_allowed_retrieve_url(self):
         self.client.force_authenticate(user=self.collector.user)
         response = self.client.post(self.retrieve_url)
 
-        self.assertEqual(response.status_code,
-                         status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
 class UserAlbumCreateViewAPITestCase(APITestCase):
@@ -156,138 +170,190 @@ class UserAlbumCreateViewAPITestCase(APITestCase):
         cls.user = UserFactory()
         cls.collector_user = UserFactory()
         cls.collector = CollectorFactory(
-            user=cls.collector_user, email=cls.collector_user.email)
-        cls.url = reverse('user-albums-create')
+            user=cls.collector_user, email=cls.collector_user.email
+        )
+        cls.url = reverse("user-albums-create")
 
     def test_collector_can_create_album(self):
         self.client.force_authenticate(user=self.collector.user)
-        data = {
-            'edition': self.edition.id
-        }
-        response = self.client.post(self.url, data=data, format='json')
+        data = {"edition": self.edition.id}
+        response = self.client.post(self.url, data=data, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data, AlbumSerializer(
-            Album.objects.get(pk=1)).data)
+        self.assertEqual(response.data, AlbumSerializer(Album.objects.get(pk=1)).data)
 
     def test_collector_can_get_album_if_already_exists(self):
         AlbumFactory(edition=self.edition, collector=self.collector.user)
         self.client.force_authenticate(user=self.collector.user)
-        data = {
-            'edition': self.edition.id
-        }
-        response = self.client.post(self.url, data=data, format='json')
+        data = {"edition": self.edition.id}
+        response = self.client.post(self.url, data=data, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data, AlbumSerializer(
-            Album.objects.get(pk=1)).data)
+        self.assertEqual(response.data, AlbumSerializer(Album.objects.get(pk=1)).data)
 
     def test_superuser_cannot_create_album(self):
         self.client.force_authenticate(user=self.superuser)
-        data = {
-            'edition': self.edition.id
-        }
-        response = self.client.post(self.url, data=data, format='json')
+        data = {"edition": self.edition.id}
+        response = self.client.post(self.url, data=data, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(
-            response.data['detail'],
-            'Solo los coleccionistas pueden realizar esta acción')
+            response.data["detail"],
+            "Solo los coleccionistas pueden realizar esta acción",
+        )
 
     def test_basic_user_cannot_create_album(self):
         self.client.force_authenticate(user=self.user)
-        data = {
-            'edition': self.edition.id
-        }
-        response = self.client.post(self.url, data=data, format='json')
+        data = {"edition": self.edition.id}
+        response = self.client.post(self.url, data=data, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(
-            response.data['detail'],
-            'Solo los coleccionistas pueden realizar esta acción')
+            response.data["detail"],
+            "Solo los coleccionistas pueden realizar esta acción",
+        )
 
     def test_unauthenticated_user_cannot_create_album(self):
         self.client.logout()
-        data = {
-            'edition': self.edition.id
-        }
-        response = self.client.post(self.url, data=data, format='json')
+        data = {"edition": self.edition.id}
+        response = self.client.post(self.url, data=data, format="json")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertEqual(
-            response.data['detail'],
-            'Debe iniciar sesión para realizar esta acción')
+            response.data["detail"], "Debe iniciar sesión para realizar esta acción"
+        )
 
     def test_create_album_from_past_promotion(self):
         Promotion.objects.all().delete()
         promotion = PromotionFactory(past=True)
         edition = EditionFactory(
-            promotion=promotion, collection__name='past collection')
-        data = {
-            'edition': edition.id
-        }
+            promotion=promotion, collection__name="past collection"
+        )
+        data = {"edition": edition.id}
         self.client.force_authenticate(user=self.collector.user)
-        response = self.client.post(self.url, data=data, format='json')
+        response = self.client.post(self.url, data=data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['detail'],
-                         'No hay ninguna promoción en curso, no es posible esta acción.')
+        self.assertEqual(
+            response.data["detail"],
+            "No hay ninguna promoción en curso, no es posible esta acción.",
+        )
 
     def test_create_album_from_future_promotion(self):
         Promotion.objects.all().delete()
         promotion = PromotionFactory(future=True)
         edition = EditionFactory(
-            promotion=promotion, collection__name='future collection')
-        data = {
-            'edition': edition.id
-        }
+            promotion=promotion, collection__name="future collection"
+        )
+        data = {"edition": edition.id}
         self.client.force_authenticate(user=self.collector.user)
-        response = self.client.post(self.url, data=data, format='json')
+        response = self.client.post(self.url, data=data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['detail'],
-                         'No hay ninguna promoción en curso, no es posible esta acción.')
+        self.assertEqual(
+            response.data["detail"],
+            "No hay ninguna promoción en curso, no es posible esta acción.",
+        )
 
     def test_create_album_with_invalid_id(self):
-        data = {
-            'edition': 1059
-        }
+        data = {"edition": 1059}
         self.client.force_authenticate(user=self.collector.user)
-        response = self.client.post(self.url, data=data, format='json')
+        response = self.client.post(self.url, data=data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertEqual(response.data['detail'],
-                         'No existe ninguna edición con el id suministrado.')
+        self.assertEqual(
+            response.data["detail"], "No existe ninguna edición con el id suministrado."
+        )
 
     def test_create_album_with_no_id(self):
         data = {}
         self.client.force_authenticate(user=self.collector.user)
-        response = self.client.post(self.url, data=data, format='json')
+        response = self.client.post(self.url, data=data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data['detail'],
-                         'El campo edition es requerido.')
+        self.assertEqual(response.data["detail"], "El campo edition es requerido.")
 
     def test_integrity_error_handling(self):
         self.client.force_authenticate(user=self.collector.user)
-        data = {
-            'edition': self.edition.id
-        }
+        data = {"edition": self.edition.id}
 
-        with patch.object(mixins.CreateModelMixin, 'create') as mock_create:
+        with patch.object(mixins.CreateModelMixin, "create") as mock_create:
             mock_create.side_effect = IntegrityError("Duplicate entry")
-            response = self.client.post(self.url, data=data, format='json')
+            response = self.client.post(self.url, data=data, format="json")
 
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
             self.assertEqual(
-                response.data['detail'],
-                'El álbum ya existe para esta edición.'
+                response.data["detail"], "El álbum ya existe para esta edición."
             )
 
     def test_handle_generic_exception(self):
         self.client.force_authenticate(user=self.collector.user)
-        data = {
-            'edition': self.edition.id
-        }
+        data = {"edition": self.edition.id}
 
-        with patch.object(mixins.CreateModelMixin, 'create') as mock_create:
+        with patch.object(mixins.CreateModelMixin, "create") as mock_create:
             mock_create.side_effect = ValueError("Some unexpected error")
-            response = self.client.post(self.url, data=data, format='json')
+            response = self.client.post(self.url, data=data, format="json")
 
-            self.assertEqual(response.status_code,
-                             status.HTTP_500_INTERNAL_SERVER_ERROR)
-            self.assertEqual(response.data['detail'], "Some unexpected error")
+            self.assertEqual(
+                response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+            self.assertEqual(response.data["detail"], "Some unexpected error")
+
+
+class AlbumDetailViewTest(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.client = APIClient()
+        cls.promotion = PromotionFactory()
+        cls.edition = EditionFactory(promotion=cls.promotion)
+        cls.superuser = UserFactory(is_superuser=True)
+        cls.basic_user = UserFactory()
+        cls.collector = CollectorFactory(user=UserFactory())
+        pack = Pack.objects.first()
+        pack.collector = cls.collector.user
+        cls.album = Album.objects.create(
+            collector=cls.collector.user, edition=cls.edition
+        )
+        cls.url = reverse("album-detail", kwargs={"pk": cls.album.pk})
+
+    def setUp(self):
+        self.client.force_authenticate(user=self.collector.user)
+
+    def test_get_album_success(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, AlbumSerializer(Album.objects.get(pk=1)).data)
+
+    def test_get_album_unauthorized(self):
+        self.client.logout()
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data["detail"], "Debe iniciar sesión para realizar esta acción"
+        )
+
+    def test_superuser_cannot_get_user_album(self):
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"],
+            "Solo los coleccionistas pueden realizar esta acción",
+        )
+
+    def test_basic_user_cannot_get_user_album(self):
+        self.client.force_authenticate(user=self.basic_user)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"],
+            "Solo los coleccionistas pueden realizar esta acción",
+        )
+
+    def test_other_collector_cannot_get_album(self):
+        other_collector = CollectorFactory(user=UserFactory())
+        self.client.force_authenticate(user=other_collector.user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_method_not_allowed(self):
+        self.client.force_authenticate(user=self.collector.user)
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)

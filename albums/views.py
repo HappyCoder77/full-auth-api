@@ -1,9 +1,8 @@
-
 from django.utils import timezone
 from django.db import IntegrityError
 from rest_framework.exceptions import NotFound
 from rest_framework.serializers import ValidationError
-from rest_framework.generics import GenericAPIView
+from rest_framework.generics import GenericAPIView, RetrieveAPIView
 from rest_framework.response import Response
 from rest_framework import status, mixins
 from editions.models import Edition
@@ -14,9 +13,8 @@ from .serializers import AlbumSerializer
 
 
 class UserAlbumListRetrieveView(
-        mixins.ListModelMixin,
-        mixins.RetrieveModelMixin,
-        GenericAPIView):
+    mixins.ListModelMixin, mixins.RetrieveModelMixin, GenericAPIView
+):
     """
     Vista de recuperacion de albums.
     GET /api/user-albums/{edition_id}/ => devuelve el álbum perteneciente
@@ -25,18 +23,16 @@ class UserAlbumListRetrieveView(
     los álbumes del coleccionista para la promoción en curso.
     Permisos - collector autenticado.
     """
+
     serializer_class = AlbumSerializer
     permission_classes = [IsAuthenticatedCollector]
-    lookup_field = 'edition_id'
+    lookup_field = "edition_id"
     lookup_url_kwarg = lookup_field
 
     def get_current_promotion(self):
         now = timezone.now()
         try:
-            promotion = Promotion.objects.get(
-                start_date__lte=now,
-                end_date__gte=now
-            )
+            promotion = Promotion.objects.get(start_date__lte=now, end_date__gte=now)
         except Promotion.DoesNotExist:
             return None
 
@@ -50,11 +46,13 @@ class UserAlbumListRetrieveView(
 
         if not promotion:
             return Response(
-                {'detail': 'No hay ninguna promoción en curso, no es posible la consulta.'},
-                status=status.HTTP_200_OK
+                {
+                    "detail": "No hay ninguna promoción en curso, no es posible la consulta."
+                },
+                status=status.HTTP_200_OK,
             )
         # TODO: puede acceder a albumes de ediciones posteriores?
-        edition_id = self.kwargs.get('edition_id')
+        edition_id = self.kwargs.get("edition_id")
 
         if edition_id:
             try:
@@ -62,17 +60,14 @@ class UserAlbumListRetrieveView(
 
             except Edition.DoesNotExist:
 
-                raise NotFound(
-                    'No existe ninguna edición con el id suministrado')
+                raise NotFound("No existe ninguna edición con el id suministrado")
 
             return self.retrieve(request, *args, **kwargs)
 
         return self.list(request, *args, **kwargs)
 
     def handle_exception(self, exc):
-        return Response(
-            {'detail': str(exc)}, status=exc.status_code
-        )
+        return Response({"detail": str(exc)}, status=exc.status_code)
 
 
 class UserAlbumCreateView(mixins.CreateModelMixin, GenericAPIView):
@@ -80,16 +75,14 @@ class UserAlbumCreateView(mixins.CreateModelMixin, GenericAPIView):
     Vista para la creacion de álbum para edición en curso.
     Permisos - collector autenticado
     """
+
     serializer_class = AlbumSerializer
     permission_classes = [IsAuthenticatedCollector]
 
     def get_current_promotion(self):
         now = timezone.now()
         try:
-            promotion = Promotion.objects.get(
-                start_date__lte=now,
-                end_date__gte=now
-            )
+            promotion = Promotion.objects.get(start_date__lte=now, end_date__gte=now)
         except Promotion.DoesNotExist:
             return None
 
@@ -100,21 +93,20 @@ class UserAlbumCreateView(mixins.CreateModelMixin, GenericAPIView):
 
         if not promotion:
             return Response(
-                {'detail': 'No hay ninguna promoción en curso, no es posible esta acción.'},
-                status=status.HTTP_200_OK
+                {
+                    "detail": "No hay ninguna promoción en curso, no es posible esta acción."
+                },
+                status=status.HTTP_200_OK,
             )
 
-        edition_id = request.data.get('edition')
+        edition_id = request.data.get("edition")
         if edition_id:
             try:
                 edition = Edition.objects.get(pk=edition_id)
             except Edition.DoesNotExist:
-                raise NotFound(
-                    'No existe ninguna edición con el id suministrado.'
-                )
+                raise NotFound("No existe ninguna edición con el id suministrado.")
         try:
-            album = Album.objects.get(
-                collector=request.user, edition=edition_id)
+            album = Album.objects.get(collector=request.user, edition=edition_id)
             serializer = self.get_serializer(album)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Album.DoesNotExist:
@@ -127,22 +119,27 @@ class UserAlbumCreateView(mixins.CreateModelMixin, GenericAPIView):
 
         if isinstance(exc, IntegrityError):
             return Response(
-                {'detail': 'El álbum ya existe para esta edición.'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"detail": "El álbum ya existe para esta edición."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if (isinstance(exc, ValidationError) and
-            isinstance(exc.detail, dict) and
-                'edition' in exc.detail):
-            if 'Este campo es requerido' in str(exc.detail['edition']):
+        if (
+            isinstance(exc, ValidationError)
+            and isinstance(exc.detail, dict)
+            and "edition" in exc.detail
+        ):
+            if "Este campo es requerido" in str(exc.detail["edition"]):
                 return Response(
-                    {'detail': 'El campo edition es requerido.'},
-                    status=exc.status_code
+                    {"detail": "El campo edition es requerido."}, status=exc.status_code
                 )
 
-        status_code = getattr(exc, 'status_code',
-                              status.HTTP_500_INTERNAL_SERVER_ERROR)
-        return Response(
-            {'detail': str(exc)},
-            status=status_code
-        )
+        status_code = getattr(exc, "status_code", status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"detail": str(exc)}, status=status_code)
+
+
+class AlbumDetailView(RetrieveAPIView):
+    serializer_class = AlbumSerializer
+    permission_classes = [IsAuthenticatedCollector]
+
+    def get_queryset(self):
+        return Album.objects.filter(collector=self.request.user)
