@@ -1,6 +1,6 @@
 import os
 from decimal import Decimal
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
@@ -10,7 +10,7 @@ from editions.test.factories import EditionFactory
 from promotions.test.factories import PromotionFactory
 from users.test.factories import DealerFactory
 
-from ..models import Payment, MobilePayment, DealerBalance, Order
+from ..models import Payment, MobilePayment, DealerBalance, Sale
 from .factories import (
     SaleFactory,
     OrderFactory,
@@ -33,14 +33,13 @@ class SaleTestCase(TestCase):
         cls.collector = UserFactory()
         cls.order = OrderFactory(dealer=cls.dealer.user, edition=cls.edition)
         cls.sale = SaleFactory(
-            date=NOW,
             edition=cls.edition,
             dealer=cls.dealer.user,
             collector=cls.collector,
         )
 
     def test_sale_data(self):
-        self.assertEqual(self.sale.date, NOW)
+        self.assertEqual(self.sale.date, date.today())
         self.assertEqual(self.sale.edition, self.edition)
         self.assertEqual(self.sale.dealer, self.dealer.user)
         self.assertEqual(self.sale.collector, self.collector)
@@ -50,13 +49,17 @@ class SaleTestCase(TestCase):
             f"{self.sale.id} / {self.sale.date} / {self.sale.collector}",
         )
         self.assertEqual(self.sale.collection, self.edition.collection)
+        self.assertEqual(self.sale.packs.count(), 1)
+
+        for each_pack in self.sale.packs.all():
+            self.assertEqual(each_pack.pack.collector, self.collector)
+            self.assertFalse(each_pack.pack.is_open)
 
     def test_validation_not_raised(self):
         self.sale.clean()
 
     def test_sale_validation(self):
-        sale = SaleFactory(
-            date=NOW,
+        sale = Sale(
             edition=self.edition,
             dealer=self.dealer.user,
             collector=self.collector,

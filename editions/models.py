@@ -477,12 +477,19 @@ class Box(models.Model):
 
 
 class Pack(models.Model):
+    collector = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="packs", null=True
+    )
     box = models.ForeignKey(
         Box, null=True, blank=True, on_delete=models.CASCADE, related_name="packs"
     )
     ordinal = models.BigIntegerField("pack_ordinal", default=0)
-    # sale = models.ForeignKey(
-    #     Sale, on_delete=models.CASCADE, null=True, related_name='packs')
+    is_open = models.BooleanField(default=False)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["collector", "is_open"]),
+        ]
 
     @property
     def edition(self):

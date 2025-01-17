@@ -22,9 +22,9 @@ class BoxAdmin(admin.ModelAdmin):
 
 @admin.register(Pack)
 class PackAdmin(admin.ModelAdmin):
-    list_display = ("id", "box", "edition", "ordinal", "sale")
+    list_display = ("id", "box", "edition", "ordinal", "sale", "collector", "is_open")
     ordering = ("id",)
-    list_filter = ("box", "box__edition", "sale__sale")
+    list_filter = ("box", "box__edition", "sale__sale", "collector", "is_open")
     search_fields = ("box__edition__name",)
 
     def has_add_permission(self, request):

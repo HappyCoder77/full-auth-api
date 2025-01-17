@@ -31,15 +31,13 @@ class Sale(models.Model):
     """
 
     date = models.DateField(default=date.today)
-    edition = models.ForeignKey(
-        Edition, on_delete=models.CASCADE, related_name="sales", null=True
-    )
+    edition = models.ForeignKey(Edition, on_delete=models.CASCADE, related_name="sales")
     dealer = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="sales", null=True
     )
 
     collector = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="purchases", null=True
+        User, on_delete=models.CASCADE, related_name="purchases"
     )
 
     quantity = models.PositiveSmallIntegerField(validators=[MinValueValidator(1)])
@@ -51,6 +49,13 @@ class Sale(models.Model):
     def collection(self):
         return self.edition.collection
 
+    def get_available_packs(self):
+        return Pack.objects.filter(
+            sale__isnull=True,
+            box__edition=self.edition,
+            box__order__dealer=self.dealer,
+        ).order_by("ordinal")
+
     def clean(self):
         """
         se consultan los packs en el inventario del dealer
@@ -58,17 +63,9 @@ class Sale(models.Model):
         error de validación
         """
 
-        available_packs = (
-            Pack.objects.filter(
-                sale__isnull=True,
-                box__edition=self.edition,
-                box__order__dealer=self.dealer,
-            )
-            .order_by("ordinal")
-            .count()
-        )
-        if available_packs < self.quantity:
+        available_packs = self.get_available_packs().count()
 
+        if available_packs < self.quantity:
             raise ValidationError(
                 f"Inventario insuficiente: quedan {available_packs} packs disponibles en inventario"
             )
@@ -79,16 +76,21 @@ class Sale(models.Model):
         Para relacionar los Packs correspondientes a a la venta actual
         y actualizar las opciones de rescate
         """
+        self.full_clean()
         super(Sale, self).save(*args, **kwargs)
-        available_packs = Pack.objects.filter(
-            sale__isnull=True, box__edition=self.edition, box__order__dealer=self.dealer
-        ).order_by("ordinal")[: self.quantity]
+        available_packs = self.get_available_packs()[: self.quantity]
 
-        # pack_list = []
+        sale_details = [
+            SaleDetail(sale=self, pack=each_pack) for each_pack in available_packs
+        ]
 
-        for each_pack in available_packs:
-            SaleDetail.objects.create(sale=self, pack=each_pack)
+        SaleDetail.objects.bulk_create(sale_details)
 
+        for pack in available_packs:
+            pack.collector = self.collector
+            pack.is_open = False
+
+        Pack.objects.bulk_update(available_packs, fields=["collector", "is_open"])
         # self.collector.rescue_options += self.quantity
         # self.collector.save(update_fields=['rescue_options'])
 
