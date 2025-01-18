@@ -64,7 +64,9 @@ class Album(models.Model):
             if Pack.objects.filter(
                 collector=self.collector, box__edition=self.edition, is_open=False
             ).exists():
-                return Pack.objects.filter(collector=self.collector, is_open=False)
+                return Pack.objects.filter(
+                    collector=self.collector, box__edition=self.edition, is_open=False
+                )
             else:
                 return None
         except Exception:
