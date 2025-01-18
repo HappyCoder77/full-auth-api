@@ -498,23 +498,24 @@ class Pack(models.Model):
     def __str__(self):
         return f"Pack N°: {self.id}"
 
+    @transaction.atomic
     def open(self, user):
         """
         Aunque el collector de un pack puede ser inferido de la sale,
         es necesario redundar con este atributo porque en las operaciones de rescate
         las stickers cambian de dueño
         """
+        self.is_open = True
+        self.save()
 
         for each_sticker in self.stickers.all():
             each_sticker.collector = user
-            # each_sticker.en_tablero = True
-
+            each_sticker.on_the_board = True
             each_sticker.save()
 
 
-class Sticker(
-    models.Model
-):  # instancia ejemplares de cada sticker definida en las coordinates
+class Sticker(models.Model):
+    # instancia ejemplares de cada sticker definida en las coordinates
     pack = models.ForeignKey(
         Pack, null=True, blank=True, on_delete=models.CASCADE, related_name="stickers"
     )

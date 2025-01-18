@@ -1,9 +1,11 @@
 from rest_framework.test import APITestCase
+
 from authentication.test.factories import UserFactory
 from editions.models import Pack
 from editions.test.factories import EditionFactory
 from promotions.test.factories import PromotionFactory
 from users.test.factories import CollectorFactory
+
 from ..serializers import AlbumSerializer
 from ..models import Album
 

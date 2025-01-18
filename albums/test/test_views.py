@@ -357,3 +357,95 @@ class AlbumDetailViewTest(APITestCase):
         response = self.client.post(self.url)
 
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+class OpenPackViewTest(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.client = APIClient()
+        cls.promotion = PromotionFactory()
+        cls.edition = EditionFactory(promotion=cls.promotion)
+        cls.superuser = UserFactory(is_superuser=True)
+        cls.basic_user = UserFactory()
+        cls.collector = CollectorFactory(user=UserFactory())
+        cls.pack = Pack.objects.first()
+        cls.pack.collector = cls.collector.user
+        cls.pack.save()
+        cls.url = reverse("open-pack", kwargs={"pk": cls.pack.pk})
+
+    def setUp(self):
+        self.client.force_authenticate(user=self.collector.user)
+
+    def test_open_pack_success(self):
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.pack.refresh_from_db()
+        self.assertTrue(self.pack.is_open)
+
+        for each_sticker in self.pack.stickers.all():
+            self.assertEqual(each_sticker.collector, self.collector.user)
+            self.assertTrue(each_sticker.on_the_board)
+
+    def test_open_pack_unauthorized(self):
+        self.client.logout()
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data["detail"], "Debe iniciar sesión para realizar esta acción"
+        )
+
+    def test_superuser_cannot_open_pack(self):
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"],
+            "Solo los coleccionistas pueden realizar esta acción",
+        )
+
+    def test_basic_user_cannot_open_pack(self):
+        self.client.force_authenticate(user=self.basic_user)
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"],
+            "Solo los coleccionistas pueden realizar esta acción",
+        )
+
+    def test_collector_cannot_open_someone_else_pack(self):
+        other_collector = CollectorFactory(user=UserFactory())
+        self.client.force_authenticate(user=other_collector.user)
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(
+            response.data["detail"],
+            "El sobre que se intenta abrir no existe, pertenece a otro coleccionista o ya fué abierto",
+        )
+
+    def test_open_non_existent_pack(self):
+        url = reverse("open-pack", kwargs={"pk": 1003})
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(
+            response.data["detail"],
+            "El sobre que se intenta abrir no existe, pertenece a otro coleccionista o ya fué abierto",
+        )
+
+    def test_open_already_opened_pack(self):
+        self.pack.open(self.collector.user)
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        response.data["detail"],
+        self.assertEqual(
+            response.data["detail"],
+            "El sobre que se intenta abrir no existe, pertenece a otro coleccionista o ya fué abierto",
+        )
+
+    def test_method_not_allowed(self):
+        response = self.client.get(self.url)
+        print(response)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.data["detail"], 'Método "GET" no permitido.')

@@ -1,5 +1,10 @@
 from django.urls import path
-from .views import UserAlbumListRetrieveView, UserAlbumCreateView, AlbumDetailView
+from .views import (
+    UserAlbumListRetrieveView,
+    UserAlbumCreateView,
+    AlbumDetailView,
+    OpenPackView,
+)
 
 
 urlpatterns = [
@@ -13,4 +18,5 @@ urlpatterns = [
         "user-albums/create/", UserAlbumCreateView.as_view(), name="user-albums-create"
     ),
     path("albums/<int:pk>/", AlbumDetailView.as_view(), name="album-detail"),
+    path("packs/<int:pk>/open/", OpenPackView.as_view(), name="open-pack"),
 ]

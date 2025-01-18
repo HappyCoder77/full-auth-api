@@ -4,8 +4,10 @@ from rest_framework.exceptions import NotFound
 from rest_framework.serializers import ValidationError
 from rest_framework.generics import GenericAPIView, RetrieveAPIView
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework import status, mixins
-from editions.models import Edition
+from editions.models import Edition, Pack
+from editions.serializers import PackSerializer
 from promotions.models import Promotion
 from .models import Album
 from .permissions import IsAuthenticatedCollector
@@ -143,3 +145,24 @@ class AlbumDetailView(RetrieveAPIView):
 
     def get_queryset(self):
         return Album.objects.filter(collector=self.request.user)
+
+
+class OpenPackView(APIView):
+    permission_classes = [IsAuthenticatedCollector]
+
+    def post(self, request, pk):
+        try:
+            pack = Pack.objects.get(pk=pk, collector=request.user, is_open=False)
+        except Pack.DoesNotExist:
+            return Response(
+                {
+                    "detail": "El sobre que se intenta abrir no existe, pertenece a otro coleccionista o ya fué abierto"
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        pack.save()
+        pack.open(request.user)
+
+        serializer = PackSerializer(pack)
+        return Response(serializer.data)
