@@ -83,6 +83,11 @@ class OrderTestCase(TestCase):
         self.user = UserFactory()
         self.dealer = DealerFactory(user=self.user, email=self.user.email)
 
+    def tearDown(self):
+        for payment in Payment.objects.all():
+            payment.capture.delete(save=False)
+            payment.delete()
+
     def test_order_data(self):
         # TODO: eliminar tal vez el dealer ya que el factory lo agrega
         order = OrderFactory.build(
@@ -482,6 +487,15 @@ class DealerBalanceTestCase(TestCase):
             initial_balance=self.past_dealer_balance.current_balance,
         )
 
+    def tearDown(self):
+        """Limpia los archivos de prueba después de cada test"""
+        for payment in Payment.objects.all():
+            if payment.capture and os.path.exists(payment.capture.path):
+                try:
+                    os.remove(payment.capture.path)
+                except FileNotFoundError:
+                    pass
+
     def test_dealer_balance_data(self):
 
         self.assertEqual(DealerBalance.objects.count(), 2)
@@ -694,8 +708,9 @@ class DealerBalanceTestCase(TestCase):
         self.assertEqual(self.past_dealer_balance.current_balance, 97.50)
         self.assertEqual(self.current_dealer_balance.initial_balance, 97.50)
         self.assertEqual(self.current_dealer_balance.current_balance, 117.50)
-
+        payment.capture.delete(save=False)
         payment.delete()
+        payment_2.capture.delete(save=False)
         payment_2.delete()
 
         self.past_dealer_balance.refresh_from_db()
