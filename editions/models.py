@@ -14,9 +14,8 @@ from collection_manager.models import Collection, Coordinate
 User = get_user_model()
 
 
-class Edition(
-    models.Model
-):  # clase para crear las editiones que se haran en cada promoción
+class Edition(models.Model):
+    # clase para crear las editiones que se haran en cada promoción
     """TODO: Explorar una mecanica de creacion mas eficiente y menos propensa a errores.
     Podria ser creando pack y boxes
     sobre la marcha,consolidando el atributo edition en un solo lugar,
@@ -528,11 +527,26 @@ class Sticker(models.Model):
     )
     on_the_board = models.BooleanField(default=False)
 
+    @property
+    def is_repeated(self):
+        """
+        Returns True if the collector already has this sticker in their collection
+        for the same edition
+        """
+        if not self.collector:
+            return False
+
+        return Sticker.objects.filter(
+            collector=self.collector,
+            coordinate=self.coordinate,
+            pack__box__edition=self.edition,  # Added edition check
+            on_the_board=True,
+        ).exists()
+
     def __str__(self):
         return str(self.coordinate.absolute_number)
 
     @property
-    # @admin.display(ordering='sticker__edition')
     def edition(self):
         return self.pack.box.edition
 

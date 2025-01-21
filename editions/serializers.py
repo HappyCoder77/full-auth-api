@@ -20,7 +20,14 @@ class StickerSerializer(ModelSerializer):
 
     class Meta:
         model = Sticker
-        fields = ("id", "ordinal", "number", "on_the_board", "coordinate")
+        fields = (
+            "id",
+            "ordinal",
+            "number",
+            "on_the_board",
+            "is_repeated",
+            "coordinate",
+        )
 
 
 class PackSerializer(ModelSerializer):
@@ -28,4 +35,9 @@ class PackSerializer(ModelSerializer):
 
     class Meta:
         model = Pack
-        fields = ("id", "is_open", "collector", "stickers")
+        fields = (
+            "id",
+            "is_open",
+            "collector",
+            "stickers",
+        )

@@ -34,6 +34,7 @@ class PackSerializerTest(TestCase):
             self.assertIn("ordinal", sticker)
             self.assertIn("number", sticker)
             self.assertIn("on_the_board", sticker)
+            self.assertFalse(sticker["is_repeated"])
             self.assertIsInstance(sticker["id"], int)
             self.assertIsInstance(sticker["ordinal"], int)
             self.assertIsInstance(sticker["on_the_board"], bool)
