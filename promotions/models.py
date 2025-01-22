@@ -93,6 +93,31 @@ class Promotion(models.Model):
                 f"Esta promoción termina en {period.months} meses y {period.days} días."
             )
 
+    @property
+    def max_debt(self):
+        """
+        Calculate the maximum debt for the promotion based on the cost of the editions.
+
+        Returns:
+            float: The average cost of the editions if there are any, otherwise 0.
+        """
+        try:
+            editions = self.edition_set.all()
+        except models.ObjectDoesNotExist:
+            return 0
+
+        debt = 0
+
+        for edition in editions:
+            debt += edition.box_cost
+
+        if editions.count() > 0:
+            debt = debt / editions.count()
+        else:
+            debt = 0
+
+        return debt
+
     class Meta:
         verbose_name = "promotion"
         verbose_name_plural = "promotions"

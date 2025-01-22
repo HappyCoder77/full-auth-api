@@ -33,6 +33,10 @@ class Edition(models.Model):
         verbose_name = "Edition"
         verbose_name_plural = "Editions"
 
+    @property
+    def box_cost(self):
+        return self.promotion.pack_cost * self.collection.PACKS_PER_BOX
+
     def __str__(self):
         return self.collection.name
 

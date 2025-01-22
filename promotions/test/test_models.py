@@ -59,6 +59,7 @@ class PromotionTestCase(TestCase):
             promotion_today.start_date.strftime("%m/%d/%Y"), TODAY.strftime("%m/%d/%Y")
         )
         self.assertEqual(promotion_today.end_date, promotion_end_date)
+        self.assertEqual(promotion_today.max_debt, 0)
         self.assertEqual(
             promotion_today_two_days.end_date, promotion_today_two_days_end_date
         )

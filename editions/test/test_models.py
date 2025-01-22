@@ -37,7 +37,7 @@ class EditionTestCase(TestCase):
     def test_edition_data(self):
         boxes = Box.objects.filter(edition=self.edition).order_by("pk")
         packs = Pack.objects.filter(box__edition_id=self.edition.id)
-
+        self.assertEqual(self.edition.box_cost, 150)
         self.assertEqual(str(self.edition), "Minecraft")
         self.assertEqual(boxes.count(), 37)
         self.assertEqual(packs.count(), 3695)
@@ -224,6 +224,15 @@ class EditionValidationTestCase(TestCase):
         )
 
 
+class PromotionMaxDebtTestCase(TestCase):
+    def test_promotion_max_debt(self):
+        promotion = PromotionFactory()
+        EditionFactory(promotion=promotion, collection__name="Test Promotion")
+        EditionFactory(promotion=promotion, collection__name="Test Promotion 2")
+
+        self.assertEqual(promotion.max_debt, 150)
+
+
 @skip
 class AnalisisEditionTestCase(TestCase):  # pragma: no cover
     @classmethod
@@ -246,7 +255,6 @@ class AnalisisEditionTestCase(TestCase):  # pragma: no cover
         print("circulation: ", self.edition.circulation)
 
 
-# TODO: terminar esto o probarlo en otros tests
 class StickerTestCase(TestCase):
 
     @classmethod

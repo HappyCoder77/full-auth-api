@@ -5,4 +5,4 @@ from .models import Promotion
 class PromotionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Promotion
-        fields = ['remaining_time']
+        fields = ["remaining_time", "max_debt"]

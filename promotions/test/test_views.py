@@ -56,6 +56,8 @@ class PromotionViewSetTestCase(TestCase):
             response.data["remaining_time"],
             "Esta promoción termina hoy a la medianoche.",
         )
+        self.assertEqual(response.data["max_debt"], 0)
+        self.assertNotEqual(response.data["max_debt"], 100)
         self.assertEqual(Promotion.objects.count(), 3)
 
     def test_promotion_create_forbidden(self):
