@@ -151,9 +151,12 @@ class Order(models.Model):
             .first()
         )
 
-        if dealer_balance and dealer_balance.current_balance > 0:
+        if (
+            dealer_balance
+            and dealer_balance.current_balance > self.edition.promotion.max_debt
+        ):
             raise ValidationError(
-                "No puedes realizar nuevas compras mientras tengas saldo pendiente"
+                f"No puedes realizar nuevas compras mientras tengas saldo superior a {self.edition.promotion.max_debt} Bs."
             )
 
         if current_pack_stock > 0:

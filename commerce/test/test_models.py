@@ -164,7 +164,7 @@ class OrderTestCase(TestCase):
             start_date=self.promotion.start_date,
             dealer=self.dealer.user,
             promotion=self.promotion,
-            initial_balance=100,
+            initial_balance=151,
         )
 
         order = OrderFactory.build(
@@ -176,7 +176,7 @@ class OrderTestCase(TestCase):
             order.full_clean()
 
         self.assertIn(
-            "No puedes realizar nuevas compras mientras tengas saldo pendiente",
+            "No puedes realizar nuevas compras mientras tengas saldo superior a 150.0 Bs.",
             str(context.exception),
         )
 
