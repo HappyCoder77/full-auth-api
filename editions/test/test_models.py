@@ -332,21 +332,22 @@ class StickerTestCase(TestCase):
         collector = CollectorFactory(user=UserFactory())
 
         # Get two stickers with the same coordinate in the same edition
-        sticker1 = self.stickers.filter(coordinate__rarity_factor__gte=1).first()
+        sticker1 = self.stickers.filter(coordinate__rarity_factor__gte=2).first()
+
+        pack = sticker1.pack
+        pack.open(collector.user)
+        sticker1.refresh_from_db()
+
         sticker2 = (
             self.stickers.filter(coordinate=sticker1.coordinate)
             .exclude(id=sticker1.id)
             .first()
         )
 
-        # Set up sticker1 as already collected
-        sticker1.collector = collector.user
-        sticker1.on_the_board = True
-        sticker1.save()
+        pack2 = sticker2.pack
+        pack2.open(collector.user)
+        sticker2.refresh_from_db()
 
-        # Test sticker2 should be marked as repeated
-        sticker2.collector = collector.user
-        sticker2.save()
         self.assertTrue(sticker2.is_repeated)
 
     def test_sticker_from_diferent_promotions_are_not_repeated(self):
@@ -355,22 +356,38 @@ class StickerTestCase(TestCase):
         edition = EditionFactory(
             promotion=promotion, collection=self.edition.collection
         )
-        previous_edition_sticker = self.stickers.first()
-        previous_edition_sticker.collector = collector.user
-        previous_edition_sticker.save()
+
+        coordinate = self.edition.collection.coordinates.filter(rarity_factor=2).first()
+        previous_edition_stickers = self.stickers.filter(
+            coordinate=coordinate
+        ).order_by("id")
+
+        sticker1 = previous_edition_stickers[0]
+        sticker2 = previous_edition_stickers[1]
+        pack1 = sticker1.pack
+        pack1.open(collector.user)
+        sticker1.refresh_from_db()
+
+        pack2 = sticker2.pack
+        pack2.open(collector.user)
+        sticker2.refresh_from_db()
+
+        self.assertTrue(sticker2.is_repeated)
 
         # Get a sticker from new edition with same coordinate
         current_sticker = Sticker.objects.filter(
-            pack__box__edition=edition, coordinate=previous_edition_sticker.coordinate
+            pack__box__edition=edition, coordinate=coordinate
         ).first()
-        current_sticker.collector = collector.user
-        current_sticker.save()
+
+        pack3 = current_sticker.pack
+        pack3.open(collector.user)
+        current_sticker.refresh_from_db()
 
         # Should not be repeated since it's from a different edition
         self.assertFalse(current_sticker.is_repeated)
 
         # Test uncollected sticker
-        uncollected_sticker = self.stickers.last()
+        uncollected_sticker = self.stickers.filter(coordinate__rarity_factor=1).first()
         self.assertFalse(uncollected_sticker.is_repeated)
 
 

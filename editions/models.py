@@ -475,6 +475,7 @@ class Box(models.Model):
         return f"Box N°: {self.id}, ordinal: {self.ordinal}"
 
 
+# Maybe collector field is unnecessary because SaleDetail already has it
 class Pack(models.Model):
     collector = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="packs", null=True
@@ -509,7 +510,9 @@ class Pack(models.Model):
 
         for each_sticker in self.stickers.all():
             each_sticker.collector = user
-            each_sticker.on_the_board = True
+            each_sticker.save()
+            each_sticker.is_repeated = each_sticker.check_is_repeated()
+            each_sticker.on_the_board = not each_sticker.is_repeated
             each_sticker.save()
 
 
@@ -526,9 +529,9 @@ class Sticker(models.Model):
         User, on_delete=models.CASCADE, related_name="stickers", null=True, blank=True
     )
     on_the_board = models.BooleanField(default=False)
+    is_repeated = models.BooleanField(default=False)
 
-    @property
-    def is_repeated(self):
+    def check_is_repeated(self):
         """
         Returns True if the collector already has this sticker in their collection
         for the same edition
@@ -536,12 +539,12 @@ class Sticker(models.Model):
         if not self.collector:
             return False
 
-        return Sticker.objects.filter(
+        query = Sticker.objects.filter(
             collector=self.collector,
             coordinate=self.coordinate,
-            pack__box__edition=self.edition,  # Added edition check
-            on_the_board=True,
-        ).exists()
+            pack__box__edition=self.edition,
+        ).exclude(id=self.id)
+        return query.exists()
 
     def __str__(self):
         return str(self.coordinate.absolute_number)
