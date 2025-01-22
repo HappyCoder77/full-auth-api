@@ -2,7 +2,8 @@ from django.contrib.auth import get_user_model
 from django.db import models, transaction
 from editions.models import Sticker
 
-from editions.models import Edition, Pack
+from editions.models import Edition, Pack, Sticker
+
 from collection_manager.models import StandardPrize
 
 User = get_user_model()
@@ -72,6 +73,26 @@ class Album(models.Model):
         except Exception:
             return None
 
+    def stickers_on_the_board(self):
+        """
+        Returns a queryset of stickers that are on the board for the collector of this album.
+        """
+        try:
+            if Sticker.objects.filter(
+                collector=self.collector,
+                pack__box__edition=self.edition,
+                on_the_board=True,
+            ).exists():
+                return Sticker.objects.filter(
+                    collector=self.collector,
+                    pack__box__edition=self.edition,
+                    on_the_board=True,
+                )
+            else:
+                return None
+        except Exception:
+            return None
+
 
 class Page(models.Model):
     album = models.ForeignKey(Album, on_delete=models.CASCADE, related_name="pages")
@@ -130,17 +151,23 @@ class Slot(models.Model):
     absolute_number = models.PositiveSmallIntegerField(default=0)
     image = models.ImageField(null=True, blank=True)
 
-    def stick_sticker(self, sticker):
-        number = sticker.coordinate.absolute_number
-        if number != self.absolute_number:
-            raise ValueError(
-                f"Casilla equivocada. intentas pegar la barajita número {number} en la casilla número {self.number}"
-            )
+    @transaction.atomic
+    def place_sticker(self, sticker):
+        self._validate_sticker_placement(sticker)
+        self.sticker = sticker
+        self.save()
+        sticker.on_the_board = False
+        sticker.save()
+        return True
+
+    def _validate_sticker_placement(self, sticker):
         if not self.is_empty:
             raise ValueError(f"La casilla número {self.number} ya está llena")
 
-        self.sticker = sticker
-        self.save()
+        if sticker.coordinate.absolute_number != self.absolute_number:
+            raise ValueError(
+                f"Casilla equivocada. Intentas pegar la barajita número {sticker.coordinate.absolute_number} en la casilla número {self.number}"
+            )
 
     class Meta:
         ordering = ["number"]
@@ -148,6 +175,10 @@ class Slot(models.Model):
     @property
     def is_empty(self):
         return self.sticker is None
+
+    @property
+    def status(self):
+        return "filled" if self.sticker else "empty"
 
 
 class PagePrize(models.Model):

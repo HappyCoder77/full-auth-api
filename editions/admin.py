@@ -22,7 +22,15 @@ class BoxAdmin(admin.ModelAdmin):
 
 @admin.register(Pack)
 class PackAdmin(admin.ModelAdmin):
-    list_display = ("id", "box", "edition", "ordinal", "sale", "collector", "is_open")
+    list_display = (
+        "id",
+        "box",
+        "edition",
+        "ordinal",
+        "sale",
+        "collector",
+        "is_open",
+    )
     ordering = ("id",)
     list_filter = ("box", "box__edition", "sale__sale", "collector", "is_open")
     search_fields = ("box__edition__name",)
@@ -33,9 +41,22 @@ class PackAdmin(admin.ModelAdmin):
 
 @admin.register(Sticker)
 class StickerAdmin(admin.ModelAdmin):
-    list_display = ("id", "number", "ordinal", "rarity", "pack", "collector")
+    list_display = (
+        "id",
+        "number",
+        "ordinal",
+        "rarity",
+        "pack",
+        "collector",
+        "on_the_board",
+    )
     ordering = ("id",)
-    list_filter = ("pack__box", "coordinate__rarity_factor")
+    list_filter = (
+        "pack__box",
+        "coordinate__rarity_factor",
+        "on_the_board",
+        "collector",
+    )
 
     def has_add_permission(self, request):
         return False
