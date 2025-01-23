@@ -9,7 +9,7 @@ from django.db.models import Count
 from django.utils import timezone
 
 from promotions.models import Promotion
-from collection_manager.models import Collection, Coordinate
+from collection_manager.models import Collection, Coordinate, SurprisePrize
 
 User = get_user_model()
 
@@ -516,8 +516,9 @@ class Pack(models.Model):
             each_sticker.collector = user
             each_sticker.save()
             each_sticker.is_repeated = each_sticker.check_is_repeated()
-            each_sticker.on_the_board = not each_sticker.is_repeated
-            each_sticker.save()
+            if each_sticker.number >= 0:
+                each_sticker.on_the_board = not each_sticker.is_repeated
+                each_sticker.save()
 
 
 class Sticker(models.Model):
@@ -579,3 +580,44 @@ class Sticker(models.Model):
     @property
     def box(self):
         return self.pack.box
+
+    def create_prize(self):
+        if self.coordinate.absolute_number != 0:
+            raise ValidationError("Solo las barajitas premiadas pueden recibir premios")
+
+        if hasattr(self, "prize"):
+            raise ValidationError("Esta barajita ya tiene un premio asignado")
+
+        random_prize = self.collection.get_random_surprise_prize()
+        if not random_prize:
+            raise ValidationError("No hay premios disponibles")
+
+        return StickerPrize.objects.create(sticker=self, prize=random_prize)
+
+
+class StickerPrize(models.Model):
+    sticker = models.OneToOneField(
+        Sticker, on_delete=models.CASCADE, related_name="prize"
+    )
+    prize = models.ForeignKey(SurprisePrize, on_delete=models.SET_NULL, null=True)
+    claimed = models.BooleanField(default=False)
+    claimed_date = models.DateTimeField(null=True, blank=True)
+
+    def clean(self):
+        if self.sticker.coordinate.absolute_number != 0:
+            raise ValidationError("Only prize stickers can receive prizes")
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Premio sorpresa para barajita con el id {self.sticker.id}: {self.prize.description}"
+
+    def claim(self):
+        if not self.claimed:
+            self.claimed = True
+            self.claimed_date = timezone.now()
+            self.save()
+            return self.claimed_date
+        return None

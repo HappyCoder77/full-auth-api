@@ -14,14 +14,13 @@ class Collection(models.Model):
     RARITY_1 = Decimal(3)
     RARITY_2 = Decimal(2)
     RARITY_3 = Decimal(1)
-    RARITY_4 = Decimal(0.02).quantize(Decimal('0.00'))
-    RARITY_5 = Decimal(0.01).quantize(Decimal('0.00'))
-    RARITY_6 = Decimal(0.006).quantize(Decimal('0.000'))
-    RARITY_7 = Decimal(0.004).quantize(Decimal('0.000'))
-    PRIZE_STICKER_RARITY = Decimal(0.301).quantize(Decimal('0.000'))
-    name = models.CharField("Tema de la colección",
-                            max_length=50, unique=True)
-    image = models.ImageField(upload_to='images/collections/')
+    RARITY_4 = Decimal(0.02).quantize(Decimal("0.00"))
+    RARITY_5 = Decimal(0.01).quantize(Decimal("0.00"))
+    RARITY_6 = Decimal(0.006).quantize(Decimal("0.000"))
+    RARITY_7 = Decimal(0.004).quantize(Decimal("0.000"))
+    PRIZE_STICKER_RARITY = Decimal(0.301).quantize(Decimal("0.000"))
+    name = models.CharField("Tema de la colección", max_length=50, unique=True)
+    image = models.ImageField(upload_to="images/collections/")
 
     def __str__(self):
         return self.name
@@ -47,7 +46,9 @@ class Collection(models.Model):
         while current_page <= self.PAGES:  # bucle que recorre las pages del album
             current_slot = 1
 
-            while current_slot <= self.SLOTS_PER_PAGE:  # bucle que recorre las stickers de cada page,
+            while (
+                current_slot <= self.SLOTS_PER_PAGE
+            ):  # bucle que recorre las stickers de cada page,
                 # y crea las coordinates correspondientes
                 coordinate = Coordinate(
                     collection=self,
@@ -55,7 +56,7 @@ class Collection(models.Model):
                     slot_number=current_slot,
                     ordinal=current_slot,
                     absolute_number=counter,
-                    rarity_factor=0
+                    rarity_factor=0,
                 )
 
                 coordinates_list.append(coordinate)
@@ -68,7 +69,7 @@ class Collection(models.Model):
             collection=self,
             page=self.PRIZE_STICKER_COORDINATE,
             slot_number=self.PRIZE_STICKER_COORDINATE,
-            rarity_factor=float(self.PRIZE_STICKER_RARITY)
+            rarity_factor=float(self.PRIZE_STICKER_RARITY),
         )
 
         coordinates_list.append(coordinate)
@@ -84,8 +85,8 @@ class Collection(models.Model):
             list = []
             counter = 1
 
-        # bucle que itera pack cada cada sticker del la página en curso
-        # y llena la list con range_options igual al número de coordinates por page
+            # bucle que itera pack cada cada sticker del la página en curso
+            # y llena la list con range_options igual al número de coordinates por page
             while counter <= self.SLOTS_PER_PAGE:
                 list.append(counter)
                 counter += 1
@@ -101,7 +102,7 @@ class Collection(models.Model):
 
             current_page += 1
 
-        Coordinate.objects.bulk_update(coordinates_list, ['ordinal'])
+        Coordinate.objects.bulk_update(coordinates_list, ["ordinal"])
 
     # funcion que asigna los factores de rarity a las coordinates
     def distribute_rarity(self):
@@ -130,34 +131,44 @@ class Collection(models.Model):
 
             coordinates_list.append(each_coordinate)
 
-        Coordinate.objects.bulk_update(coordinates_list, ['rarity_factor'])
+        Coordinate.objects.bulk_update(coordinates_list, ["rarity_factor"])
 
     def create_standard_prizes(self):
         pages = range(1, self.PAGES + 1)
 
         for page in pages:
             StandardPrize.objects.create(
-                collection_id=self.id, description='descripción de premio standard', page=page)
+                collection_id=self.id,
+                description="descripción de premio standard",
+                page=page,
+            )
 
     def create_surprise_prizes(self):
         range_options = range(1, self.SURPRISE_PRIZE_OPTIONS + 1)
 
         for counter in range_options:
             SurprisePrize.objects.create(
-                collection_id=self.id, description='descripción de premio sorpresa', number=counter)
+                collection_id=self.id,
+                description="descripción de premio sorpresa",
+                number=counter,
+            )
+
+    def get_random_surprise_prize(self):
+        return random.choice(self.surprise_prizes.all())
 
 
 class Coordinate(models.Model):
     collection = models.ForeignKey(
-        Collection, on_delete=models.CASCADE, related_name='coordinates')
-    page = models.BigIntegerField('Página')
-    slot_number = models.BigIntegerField('Casilla')
-    absolute_number = models.BigIntegerField('Número absoluto', default=0)
-    ordinal = models.BigIntegerField('Ordinal', default=0)
+        Collection, on_delete=models.CASCADE, related_name="coordinates"
+    )
+    page = models.BigIntegerField("Página")
+    slot_number = models.BigIntegerField("Casilla")
+    absolute_number = models.BigIntegerField("Número absoluto", default=0)
+    ordinal = models.BigIntegerField("Ordinal", default=0)
     rarity_factor = models.DecimalField(
-        'Factor de rareza', max_digits=6, decimal_places=3)
-    image = models.ImageField(
-        upload_to='images/coordinates/', null=True, blank=True)
+        "Factor de rareza", max_digits=6, decimal_places=3
+    )
+    image = models.ImageField(upload_to="images/coordinates/", null=True, blank=True)
 
     def __str__(self):
         return str(self.absolute_number)
@@ -167,9 +178,10 @@ class Coordinate(models.Model):
 
 
 class SurprisePrize(models.Model):
-    #TODO: agregar undefined como valor por defecto
+    # TODO: agregar undefined como valor por defecto
     collection = models.ForeignKey(
-        Collection, on_delete=models.CASCADE, null=True, related_name='surprise_prizes')
+        Collection, on_delete=models.CASCADE, null=True, related_name="surprise_prizes"
+    )
     number = models.SmallIntegerField(default=0)
     description = models.CharField(max_length=100)
 
@@ -177,13 +189,14 @@ class SurprisePrize(models.Model):
         return self.description
 
     class Meta:
-        verbose_name = 'surprise prize'
-        verbose_name_plural = 'surprise prizes'
+        verbose_name = "surprise prize"
+        verbose_name_plural = "surprise prizes"
 
 
 class StandardPrize(models.Model):
     collection = models.ForeignKey(
-        Collection, on_delete=models.CASCADE, null=True, related_name='standard_prizes')
+        Collection, on_delete=models.CASCADE, null=True, related_name="standard_prizes"
+    )
     page = models.SmallIntegerField()
     description = models.CharField(max_length=100)
 
@@ -191,4 +204,4 @@ class StandardPrize(models.Model):
         return self.description
 
     class Meta:
-        verbose_name_plural = 'standard prizes'
+        verbose_name_plural = "standard prizes"

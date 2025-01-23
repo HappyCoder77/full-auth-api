@@ -22,7 +22,15 @@ class AlbumSerializerTest(APITestCase):
 
     def test_serializer_contains_expected_fields(self):
         serializer = AlbumSerializer(instance=self.album)
-        expected_fields = {"id", "edition", "collector", "pages", "pack_inbox"}
+        expected_fields = {
+            "id",
+            "edition",
+            "collector",
+            "pages",
+            "pack_inbox",
+            "stickers_on_the_board",
+            "image",
+        }
 
         self.assertEqual(set(serializer.data.keys()), expected_fields)
         self.assertIsNone(serializer.data["pack_inbox"])
