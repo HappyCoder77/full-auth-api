@@ -81,11 +81,13 @@ class Album(models.Model):
             if Sticker.objects.filter(
                 collector=self.collector,
                 pack__box__edition=self.edition,
+                coordinate__absolute_number__gte=1,
                 on_the_board=True,
             ).exists():
                 return Sticker.objects.filter(
                     collector=self.collector,
                     pack__box__edition=self.edition,
+                    coordinate__absolute_number__gte=1,
                     on_the_board=True,
                 )
             else:
