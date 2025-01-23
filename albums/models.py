@@ -23,6 +23,10 @@ class Album(models.Model):
         unique_together = ("collector", "edition")
 
     @property
+    def image(self):
+        return self.edition.collection.image
+
+    @property
     def missing_stickers(self):
         slots = Slot.objects.filter(page__album=self, sticker__isnull=True).count()
         return slots

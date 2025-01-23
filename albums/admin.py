@@ -5,7 +5,7 @@ from .models import Album, Page, Slot
 @admin.register(Album)
 class AlbumAdmin(admin.ModelAdmin):
     model = Album
-    list_display = ("id", "collector", "edition")
+    list_display = ("id", "collector", "edition", "image")
 
 
 @admin.register(Page)

@@ -1,7 +1,10 @@
+import os
 from rest_framework import serializers
 from editions.serializers import PackSerializer
 from editions.serializers import StickerSerializer
 from .models import Album, Page, Slot
+
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
 
 
 class SlotSerializer(serializers.ModelSerializer):
@@ -23,14 +26,24 @@ class AlbumSerializer(serializers.ModelSerializer):
     collector = serializers.PrimaryKeyRelatedField(read_only=True)
     pack_inbox = PackSerializer(many=True, read_only=True)
     stickers_on_the_board = StickerSerializer(many=True, read_only=True)
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = Album
         fields = (
             "id",
             "edition",
+            "image",
             "collector",
             "pages",
             "pack_inbox",
             "stickers_on_the_board",
         )
+
+    def get_image(self, obj):
+        if obj.image:
+            try:
+                return f"{obj.image.url}"
+            except:
+                return None
+        return None
