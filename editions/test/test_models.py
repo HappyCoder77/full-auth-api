@@ -398,6 +398,53 @@ class StickerTestCase(TestCase):
         uncollected_sticker = self.stickers.filter(coordinate__rarity_factor=1).first()
         self.assertFalse(uncollected_sticker.is_repeated)
 
+    def test_create_prize(self):
+        prize_sticker = self.stickers.filter(coordinate__absolute_number=0).first()
+        regular_sticker = self.stickers.filter(
+            coordinate__absolute_number__gt=0
+        ).first()
+
+        # Test prize creation for prize sticker
+        prize = prize_sticker.create_prize()
+        self.assertIsNotNone(prize)
+        self.assertEqual(prize.sticker, prize_sticker)
+
+        # Test prize creation for regular sticker
+        with self.assertRaises(ValidationError):
+            regular_sticker.create_prize()
+
+        # Test double prize creation
+        with self.assertRaises(ValidationError):
+            prize_sticker.create_prize()
+
+        # Test when no prizes available
+        self.edition.collection.surprise_prizes.all().delete()
+        prize_sticker_new = self.stickers.filter(coordinate__absolute_number=0).last()
+        with self.assertRaises(ValidationError):
+            prize_sticker_new.create_prize()
+
+    def test_check_is_repeated_edge_cases(self):
+        # Test with no collector
+        sticker = self.stickers.first()
+        self.assertFalse(sticker.check_is_repeated())
+
+        # Test single sticker (not repeated)
+        collector = CollectorFactory(user=UserFactory())
+        pack = sticker.pack
+        pack.open(collector.user)
+        sticker.refresh_from_db()
+        self.assertFalse(sticker.check_is_repeated())
+
+    def test_property_methods(self):
+        sticker = self.stickers.first()
+
+        self.assertEqual(sticker.edition, sticker.pack.box.edition)
+        self.assertEqual(sticker.collection, sticker.pack.box.edition.collection)
+        self.assertEqual(sticker.number, sticker.coordinate.absolute_number)
+        self.assertEqual(sticker.page, sticker.coordinate.page)
+        self.assertEqual(sticker.rarity, sticker.coordinate.rarity_factor)
+        self.assertEqual(sticker.box, sticker.pack.box)
+
 
 class BoxTestCase(TestCase):
     @classmethod

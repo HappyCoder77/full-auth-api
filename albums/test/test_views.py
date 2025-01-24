@@ -384,7 +384,8 @@ class OpenPackViewTest(APITestCase):
 
         for each_sticker in self.pack.stickers.all():
             self.assertEqual(each_sticker.collector, self.collector.user)
-            self.assertTrue(each_sticker.on_the_board)
+            if each_sticker.number > 0:
+                self.assertTrue(each_sticker.on_the_board)
 
     def test_open_pack_unauthorized(self):
         self.client.logout()

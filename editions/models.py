@@ -549,6 +549,7 @@ class Sticker(models.Model):
             coordinate=self.coordinate,
             pack__box__edition=self.edition,
         ).exclude(id=self.id)
+
         return query.exists()
 
     def __str__(self):
