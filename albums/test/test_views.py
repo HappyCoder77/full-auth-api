@@ -5,13 +5,13 @@ from rest_framework.test import APIClient, APITestCase
 from rest_framework import status, mixins
 
 from authentication.test.factories import UserFactory
-from editions.models import Pack
+from editions.models import Pack, Sticker
 from editions.test.factories import EditionFactory
 from promotions.models import Promotion
 from promotions.test.factories import PromotionFactory
 from users.test.factories import CollectorFactory
 
-from ..models import Album
+from ..models import Album, Slot
 from ..serializers import AlbumSerializer
 from .factories import AlbumFactory
 
@@ -446,6 +446,127 @@ class OpenPackViewTest(APITestCase):
 
     def test_method_not_allowed(self):
         response = self.client.get(self.url)
-        print(response)
+
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
         self.assertEqual(response.data["detail"], 'Método "GET" no permitido.')
+
+
+class PlaceStickerViewTest(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.client = APIClient()
+        cls.promotion = PromotionFactory()
+        cls.edition = EditionFactory(promotion=cls.promotion)
+        cls.superuser = UserFactory(is_superuser=True)
+        cls.basic_user = UserFactory()
+        cls.collector = CollectorFactory(user=UserFactory())
+        cls.album = AlbumFactory(collector=cls.collector.user, edition=cls.edition)
+
+        cls.sticker = (
+            Sticker.objects.filter(coordinate__rarity_factor=2).order_by("id").first()
+        )
+        cls.sticker.collector = cls.collector.user
+        cls.sticker.save()
+        cls.sticker.refresh_from_db()
+        cls.slot = Slot.objects.filter(absolute_number=cls.sticker.number).first()
+        cls.url = reverse("place-sticker", kwargs={"sticker_id": cls.sticker.pk})
+        cls.data = {"slot_id": cls.slot.pk}
+
+    def setUp(self):
+
+        self.client.force_authenticate(user=self.collector.user)
+
+    def test_place_sticker_success(self):
+        slots = Slot.objects.filter(page__album=self.album)
+        response = self.client.post(self.url, data=self.data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.slot.refresh_from_db()
+        self.album.refresh_from_db()
+        self.assertEqual(self.slot.sticker, self.sticker)
+        self.assertFalse(self.sticker.on_the_board)
+        self.assertFalse(self.slot.is_empty)
+        self.assertEqual(self.slot.status, "filled")
+        self.assertEqual(self.album.missing_stickers, slots.count() - 1)
+        self.assertEqual(self.album.collected_stickers, 1)
+
+    def test_place_sticker_unauthorized(self):
+        self.client.logout()
+        response = self.client.post(self.url, data=self.data)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data["detail"], "Debe iniciar sesión para realizar esta acción"
+        )
+
+    def test_superuser_cannot_place_sticker(self):
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.post(self.url, data=self.data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"],
+            "Solo los coleccionistas pueden realizar esta acción",
+        )
+
+    def test_basic_user_cannot_place_sticker(self):
+        self.client.force_authenticate(user=self.basic_user)
+        response = self.client.post(self.url, data=self.data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"],
+            "Solo los coleccionistas pueden realizar esta acción",
+        )
+
+    def test_collector_cannot_place_someone_else_sticker_on_someone_else_slot(self):
+        other_collector = CollectorFactory(user=UserFactory())
+        self.client.force_authenticate(user=other_collector.user)
+        response = self.client.post(self.url, data=self.data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"],
+            "Solo puedes pegar tus propias barajitas",
+        )
+
+    def test_collector_cannot_place_sticker_on_someone_else_album(self):
+        other_collector = CollectorFactory(user=UserFactory())
+        other_album = AlbumFactory(collector=other_collector.user, edition=self.edition)
+        other_slot = Slot.objects.filter(page__album=other_album).first()
+        data = {"slot_id": other_slot.pk}
+        self.client.force_authenticate(user=self.collector.user)
+        response = self.client.post(self.url, data=data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"],
+            "Solo puedes pegar barajitas en tu propio album",
+        )
+
+    def test_place_sticker_invalid_slot_id(self):
+        response = self.client.post(self.url, data={"slot_id": 99999})
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data["error"], "Slot not found")
+
+    def test_place_sticker_invalid_sticker_id(self):
+        url = reverse("place-sticker", kwargs={"sticker_id": 99999})
+        response = self.client.post(url, data=self.data)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data["error"], "Sticker not found")
+
+    def test_place_sticker_in_filled_slot(self):
+        # First placement
+        self.client.post(self.url, data=self.data)
+
+        # Create another sticker
+        new_sticker = (
+            Sticker.objects.filter(coordinate__rarity_factor=1)
+            .exclude(id=self.sticker.pk)
+            .order_by("id")
+            .first()
+        )
+        new_sticker.collector = self.collector.user
+        new_sticker.save()
+        new_sticker.refresh_from_db()
+
+        # Try to place in same slot
+        url = reverse("place-sticker", kwargs={"sticker_id": new_sticker.pk})
+        response = self.client.post(url, data=self.data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("ya está llena", str(response.data["error"]))

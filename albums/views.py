@@ -6,10 +6,10 @@ from rest_framework.generics import GenericAPIView, RetrieveAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status, mixins
-from editions.models import Edition, Pack
+from editions.models import Edition, Pack, Sticker
 from editions.serializers import PackSerializer
 from promotions.models import Promotion
-from .models import Album
+from .models import Album, Slot
 from .permissions import IsAuthenticatedCollector
 from .serializers import AlbumSerializer
 
@@ -166,3 +166,47 @@ class OpenPackView(APIView):
 
         serializer = PackSerializer(pack)
         return Response(serializer.data)
+
+
+class PlaceStickerView(APIView):
+    permission_classes = [IsAuthenticatedCollector]
+
+    def post(self, request, sticker_id):
+        try:
+            sticker = Sticker.objects.get(id=sticker_id)
+            slot_id = request.data.get("slot_id")
+            slot = Slot.objects.get(id=slot_id)
+
+            if sticker.collector != request.user:
+                return Response(
+                    {"detail": "Solo puedes pegar tus propias barajitas"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            if slot.page.album.collector != request.user:
+                return Response(
+                    {"detail": "Solo puedes pegar barajitas en tu propio album"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            slot.place_sticker(sticker)
+
+            return Response(
+                {
+                    "message": "Barajita pegada correctamente",
+                    "slot_id": slot.id,
+                    "sticker_id": sticker.id,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except Sticker.DoesNotExist:
+            return Response(
+                {"error": "Sticker not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+        except Slot.DoesNotExist:
+            return Response(
+                {"error": "Slot not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

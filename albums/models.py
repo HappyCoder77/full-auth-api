@@ -175,6 +175,9 @@ class Slot(models.Model):
                 f"Casilla equivocada. Intentas pegar la barajita número {sticker.coordinate.absolute_number} en la casilla número {self.number}"
             )
 
+        if sticker.collector != self.page.album.collector:
+            raise ValueError("No puedes pegar una barajita que no te pertenece")
+
     class Meta:
         ordering = ["number"]
 

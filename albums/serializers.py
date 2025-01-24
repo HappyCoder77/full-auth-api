@@ -4,8 +4,6 @@ from editions.serializers import PackSerializer
 from editions.serializers import StickerSerializer
 from .models import Album, Page, Slot
 
-BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
-
 
 class SlotSerializer(serializers.ModelSerializer):
     class Meta:
