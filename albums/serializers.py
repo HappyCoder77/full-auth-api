@@ -8,7 +8,7 @@ from .models import Album, Page, Slot
 class SlotSerializer(serializers.ModelSerializer):
     class Meta:
         model = Slot
-        fields = ("number", "absolute_number", "image")
+        fields = ("id", "number", "absolute_number", "image", "is_empty")
 
 
 class PageSerializer(serializers.ModelSerializer):
