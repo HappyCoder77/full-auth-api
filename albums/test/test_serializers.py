@@ -29,11 +29,14 @@ class AlbumSerializerTest(APITestCase):
             "pages",
             "pack_inbox",
             "stickers_on_the_board",
+            "prized_stickers",
             "image",
         }
 
         self.assertEqual(set(serializer.data.keys()), expected_fields)
         self.assertIsNone(serializer.data["pack_inbox"])
+        self.assertIsNone(serializer.data["stickers_on_the_board"])
+        self.assertQuerySetEqual(serializer.data["prized_stickers"], [])
 
     def test_pages_serialization(self):
         serializer = AlbumSerializer(instance=self.album)

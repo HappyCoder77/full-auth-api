@@ -31,11 +31,23 @@ class AlbumTestCase(TestCase):
         self.assertEqual(Slot.objects.count(), self.total_slots)
         self.assertEqual(self.album.missing_stickers, 24)
         self.assertEqual(self.album.collected_stickers, 0)
+        self.assertIsNone(self.album.stickers_on_the_board(), 0)
+        self.assertQuerySetEqual(self.album.prized_stickers(), [])
 
     def test_unique_constraint(self):
 
         with self.assertRaises(IntegrityError):
             AlbumFactory(collector=self.album.collector, edition=self.album.edition)
+
+    def test_prized_stickers(self):
+        prized_sticker = Sticker.objects.filter(
+            pack__box__edition=self.album.edition,
+            coordinate__absolute_number=0,
+            on_the_board=False,
+        ).first()
+        prized_sticker.collector = self.album.collector
+        prized_sticker.save()
+        self.assertEqual(self.album.prized_stickers().count(), 1)
 
 
 class PageTestCase(TestCase):

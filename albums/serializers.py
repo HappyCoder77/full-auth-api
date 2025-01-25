@@ -1,4 +1,3 @@
-import os
 from rest_framework import serializers
 from editions.serializers import PackSerializer
 from editions.serializers import StickerSerializer
@@ -24,6 +23,7 @@ class AlbumSerializer(serializers.ModelSerializer):
     collector = serializers.PrimaryKeyRelatedField(read_only=True)
     pack_inbox = PackSerializer(many=True, read_only=True)
     stickers_on_the_board = StickerSerializer(many=True, read_only=True)
+    prized_stickers = StickerSerializer(many=True, read_only=True)
     image = serializers.SerializerMethodField()
 
     class Meta:
@@ -36,6 +36,7 @@ class AlbumSerializer(serializers.ModelSerializer):
             "pages",
             "pack_inbox",
             "stickers_on_the_board",
+            "prized_stickers",
         )
 
     def get_image(self, obj):

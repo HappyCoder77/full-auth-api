@@ -99,6 +99,20 @@ class Album(models.Model):
         except Exception:
             return None
 
+    def prized_stickers(self):
+        """
+        Returns a queryset of stickers prized and undiscovered.
+        """
+
+        query = Sticker.objects.filter(
+            collector=self.collector,
+            pack__box__edition=self.edition,
+            coordinate__absolute_number=0,
+            on_the_board=False,
+        )
+
+        return query if query.exists() else Sticker.objects.none()
+
 
 class Page(models.Model):
     album = models.ForeignKey(Album, on_delete=models.CASCADE, related_name="pages")
