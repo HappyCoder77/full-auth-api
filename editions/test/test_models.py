@@ -499,3 +499,7 @@ class PackTestCase(TestCase):
         for sticker in pack.stickers.all():
             self.assertEqual(sticker.pack, pack)
             self.assertEqual(sticker.collector, user)
+
+            if sticker.number == 0:
+                self.assertFalse(sticker.on_the_board)
+                self.assertFalse(sticker.is_repeated)

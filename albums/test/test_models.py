@@ -45,9 +45,14 @@ class AlbumTestCase(TestCase):
             coordinate__absolute_number=0,
             on_the_board=False,
         ).first()
-        prized_sticker.collector = self.album.collector
-        prized_sticker.save()
+        pack = prized_sticker.pack
+        pack.open(self.album.collector)
+        prized_sticker.refresh_from_db()
+
         self.assertEqual(self.album.prized_stickers().count(), 1)
+        self.assertFalse(prized_sticker.on_the_board)
+        self.assertFalse(prized_sticker.is_repeated)
+        self.assertEqual(prized_sticker.collector, self.album.collector)
 
 
 class PageTestCase(TestCase):

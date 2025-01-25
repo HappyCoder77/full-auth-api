@@ -515,8 +515,8 @@ class Pack(models.Model):
         for each_sticker in self.stickers.all():
             each_sticker.collector = user
             each_sticker.save()
-            each_sticker.is_repeated = each_sticker.check_is_repeated()
-            if each_sticker.number >= 0:
+            if each_sticker.number > 0:
+                each_sticker.is_repeated = each_sticker.check_is_repeated()
                 each_sticker.on_the_board = not each_sticker.is_repeated
                 each_sticker.save()
 
