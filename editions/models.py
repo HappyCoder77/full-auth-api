@@ -14,6 +14,7 @@ from collection_manager.models import Collection, Coordinate, SurprisePrize
 User = get_user_model()
 
 
+# TODO: This app should be renamed to casino or something like that
 class Edition(models.Model):
     # clase para crear las editiones que se haran en cada promoción
     """TODO: Explorar una mecanica de creacion mas eficiente y menos propensa a errores.
@@ -582,9 +583,11 @@ class Sticker(models.Model):
     def box(self):
         return self.pack.box
 
-    def create_prize(self):
+    def discover_prize(self):
         if self.coordinate.absolute_number != 0:
-            raise ValidationError("Solo las barajitas premiadas pueden recibir premios")
+            raise ValidationError(
+                "Solo las barajitas premiadas pueden descubrir premios sorpresa"
+            )
 
         if hasattr(self, "prize"):
             raise ValidationError("Esta barajita ya tiene un premio asignado")

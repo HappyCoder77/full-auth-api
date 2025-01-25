@@ -405,23 +405,23 @@ class StickerTestCase(TestCase):
         ).first()
 
         # Test prize creation for prize sticker
-        prize = prize_sticker.create_prize()
+        prize = prize_sticker.discover_prize()
         self.assertIsNotNone(prize)
         self.assertEqual(prize.sticker, prize_sticker)
 
         # Test prize creation for regular sticker
         with self.assertRaises(ValidationError):
-            regular_sticker.create_prize()
+            regular_sticker.discover_prize()
 
         # Test double prize creation
         with self.assertRaises(ValidationError):
-            prize_sticker.create_prize()
+            prize_sticker.discover_prize()
 
         # Test when no prizes available
         self.edition.collection.surprise_prizes.all().delete()
         prize_sticker_new = self.stickers.filter(coordinate__absolute_number=0).last()
         with self.assertRaises(ValidationError):
-            prize_sticker_new.create_prize()
+            prize_sticker_new.discover_prize()
 
     def test_check_is_repeated_edge_cases(self):
         # Test with no collector

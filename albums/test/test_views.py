@@ -5,6 +5,7 @@ from rest_framework.test import APIClient, APITestCase
 from rest_framework import status, mixins
 
 from authentication.test.factories import UserFactory
+from collection_manager.models import SurprisePrize
 from editions.models import Pack, Sticker
 from editions.test.factories import EditionFactory
 from promotions.models import Promotion
@@ -571,3 +572,100 @@ class PlaceStickerViewTest(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("ya está llena", str(response.data["error"]))
+
+
+class DiscoverPrizeViewTest(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.client = APIClient()
+        cls.promotion = PromotionFactory()
+        cls.edition = EditionFactory(promotion=cls.promotion)
+        cls.collector = CollectorFactory(user=UserFactory())
+        cls.basic_user = UserFactory()
+        cls.superuser = UserFactory(is_superuser=True)
+        cls.prized_sticker = Sticker.objects.filter(
+            coordinate__absolute_number=0, pack__box__edition=cls.edition
+        ).first()
+        cls.pack = cls.prized_sticker.pack
+        cls.pack.open(cls.collector.user)
+        cls.url = reverse(
+            "discover-prize", kwargs={"sticker_id": cls.prized_sticker.pk}
+        )
+
+    def setUp(self):
+        self.client.force_authenticate(user=self.collector.user)
+
+    def test_discover_prize_success(self):
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("prize", response.data)
+        self.assertFalse(response.data["claimed"])
+        self.assertIsNone(response.data["claimed_date"])
+
+    def test_discover_prize_unauthorized(self):
+        self.client.logout()
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data["detail"], "Debe iniciar sesión para realizar esta acción"
+        )
+
+    def test_discover_prize_basic_user(self):
+        self.client.force_authenticate(user=self.basic_user)
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"],
+            "Solo los coleccionistas pueden realizar esta acción",
+        )
+
+    def test_discover_prize_superuser(self):
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"],
+            "Solo los coleccionistas pueden realizar esta acción",
+        )
+
+    def test_discover_prize_wrong_collector(self):
+        other_collector = CollectorFactory(user=UserFactory())
+        self.client.force_authenticate(user=other_collector.user)
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"],
+            "Solo puedes descubrir premios de tus propias barajitas",
+        )
+
+    def test_discover_prize_non_prize_sticker(self):
+        regular_sticker = Sticker.objects.filter(
+            coordinate__absolute_number__gt=0
+        ).first()
+        pack = regular_sticker.pack
+        pack.open(self.collector.user)
+
+        url = reverse("discover-prize", kwargs={"sticker_id": regular_sticker.pk})
+        response = self.client.post(url)
+        # print(response.data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["detail"],
+            "Solo las barajitas premiadas pueden descubrir premios sorpresa",
+        )
+
+    def test_discover_prize_already_discovered(self):
+        # First discovery
+        self.client.post(self.url)
+        # Second attempt
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["detail"], "Esta barajita ya tiene un premio asignado"
+        )
+
+    def test_method_not_allowed(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.data["detail"], 'Método "GET" no permitido.')

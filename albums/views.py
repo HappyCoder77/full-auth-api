@@ -1,4 +1,5 @@
 from django.utils import timezone
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError
 from rest_framework.exceptions import NotFound
 from rest_framework.serializers import ValidationError
@@ -7,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status, mixins
 from editions.models import Edition, Pack, Sticker
-from editions.serializers import PackSerializer
+from editions.serializers import PackSerializer, StickerPrizeSerializer
 from promotions.models import Promotion
 from .models import Album, Slot
 from .permissions import IsAuthenticatedCollector
@@ -210,3 +211,34 @@ class PlaceStickerView(APIView):
             )
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DiscoverPrizeView(APIView):
+    permission_classes = [IsAuthenticatedCollector]
+
+    def post(self, request, sticker_id):
+        try:
+            sticker = Sticker.objects.get(id=sticker_id)
+
+            if sticker.collector != request.user:
+                return Response(
+                    {
+                        "detail": "Solo puedes descubrir premios de tus propias barajitas"
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            try:
+                prize = sticker.discover_prize()
+                return Response(
+                    StickerPrizeSerializer(prize).data, status=status.HTTP_201_CREATED
+                )
+            except DjangoValidationError as e:
+                return Response(
+                    {"detail": str(e.message)}, status=status.HTTP_400_BAD_REQUEST
+                )
+
+        except Sticker.DoesNotExist:
+            return Response(
+                {"error": "Sticker not found"}, status=status.HTTP_404_NOT_FOUND
+            )

@@ -5,6 +5,7 @@ from .views import (
     AlbumDetailView,
     OpenPackView,
     PlaceStickerView,
+    DiscoverPrizeView,
 )
 
 
@@ -24,5 +25,10 @@ urlpatterns = [
         "stickers/<int:sticker_id>/place/",
         PlaceStickerView.as_view(),
         name="place-sticker",
+    ),
+    path(
+        "stickers/<int:sticker_id>/discover-prize/",
+        DiscoverPrizeView.as_view(),
+        name="discover-prize",
     ),
 ]
