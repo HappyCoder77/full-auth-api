@@ -1,10 +1,11 @@
 from django.test import TestCase
 from authentication.test.factories import UserFactory
+from collection_manager.models import Coordinate
 from promotions.test.factories import PromotionFactory
 from users.test.factories import CollectorFactory
-from ..serializers import PackSerializer
+from ..serializers import PackSerializer, StickerPrizeSerializer, StickerSerializer
 from ..test.factories import EditionFactory
-from ..models import Pack
+from ..models import Pack, Sticker
 
 
 class PackSerializerTest(TestCase):
@@ -50,3 +51,82 @@ class PackSerializerTest(TestCase):
         expected_fields = {"id", "collector", "is_open", "stickers"}
 
         self.assertEqual(set(serializer.data.keys()), expected_fields)
+
+
+class StickerPrizeSerializerTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.promotion = PromotionFactory()
+        cls.edition = EditionFactory(promotion=cls.promotion)
+        cls.collector = CollectorFactory(user=UserFactory())
+
+        # Get a prize sticker and create a prize for it
+        cls.prize_sticker = Sticker.objects.filter(
+            coordinate__absolute_number=0, pack__box__edition=cls.edition
+        ).first()
+        cls.pack = cls.prize_sticker.pack
+        cls.pack.open(cls.collector.user)
+        cls.sticker_prize = cls.prize_sticker.discover_prize()
+
+    def test_sticker_prize_serializer(self):
+        serializer = StickerPrizeSerializer(instance=self.sticker_prize)
+        data = serializer.data
+
+        self.assertEqual(set(data.keys()), {"id", "prize", "claimed", "claimed_date"})
+        self.assertEqual(data["prize"], self.sticker_prize.prize.id)
+        self.assertEqual(data["claimed"], self.sticker_prize.claimed)
+        self.assertEqual(data["claimed_date"], self.sticker_prize.claimed_date)
+
+    def test_sticker_serializer_with_prize(self):
+        serializer = StickerSerializer(instance=self.prize_sticker)
+        data = serializer.data
+
+        self.assertIn("prize", data)
+        self.assertEqual(data["prize"]["id"], self.sticker_prize.id)
+        self.assertEqual(data["prize"]["prize"], self.sticker_prize.prize.id)
+
+    def test_sticker_serializer_without_prize(self):
+        regular_sticker = Sticker.objects.filter(
+            coordinate__absolute_number__gt=0
+        ).first()
+        serializer = StickerSerializer(instance=regular_sticker)
+
+        self.assertIsNone(serializer.data["prize"])
+
+
+class StickerSerializerTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.promotion = PromotionFactory()
+        cls.edition = EditionFactory(promotion=cls.promotion)
+        cls.collector = CollectorFactory(user=UserFactory())
+        cls.coordinate = Coordinate.objects.first()
+        cls.sticker = Sticker.objects.filter(coordinate=cls.coordinate).first()
+
+    def test_sticker_serializer_data(self):
+        serializer = StickerSerializer(instance=self.sticker)
+        data = serializer.data
+
+        self.assertEqual(
+            set(data.keys()),
+            {
+                "id",
+                "ordinal",
+                "number",
+                "on_the_board",
+                "is_repeated",
+                "coordinate",
+                "prize",
+            },
+        )
+        self.assertEqual(data["id"], self.sticker.id)
+        self.assertEqual(data["ordinal"], self.sticker.ordinal)
+        self.assertEqual(data["number"], self.sticker.number)
+        self.assertEqual(data["on_the_board"], self.sticker.on_the_board)
+        self.assertEqual(data["is_repeated"], self.sticker.is_repeated)
+        self.assertEqual(data["coordinate"]["id"], self.coordinate.id)
+        self.assertEqual(
+            data["coordinate"]["absolute_number"], self.coordinate.absolute_number
+        )
+        self.assertIsNone(data["coordinate"]["image"], self.coordinate.image)
+        self.assertIsNone(data["prize"])
