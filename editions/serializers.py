@@ -1,7 +1,7 @@
 from rest_framework.serializers import ModelSerializer
 
 from collection_manager.serializers import CollectionSerializer
-from collection_manager.serializers import CoordinateSerializer
+from collection_manager.serializers import CoordinateSerializer, SurprisePrizeSerializer
 from promotions.serializers import PromotionSerializer
 from .models import Edition, Pack, Sticker, StickerPrize
 
@@ -16,6 +16,8 @@ class EditionSerializer(ModelSerializer):
 
 
 class StickerPrizeSerializer(ModelSerializer):
+    prize = SurprisePrizeSerializer(read_only=True)
+
     class Meta:
         model = StickerPrize
         fields = ["id", "prize", "claimed", "claimed_date"]

@@ -1,6 +1,6 @@
 from django.test import TestCase
 from authentication.test.factories import UserFactory
-from collection_manager.models import Coordinate
+from collection_manager.models import Coordinate, SurprisePrize
 from promotions.test.factories import PromotionFactory
 from users.test.factories import CollectorFactory
 from ..serializers import PackSerializer, StickerPrizeSerializer, StickerSerializer
@@ -67,13 +67,19 @@ class StickerPrizeSerializerTestCase(TestCase):
         cls.pack = cls.prize_sticker.pack
         cls.pack.open(cls.collector.user)
         cls.sticker_prize = cls.prize_sticker.discover_prize()
+        cls.surprise_prize = SurprisePrize.objects.filter(
+            description=cls.sticker_prize.prize.description
+        )
 
     def test_sticker_prize_serializer(self):
         serializer = StickerPrizeSerializer(instance=self.sticker_prize)
         data = serializer.data
 
         self.assertEqual(set(data.keys()), {"id", "prize", "claimed", "claimed_date"})
-        self.assertEqual(data["prize"], self.sticker_prize.prize.id)
+        self.assertEqual(data["id"], self.sticker_prize.id)
+        self.assertEqual(
+            data["prize"]["description"], self.sticker_prize.prize.description
+        )
         self.assertEqual(data["claimed"], self.sticker_prize.claimed)
         self.assertEqual(data["claimed_date"], self.sticker_prize.claimed_date)
 
@@ -83,7 +89,9 @@ class StickerPrizeSerializerTestCase(TestCase):
 
         self.assertIn("prize", data)
         self.assertEqual(data["prize"]["id"], self.sticker_prize.id)
-        self.assertEqual(data["prize"]["prize"], self.sticker_prize.prize.id)
+        self.assertEqual(
+            data["prize"]["prize"]["description"], self.sticker_prize.prize.description
+        )
 
     def test_sticker_serializer_without_prize(self):
         regular_sticker = Sticker.objects.filter(
