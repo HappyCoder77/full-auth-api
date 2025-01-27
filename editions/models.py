@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import Count
 from django.utils import timezone
+from datetime import date
 
 from promotions.models import Promotion
 from collection_manager.models import Collection, Coordinate, SurprisePrize
@@ -613,11 +614,16 @@ class StickerPrize(models.Model):
         related_name="sticker_prize",
     )
     claimed = models.BooleanField(default=False)
-    claimed_date = models.DateTimeField(null=True, blank=True)
+    claimed_date = models.DateField(null=True, blank=True)
+    claimed_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL
+    )
 
     def clean(self):
         if self.sticker.coordinate.absolute_number != 0:
-            raise ValidationError("Only prize stickers can receive prizes")
+            raise ValidationError(
+                "Solo las barajitas premiadas pueden obtener premio sorpresa"
+            )
 
     def save(self, *args, **kwargs):
         self.clean()
@@ -626,10 +632,14 @@ class StickerPrize(models.Model):
     def __str__(self):
         return f"Premio sorpresa para barajita con el id {self.sticker.id}: {self.prize.description}"
 
-    def claim(self):
-        if not self.claimed:
-            self.claimed = True
-            self.claimed_date = timezone.now()
-            self.save()
-            return self.claimed_date
-        return None
+    def claim(self, user):
+        if self.claimed:
+            raise ValidationError("Este premio ya ha sido reclamado")
+
+        if not user.is_dealer:
+            raise ValidationError("Sólo los coleccionistas pueden reclamr premios")
+
+        self.claimed_by = user
+        self.claimed = True
+        self.claimed_date = date.today()
+        self.save()

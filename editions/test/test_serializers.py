@@ -75,13 +75,16 @@ class StickerPrizeSerializerTestCase(TestCase):
         serializer = StickerPrizeSerializer(instance=self.sticker_prize)
         data = serializer.data
 
-        self.assertEqual(set(data.keys()), {"id", "prize", "claimed", "claimed_date"})
+        self.assertEqual(
+            set(data.keys()), {"id", "prize", "claimed", "claimed_date", "claimed_by"}
+        )
         self.assertEqual(data["id"], self.sticker_prize.id)
         self.assertEqual(
             data["prize"]["description"], self.sticker_prize.prize.description
         )
         self.assertEqual(data["claimed"], self.sticker_prize.claimed)
         self.assertEqual(data["claimed_date"], self.sticker_prize.claimed_date)
+        self.assertEqual(data["claimed_by"], self.sticker_prize.claimed_by)
 
     def test_sticker_serializer_with_prize(self):
         serializer = StickerSerializer(instance=self.prize_sticker)
@@ -125,6 +128,7 @@ class StickerSerializerTestCase(TestCase):
                 "is_repeated",
                 "coordinate",
                 "prize",
+                "has_prize_discovered",
             },
         )
         self.assertEqual(data["id"], self.sticker.id)

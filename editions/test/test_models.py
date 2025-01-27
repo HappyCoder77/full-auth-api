@@ -7,11 +7,11 @@ from django.test import TestCase
 from django.utils import timezone
 
 from promotions.test.factories import PromotionFactory
-from collection_manager.models import Coordinate
+from collection_manager.models import Coordinate, SurprisePrize
 from collection_manager.test.factories import CollectionFactory
 from authentication.test.factories import UserFactory
-from users.test.factories import CollectorFactory
-from ..models import Box, Pack, Sticker
+from users.test.factories import CollectorFactory, DealerFactory
+from ..models import Box, Pack, Sticker, StickerPrize
 from .factories import EditionFactory
 
 
@@ -444,6 +444,71 @@ class StickerTestCase(TestCase):
         self.assertEqual(sticker.page, sticker.coordinate.page)
         self.assertEqual(sticker.rarity, sticker.coordinate.rarity_factor)
         self.assertEqual(sticker.box, sticker.pack.box)
+
+
+class StickerPrizeTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.edition = EditionFactory(promotion=PromotionFactory())
+        cls.dealer = DealerFactory(user=UserFactory())
+        cls.collector = CollectorFactory(user=UserFactory())
+        cls.user = UserFactory()
+        for each_prize in cls.edition.collection.standard_prizes.all():
+            each_prize.description = "Bingo"
+            each_prize.save()
+
+        for each_prize in cls.edition.collection.surprise_prizes.all():
+            each_prize.description = "Bingo"
+            each_prize.save()
+
+        cls.prized_sticker = Sticker.objects.filter(
+            coordinate__absolute_number=0
+        ).first()
+        cls.pack = cls.prized_sticker.pack
+        cls.pack.open(cls.collector.user)
+        cls.prized_sticker.refresh_from_db()
+
+    def setUp(self):
+        self.prized_sticker.discover_prize()
+        self.prized_sticker.refresh_from_db()
+        self.sticker_prize = self.prized_sticker.prize
+
+    def test_sticker_prize_default_data(self):
+        self.assertFalse(self.sticker_prize.claimed)
+        self.assertIsNone(self.sticker_prize.claimed_date)
+        self.assertIsNone(self.sticker_prize.claimed_by)
+
+    def test_sticker_prize_data_after_claimed(self):
+        self.sticker_prize.claim(self.dealer.user)
+        self.sticker_prize.refresh_from_db()
+
+        self.assertTrue(self.sticker_prize.claimed)
+        self.assertEqual(self.sticker_prize.claimed_date, datetime.date.today())
+        self.assertEqual(self.sticker_prize.claimed_by, self.dealer.user)
+        self.assertEqual(
+            str(self.sticker_prize),
+            f"Premio sorpresa para barajita con el id {self.prized_sticker.id}: {self.sticker_prize.prize.description}",
+        )
+
+    def test_sticker_prize_validation(self):
+        sticker = Sticker.objects.filter(coordinate__absolute_number__gt=0).first()
+        prize = SurprisePrize.objects.first()
+        sticker_prize = StickerPrize(sticker=sticker, prize=prize)
+
+        with self.assertRaises(ValidationError):
+            sticker_prize.full_clean()
+
+    def test_claim_already_claimed_sticker_prize(self):
+        self.sticker_prize.claim(self.dealer.user)
+        self.sticker_prize.refresh_from_db()
+
+        with self.assertRaises(ValidationError):
+            self.sticker_prize.claim(self.dealer.user)
+
+    def test_claim_sticker_prize_not_collector(self):
+
+        with self.assertRaises(ValidationError):
+            self.sticker_prize.claim(self.user)
 
 
 class BoxTestCase(TestCase):

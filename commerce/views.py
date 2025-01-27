@@ -188,3 +188,7 @@ class SaleCreateView(CreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(dealer=self.request.user)
+
+
+class RequestSurprisePrize(APIView):
+    pass

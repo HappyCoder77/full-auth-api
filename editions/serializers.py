@@ -20,12 +20,7 @@ class StickerPrizeSerializer(ModelSerializer):
 
     class Meta:
         model = StickerPrize
-        fields = [
-            "id",
-            "prize",
-            "claimed",
-            "claimed_date",
-        ]
+        fields = ["id", "prize", "claimed", "claimed_date", "claimed_by"]
 
 
 class StickerSerializer(ModelSerializer):
