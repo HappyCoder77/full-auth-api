@@ -43,8 +43,10 @@ class AlbumTestCase(TestCase):
         prized_sticker = Sticker.objects.filter(
             pack__box__edition=self.album.edition,
             coordinate__absolute_number=0,
+            prize__isnull=True,
             on_the_board=False,
         ).first()
+
         pack = prized_sticker.pack
         pack.open(self.album.collector)
         prized_sticker.refresh_from_db()

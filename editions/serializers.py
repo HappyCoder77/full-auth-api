@@ -1,4 +1,4 @@
-from rest_framework.serializers import ModelSerializer
+from rest_framework.serializers import ModelSerializer, SerializerMethodField
 
 from collection_manager.serializers import CollectionSerializer
 from collection_manager.serializers import CoordinateSerializer, SurprisePrizeSerializer
@@ -20,12 +20,18 @@ class StickerPrizeSerializer(ModelSerializer):
 
     class Meta:
         model = StickerPrize
-        fields = ["id", "prize", "claimed", "claimed_date"]
+        fields = [
+            "id",
+            "prize",
+            "claimed",
+            "claimed_date",
+        ]
 
 
 class StickerSerializer(ModelSerializer):
     coordinate = CoordinateSerializer(read_only=True)
     prize = StickerPrizeSerializer(read_only=True)
+    has_prize_discovered = SerializerMethodField()
 
     class Meta:
         model = Sticker
@@ -37,7 +43,11 @@ class StickerSerializer(ModelSerializer):
             "is_repeated",
             "coordinate",
             "prize",
+            "has_prize_discovered",
         )
+
+    def get_has_prize_discovered(self, obj):
+        return obj.has_prize_discovered()
 
 
 class PackSerializer(ModelSerializer):

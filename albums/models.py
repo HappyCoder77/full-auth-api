@@ -108,6 +108,7 @@ class Album(models.Model):
             collector=self.collector,
             pack__box__edition=self.edition,
             coordinate__absolute_number=0,
+            prize__isnull=True,
             on_the_board=False,
         )
 

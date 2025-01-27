@@ -598,12 +598,20 @@ class Sticker(models.Model):
 
         return StickerPrize.objects.create(sticker=self, prize=random_prize)
 
+    def has_prize_discovered(self):
+        return hasattr(self, "prize")
+
 
 class StickerPrize(models.Model):
     sticker = models.OneToOneField(
         Sticker, on_delete=models.CASCADE, related_name="prize"
     )
-    prize = models.ForeignKey(SurprisePrize, on_delete=models.SET_NULL, null=True)
+    prize = models.ForeignKey(
+        SurprisePrize,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="sticker_prize",
+    )
     claimed = models.BooleanField(default=False)
     claimed_date = models.DateTimeField(null=True, blank=True)
 
