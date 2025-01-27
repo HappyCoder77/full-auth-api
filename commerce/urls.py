@@ -9,6 +9,7 @@ from .views import (
     MobilePaymentOptionsView,
     DealerBalanceView,
     SaleCreateView,
+    RequestSurprisePrizeView,
 )
 
 
@@ -30,4 +31,9 @@ urlpatterns = [
     ),
     path("dealer-balance/", DealerBalanceView.as_view(), name="dealer-balance"),
     path("sales/create/", SaleCreateView.as_view(), name="sale-create"),
+    path(
+        "prizes/surprise/request/<int:stickerprize_id>",
+        RequestSurprisePrizeView.as_view(),
+        name="request-surprise-prize",
+    ),
 ]

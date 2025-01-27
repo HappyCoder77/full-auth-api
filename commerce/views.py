@@ -11,11 +11,11 @@ from rest_framework.generics import (
 )
 from rest_framework.response import Response
 from promotions.utils import (
-    promotion_is_running,
-    get_current_promotion,
     get_last_promotion,
 )
 from .models import Order, Payment, MobilePayment, DealerBalance
+from editions.models import StickerPrize
+from editions.serializers import StickerPrizeSerializer
 from .permissions import IsAuthenticatedDealer
 from .serializers import (
     OrderSerializer,
@@ -190,5 +190,28 @@ class SaleCreateView(CreateAPIView):
         serializer.save(dealer=self.request.user)
 
 
-class RequestSurprisePrize(APIView):
-    pass
+class RequestSurprisePrizeView(APIView):
+    permission_classes = [IsAuthenticatedDealer]
+
+    def post(self, request, stickerprize_id):
+        try:
+            sticker_prize = StickerPrize.objects.get(id=stickerprize_id)
+            sticker_prize.claim(request.user)
+            return Response(
+                StickerPrizeSerializer(sticker_prize).data,
+                status=status.HTTP_201_CREATED,
+            )
+        except StickerPrize.DoesNotExist:
+            return Response(
+                {"detail": "StickerPrize not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except DjangoValidationError as e:
+            return Response(
+                {"detail": str(e.message)}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def handle_exception(self, exc):
+        if isinstance(exc, DRFValidationError):
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return super().handle_exception(exc)

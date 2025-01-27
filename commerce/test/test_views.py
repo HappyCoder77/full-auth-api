@@ -9,6 +9,7 @@ from rest_framework.test import APIClient, APITestCase
 from promotions.models import Promotion
 from promotions.test.factories import PromotionFactory
 from editions.test.factories import EditionFactory
+from editions.models import Sticker
 from authentication.test.factories import UserFactory
 from users.test.factories import DealerFactory
 from commerce.models import Order, Sale
@@ -1134,4 +1135,85 @@ class SaleCreateViewAPITestCase(APITestCase):
         self.assertEqual(
             response.data["non_field_errors"][0],
             "Inventario insuficiente: quedan 15 packs disponibles",
+        )
+
+
+class RequestSurprisePrizeViewAPITestCase(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.client = APIClient()
+        cls.edition = EditionFactory(promotion=PromotionFactory())
+        cls.superuser = UserFactory(is_superuser=True)
+        cls.basic_user = UserFactory()
+        cls.dealer_user = UserFactory()
+        cls.dealer = DealerFactory(user=cls.dealer_user, email=cls.dealer_user.email)
+        cls.collector = CollectorFactory(user=UserFactory())
+        cls.prized_sticker = Sticker.objects.filter(
+            coordinate__absolute_number=0
+        ).first()
+        cls.prized_sticker.pack.open(cls.collector.user)
+        cls.prized_sticker.refresh_from_db()
+        cls.stickerprize = cls.prized_sticker.discover_prize()
+
+        cls.url = reverse(
+            "request-surprise-prize", kwargs={"stickerprize_id": cls.stickerprize.id}
+        )
+
+    def setUp(self):
+        self.client.force_authenticate(user=self.dealer.user)
+
+    def test_collector_can_request_surprise_prize(self):
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["id"], self.stickerprize.id)
+        self.assertEqual(
+            response.data["prize"]["description"], self.stickerprize.prize.description
+        )
+        self.assertEqual(
+            response.data["claimed_date"], date.today().strftime("%Y-%m-%d")
+        )
+        self.assertEqual(response.data["claimed_by"], self.dealer.user.id)
+
+    def test_superuser_cannot_request_surprize_prize(self):
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"], "Solo los detallistas pueden realizar esta acción"
+        )
+
+    def test_basic_user_cannot_request_surprize_prize(self):
+        self.client.force_authenticate(user=self.basic_user)
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"], "Solo los detallistas pueden realizar esta acción"
+        )
+
+    def test_unauthenticated_user_cannot_create_payment(self):
+        self.client.logout()
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data["detail"], "Debe iniciar sesión para realizar esta acción"
+        )
+
+    def test_method_not_allowed(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(str(response.data["detail"]), 'Método "GET" no permitido.')
+
+    def test_dealer_cannot_create_sale_with_invalid_stickerprize_id(self):
+        url = reverse("request-surprise-prize", kwargs={"stickerprize_id": 9999})
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(
+            response.data["detail"],
+            "StickerPrize not found.",
         )
