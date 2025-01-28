@@ -2,36 +2,38 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import TestCase
 from django.contrib.auth import get_user_model
-from ..models import BaseProfile, RegionalManager, Dealer
+from editions.models import Sticker
+from editions.test.factories import EditionFactory
+from promotions.test.factories import PromotionFactory
+from ..models import BaseProfile, RegionalManager, Dealer, Collector
 from authentication.test.factories import UserFactory
-from .factories import DealerFactory
+from .factories import DealerFactory, CollectorFactory
 
 User = get_user_model()
 
-SUPERUSER_EMAIL = 'superuser@example.com'
-USER_EMAIL = 'user@example.com'
-PASSWORD = 'password123'
+SUPERUSER_EMAIL = "superuser@example.com"
+USER_EMAIL = "user@example.com"
+PASSWORD = "password123"
 USER_FIRST_NAME = "John"
 USER_MIDDLE_NAME = "Joseph"
 USER_LAST_NAME = "Smith"
 USER_SECOND_LAST_NAME = "Brown"
-USER_BIRTHDATE = '1990-01-01'
+USER_BIRTHDATE = "1990-01-01"
 
 
 class BaseProfileTest(TestCase):
     # Crear un un usuario y un base profile de ejemplo para las pruebas
     def setUp(self):
-        self.user = User.objects.create_user(
-            email=USER_EMAIL, password=PASSWORD)
+        self.user = User.objects.create_user(email=USER_EMAIL, password=PASSWORD)
         self.profile = BaseProfile(
             user=self.user,
             first_name=USER_FIRST_NAME,
             middle_name=USER_MIDDLE_NAME,
             last_name=USER_LAST_NAME,
             second_last_name=USER_SECOND_LAST_NAME,
-            gender='M',
+            gender="M",
             birthdate=USER_BIRTHDATE,
-            email=USER_EMAIL
+            email=USER_EMAIL,
         )
 
     def test_profile_data(self):
@@ -40,20 +42,14 @@ class BaseProfileTest(TestCase):
         self.assertEqual(self.profile.middle_name, USER_MIDDLE_NAME)
         self.assertEqual(self.profile.last_name, USER_LAST_NAME)
         self.assertEqual(self.profile.second_last_name, USER_SECOND_LAST_NAME)
-        self.assertEqual(self.profile.gender, 'M')
+        self.assertEqual(self.profile.gender, "M")
         self.assertEqual(self.profile.birthdate, USER_BIRTHDATE)
         self.assertEqual(self.profile.email, USER_EMAIL)
         self.assertTrue(self.user.has_profile)
-        self.assertEqual(str(self.profile),
-                         USER_FIRST_NAME + " " + USER_LAST_NAME)
+        self.assertEqual(str(self.profile), USER_FIRST_NAME + " " + USER_LAST_NAME)
 
     def test_required_fields(self):
-        profile = BaseProfile(
-            first_name="",
-            last_name="",
-            gender="",
-            email=""
-        )
+        profile = BaseProfile(first_name="", last_name="", gender="", email="")
         with self.assertRaises(ValidationError):
             profile.full_clean()  # Esto lanzará la ValidationError
             profile.save()  # pragma: no cover
@@ -90,7 +86,7 @@ class BaseProfileTest(TestCase):
                 first_name=USER_FIRST_NAME,
                 last_name=USER_LAST_NAME,
                 gender="F",
-                email=USER_EMAIL
+                email=USER_EMAIL,
             )
             duplicate_profile.save()
 
@@ -98,7 +94,8 @@ class BaseProfileTest(TestCase):
 class RegionalManagerTest(TestCase):
     def setUp(self):
         self.creator = User.objects.create_superuser(
-            email=SUPERUSER_EMAIL, password=PASSWORD)
+            email=SUPERUSER_EMAIL, password=PASSWORD
+        )
         self.regional_manager = RegionalManager(
             first_name=USER_FIRST_NAME,
             middle_name=USER_MIDDLE_NAME,
@@ -106,7 +103,7 @@ class RegionalManagerTest(TestCase):
             second_last_name=USER_SECOND_LAST_NAME,
             gender="M",
             email=USER_EMAIL,
-            created_by=self.creator
+            created_by=self.creator,
         )
 
     def test_regional_manager_validation(self):
@@ -122,18 +119,15 @@ class RegionalManagerTest(TestCase):
         self.assertEqual(saved_manager.first_name, USER_FIRST_NAME)
         self.assertEqual(saved_manager.middle_name, USER_MIDDLE_NAME)
         self.assertEqual(saved_manager.last_name, USER_LAST_NAME)
-        self.assertEqual(saved_manager.second_last_name,
-                         USER_SECOND_LAST_NAME)
+        self.assertEqual(saved_manager.second_last_name, USER_SECOND_LAST_NAME)
         self.assertEqual(saved_manager.gender, "M")
         self.assertEqual(saved_manager.created_by, self.creator)
-        self.assertEqual(str(saved_manager),
-                         USER_FIRST_NAME + " " + USER_LAST_NAME)
+        self.assertEqual(str(saved_manager), USER_FIRST_NAME + " " + USER_LAST_NAME)
 
     def test_regional_manager_links_to_user(self):
         self.regional_manager.save()
 
-        user = User.objects.create_user(
-            email=USER_EMAIL, password=PASSWORD)
+        user = User.objects.create_user(email=USER_EMAIL, password=PASSWORD)
         user.refresh_from_db()
         self.assertFalse(user.is_superuser)
         self.assertTrue(user.is_regionalmanager)
@@ -153,3 +147,44 @@ class DealerTestCase(TestCase):
         self.assertEqual(Dealer.objects.all().count(), 1)
         self.assertEqual(self.dealer.email, self.user.email)
         self.assertEqual(self.dealer.user, self.user)
+
+
+class CollectorTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = UserFactory()
+        cls.collector = CollectorFactory(user=cls.user, email=cls.user.email)
+
+    def test_collector_data(self):
+        self.assertEqual(Collector.objects.all().count(), 1)
+        self.assertEqual(self.collector.email, self.user.email)
+        self.assertEqual(self.collector.user, self.user)
+        self.assertQuerySetEqual(self.collector.unclaimed_surprise_prizes, [])
+
+    def test_data_after_discover_surprise_prizes(self):
+        EditionFactory(promotion=PromotionFactory())
+        prized_sticker = Sticker.objects.filter(coordinate__absolute_number=0).first()
+        prized_sticker.pack.open(self.collector.user)
+        prized_sticker.refresh_from_db()
+        stickerprize = prized_sticker.discover_prize()
+
+        self.assertEqual(self.collector.unclaimed_surprise_prizes.count(), 1)
+        self.assertEqual(
+            self.collector.unclaimed_surprise_prizes[0].id, stickerprize.id
+        )
+        self.assertEqual(
+            self.collector.unclaimed_surprise_prizes[0].sticker, prized_sticker
+        )
+        self.assertEqual(
+            self.collector.unclaimed_surprise_prizes[0].prize, stickerprize.prize
+        )
+        self.assertEqual(
+            self.collector.unclaimed_surprise_prizes[0].prize.description,
+            stickerprize.prize.description,
+        )
+        self.assertFalse(self.collector.unclaimed_surprise_prizes[0].claimed)
+        self.assertEqual(
+            self.collector.unclaimed_surprise_prizes[0].claimed_date,
+            stickerprize.claimed_date,
+        )
+        self.assertIsNone(self.collector.unclaimed_surprise_prizes[0].claimed_by)

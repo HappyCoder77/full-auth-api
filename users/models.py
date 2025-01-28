@@ -1,7 +1,7 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from editions.models import Pack
+from editions.models import Pack, StickerPrize
 from authentication.models import UserAccount
 from promotions.utils import promotion_is_running, get_current_promotion
 
@@ -86,3 +86,8 @@ class Dealer(BaseProfile):
 
 class Collector(BaseProfile):
     rescue_options = models.PositiveSmallIntegerField(default=0)
+
+    @property
+    def unclaimed_surprise_prizes(self):
+        query = StickerPrize.objects.filter(sticker__collector=self.user, claimed=False)
+        return query if query.exists() else StickerPrize.objects.none()

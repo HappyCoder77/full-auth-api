@@ -1,5 +1,5 @@
 from rest_framework import serializers
-
+from editions.serializers import StickerPrizeSerializer
 from .models import (
     RegionalManager,
     LocalManager,
@@ -105,6 +105,8 @@ class BaseProfileSerializer(serializers.ModelSerializer):
 
 
 class CollectorSerializer(serializers.ModelSerializer):
+    unclaimed_surprise_prizes = StickerPrizeSerializer(many=True, read_only=True)
+
     class Meta:
         model = Collector
         fields = [
@@ -117,6 +119,7 @@ class CollectorSerializer(serializers.ModelSerializer):
             "gender",
             "birthdate",
             "email",
+            "unclaimed_surprise_prizes",
         ]
 
         extra_kwargs = {"user": {"write_only": True}}
