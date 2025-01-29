@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Edition, Box, Pack, Sticker
+from .models import Edition, Box, Pack, Sticker, StickerPrize
 
 
 @admin.register(Edition)
@@ -60,3 +60,8 @@ class StickerAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+@admin.register(StickerPrize)
+class StickerPrizeAdmin(admin.ModelAdmin):
+    list_display = ("id", "sticker", "prize", "claimed", "claimed_date", "claimed_by")
