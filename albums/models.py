@@ -130,7 +130,7 @@ class Page(models.Model):
 
     @property
     def is_full(self):
-        return Slot.objects.filter(page=self, sticker__isnull=True).count() <= 0
+        return Slot.objects.filter(page=self, sticker__isnull=True).count() == 0
 
     @property
     def prize_was_claimed(self):

@@ -12,10 +12,12 @@ class SlotSerializer(serializers.ModelSerializer):
 
 class PageSerializer(serializers.ModelSerializer):
     slots = SlotSerializer(many=True, read_only=True)
+    is_full = serializers.BooleanField(read_only=True)
+    prize_was_claimed = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Page
-        fields = ("id", "number", "slots")
+        fields = ("id", "number", "slots", "is_full", "prize_was_claimed")
 
 
 class AlbumSerializer(serializers.ModelSerializer):
