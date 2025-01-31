@@ -17,10 +17,12 @@ class CollectorSerializerTest(TestCase):
         serializer = CollectorSerializer(instance=self.collector)
         expected_fields = {
             "id",
+            "user_id",
             "first_name",
             "middle_name",
             "last_name",
             "second_last_name",
+            "full_name",
             "gender",
             "birthdate",
             "email",
@@ -69,10 +71,12 @@ class CollectorSerializerTest(TestCase):
         serializer = CollectorSerializer(instance=self.collector)
         expected_fields = {
             "id",
+            "user_id",
             "first_name",
             "middle_name",
             "last_name",
             "second_last_name",
+            "full_name",
             "gender",
             "birthdate",
             "email",

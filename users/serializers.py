@@ -106,16 +106,20 @@ class BaseProfileSerializer(serializers.ModelSerializer):
 
 class CollectorSerializer(serializers.ModelSerializer):
     unclaimed_surprise_prizes = StickerPrizeSerializer(many=True, read_only=True)
+    full_name = serializers.CharField(source="get_full_name", read_only=True)
+    user_id = serializers.IntegerField(source="user.id", read_only=True)
 
     class Meta:
         model = Collector
         fields = [
             "id",
             "user",
+            "user_id",
             "first_name",
             "middle_name",
             "last_name",
             "second_last_name",
+            "full_name",
             "gender",
             "birthdate",
             "email",
