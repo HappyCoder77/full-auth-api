@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
+# TODO: las tareas de celery no coinciden con la hora local, revisar e implementar solar schedule
 import os
 import sys
 import dj_database_url

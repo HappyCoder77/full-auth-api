@@ -10,7 +10,7 @@ from rest_framework import status, mixins
 from editions.models import Edition, Pack, Sticker
 from editions.serializers import PackSerializer, StickerPrizeSerializer
 from promotions.models import Promotion
-from .models import Album, Slot
+from .models import Album, Slot, Page
 from .permissions import IsAuthenticatedCollector
 from .serializers import AlbumSerializer
 
@@ -213,7 +213,7 @@ class PlaceStickerView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class DiscoverPrizeView(APIView):
+class DiscoverStickerPrizeView(APIView):
     permission_classes = [IsAuthenticatedCollector]
 
     def post(self, request, sticker_id):
@@ -242,3 +242,23 @@ class DiscoverPrizeView(APIView):
             return Response(
                 {"error": "Sticker not found"}, status=status.HTTP_404_NOT_FOUND
             )
+
+
+# class CreatePagePrizeView(APIView):
+#     permission_classes = [IsAuthenticatedCollector]
+
+
+#     def post(self, request, page_id):
+#         try:
+#             page = Page.objects.get(page_id)
+
+#             if page.album.collector != request.user:
+#                 return Response(
+#                     {
+#                         "detail": "Solo puedes crear premios de tus propias colecciones"
+#                     },
+#                     status=status.HTTP_403_FORBIDDEN,
+#                 )
+
+#             try:
+#                 prize = page.create_prize()

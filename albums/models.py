@@ -1,10 +1,13 @@
 from django.contrib.auth import get_user_model
 from django.db import models, transaction
 from editions.models import Sticker
-
+from datetime import date
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
 from editions.models import Edition, Pack, Sticker
 
 from collection_manager.models import StandardPrize
+
 
 User = get_user_model()
 
@@ -117,11 +120,10 @@ class Album(models.Model):
 
 class Page(models.Model):
     album = models.ForeignKey(Album, on_delete=models.CASCADE, related_name="pages")
-
     number = models.PositiveSmallIntegerField()
 
     @property
-    def standard_prize(self):
+    def prize(self):
         prize = StandardPrize.objects.get(
             collection=self.album.edition.collection, page=self.number
         )
@@ -133,19 +135,23 @@ class Page(models.Model):
         return Slot.objects.filter(page=self, sticker__isnull=True).count() == 0
 
     @property
-    def prize_was_claimed(self):
-        try:
-            award = PagePrize.objects.get(page=self)
-        except PagePrize.DoesNotExist:
-            award = None
+    def prize_was_created(self):
+        return PagePrize.objects.filter(page=self).exists()
 
-        if award == None:
-            return False
-        else:
-            return True
+    @property
+    def prize_was_claimed(self):
+        return PagePrize.objects.filter(page=self, claimed_by__isnull=True)
 
     class Meta:
         ordering = ["number"]
+
+    def create_prize(self):
+        if hasattr(self, "page_prize"):
+            raise ValidationError("Esta página ya tiene un premio asignado")
+
+        prize = StandardPrize.objects.get(collection=self.album.edition.collection)
+
+        return PagePrize.objects.create(page=self, prize=prize)
 
     def create_slots(self):
         slot_list = []
@@ -206,9 +212,24 @@ class Slot(models.Model):
 
 
 class PagePrize(models.Model):
-    # TODO: candidato a eliminación; con un atributo booleano bastaría
-    page = models.OneToOneField(Page, on_delete=models.CASCADE, null=True)
+    page = models.OneToOneField(
+        Page, on_delete=models.CASCADE, null=True, related_name="page_prize"
+    )
     prize = models.ForeignKey(StandardPrize, on_delete=models.CASCADE, null=True)
+    claimed_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    claimed_date = models.DateField(default=date.today, editable=False)
+
+    def clean(self):
+        if self.page and not self.page.is_full:
+            raise ValidationError(
+                {"page": _("Cannot create a prize for an incomplete page.")}
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return str(self.prize)

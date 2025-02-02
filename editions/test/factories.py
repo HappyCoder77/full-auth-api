@@ -1,6 +1,7 @@
 import factory
 
 from collection_manager.test.factories import CollectionFactory
+from promotions.test.factories import PromotionFactory
 from ..models import Edition
 
 
@@ -10,4 +11,5 @@ class EditionFactory(factory.django.DjangoModelFactory):
         model = Edition
 
     collection = factory.SubFactory(CollectionFactory)
+    promotion = factory.SubFactory(PromotionFactory)
     circulation = 1

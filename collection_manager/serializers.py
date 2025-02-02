@@ -19,3 +19,15 @@ class SurprisePrizeSerializer(ModelSerializer):
     class Meta:
         model = SurprisePrize
         fields = ("description",)
+
+
+from rest_framework import serializers
+from .models import StandardPrize
+
+
+class StandardPrizeSerializer(serializers.ModelSerializer):
+    collection_name = serializers.CharField(source="collection.name", read_only=True)
+
+    class Meta:
+        model = StandardPrize
+        fields = ["id", "collection", "collection_name", "page", "description"]

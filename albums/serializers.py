@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from editions.serializers import PackSerializer
 from editions.serializers import StickerSerializer
-from .models import Album, Page, Slot
+from collection_manager.serializers import StandardPrizeSerializer
+from .models import Album, Page, Slot, PagePrize
 
 
 class SlotSerializer(serializers.ModelSerializer):
@@ -10,14 +11,23 @@ class SlotSerializer(serializers.ModelSerializer):
         fields = ("id", "number", "absolute_number", "image", "is_empty")
 
 
+class PagePrizeSerializer(serializers.ModelSerializer):
+    prize = StandardPrizeSerializer(read_only=True)
+
+    class Meta:
+        model = PagePrize
+        fields = ("page", "prize", "claimed_by", "claimed_date")
+
+
 class PageSerializer(serializers.ModelSerializer):
+    page_prize = PagePrizeSerializer(read_only=True)
     slots = SlotSerializer(many=True, read_only=True)
     is_full = serializers.BooleanField(read_only=True)
     prize_was_claimed = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Page
-        fields = ("id", "number", "slots", "is_full", "prize_was_claimed")
+        fields = ("id", "page_prize", "number", "slots", "is_full", "prize_was_claimed")
 
 
 class AlbumSerializer(serializers.ModelSerializer):

@@ -76,10 +76,10 @@ class PageTestCase(TestCase):
 
             self.assertEqual(page.album, self.album)
             self.assertEqual(page.number, page_counter)
-            self.assertEqual(page.standard_prize.page, page_counter)
-            self.assertEqual(str(page.standard_prize), page.standard_prize.description)
+            self.assertEqual(page.prize.page, page_counter)
+            self.assertEqual(str(page.prize), page.prize.description)
             self.assertFalse(page.is_full)
-            self.assertFalse(page.prize_was_claimed)
+            self.assertFalse(page.prize_was_created)
             self.assertEqual(page.slots.count(), self.slots)
             page_counter += 1
 
