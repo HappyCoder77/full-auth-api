@@ -12,7 +12,7 @@ from editions.serializers import PackSerializer, StickerPrizeSerializer
 from promotions.models import Promotion
 from .models import Album, Slot, Page
 from .permissions import IsAuthenticatedCollector
-from .serializers import AlbumSerializer
+from .serializers import AlbumSerializer, PagePrizeSerializer
 
 
 class UserAlbumListRetrieveView(
@@ -244,21 +244,31 @@ class DiscoverStickerPrizeView(APIView):
             )
 
 
-# class CreatePagePrizeView(APIView):
-#     permission_classes = [IsAuthenticatedCollector]
+class CreatePagePrizeView(APIView):
+    permission_classes = [IsAuthenticatedCollector]
 
+    def post(self, request, page_id):
+        try:
+            page = Page.objects.get(id=page_id)
 
-#     def post(self, request, page_id):
-#         try:
-#             page = Page.objects.get(page_id)
+            if page.album.collector != request.user:
+                return Response(
+                    {"detail": "Solo puedes crear premios de tus propias colecciones"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
-#             if page.album.collector != request.user:
-#                 return Response(
-#                     {
-#                         "detail": "Solo puedes crear premios de tus propias colecciones"
-#                     },
-#                     status=status.HTTP_403_FORBIDDEN,
-#                 )
+            try:
+                prize = page.create_prize()
+                return Response(
+                    PagePrizeSerializer(prize).data, status=status.HTTP_201_CREATED
+                )
 
-#             try:
-#                 prize = page.create_prize()
+            except ValidationError as e:
+                return Response(
+                    {"detail": e.messages[0] if e.messages else str(e)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        except Page.DoesNotExist:
+            return Response(
+                {"detail": "Page not found"}, status=status.HTTP_404_NOT_FOUND
+            )

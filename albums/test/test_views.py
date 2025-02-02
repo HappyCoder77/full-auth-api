@@ -1,18 +1,21 @@
+from decimal import Decimal
 from django.db import IntegrityError
 from unittest.mock import patch
 from django.urls import reverse
 from rest_framework.test import APIClient, APITestCase
 from rest_framework import status, mixins
+from datetime import date
 
 from authentication.test.factories import UserFactory
-from collection_manager.models import SurprisePrize
+from collection_manager.test.factories import CollectionFactory
+from collection_manager.models import StandardPrize, Coordinate
 from editions.models import Pack, Sticker
 from editions.test.factories import EditionFactory
 from promotions.models import Promotion
 from promotions.test.factories import PromotionFactory
 from users.test.factories import CollectorFactory
 
-from ..models import Album, Slot
+from ..models import Album, Slot, Page
 from ..serializers import AlbumSerializer
 from .factories import AlbumFactory
 
@@ -669,3 +672,143 @@ class DiscoverPrizeViewTest(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
         self.assertEqual(response.data["detail"], 'Método "GET" no permitido.')
+
+
+class CreatePagePrizeViewTest(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.client = APIClient()
+        collection = CollectionFactory()
+        coordinate = Coordinate.objects.get(rarity_factor=0.02)
+        coordinate.rarity_factor = 1
+        coordinate.save()
+        cls.user = UserFactory()
+        cls.collector = CollectorFactory(user=UserFactory())
+        cls.album = AlbumFactory(
+            collector=cls.collector.user, edition__collection=collection
+        )
+        cls.page = Page.objects.get(number=1)
+        cls.packs = Pack.objects.all()
+        cls.url = reverse("create-page-prize", kwargs={"page_id": cls.page.id})
+
+    def test_page_prize_succesful_creation(self):
+        for pack in self.packs:
+            pack.open(self.album.collector)
+
+        stickers = Sticker.objects.filter(
+            on_the_board=True, coordinate__absolute_number__lte=6
+        )
+        for slot in self.page.slots.all():
+            sticker = stickers.get(coordinate__absolute_number=slot.absolute_number)
+            slot.place_sticker(sticker)
+
+        expected_data = {
+            "page": self.page.id,
+            "prize": {
+                "id": self.page.prize.id,
+                "collection": self.album.edition.collection.id,
+                "collection_name": self.album.edition.collection.name,
+                "page": self.page.number,
+                "description": self.page.prize.description,
+            },
+            "claimed_by": None,
+            "claimed_date": date.today().isoformat(),
+        }
+
+        self.client.force_authenticate(user=self.collector.user)
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data, expected_data)
+
+    def test_collector_cannot_create_someone_else_page_prize(self):
+        for pack in self.packs:
+            pack.open(self.album.collector)
+
+        stickers = Sticker.objects.filter(
+            on_the_board=True, coordinate__absolute_number__lte=6
+        )
+        for slot in self.page.slots.all():
+            sticker = stickers.get(coordinate__absolute_number=slot.absolute_number)
+            slot.place_sticker(sticker)
+
+        collector = CollectorFactory(user=UserFactory())
+        self.client.force_authenticate(user=collector.user)
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"],
+            "Solo puedes crear premios de tus propias colecciones",
+        )
+
+    def test_user_cannot_create_page_prize(self):
+        for pack in self.packs:
+            pack.open(self.album.collector)
+
+        stickers = Sticker.objects.filter(
+            on_the_board=True, coordinate__absolute_number__lte=6
+        )
+        for slot in self.page.slots.all():
+            sticker = stickers.get(coordinate__absolute_number=slot.absolute_number)
+            slot.place_sticker(sticker)
+
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"],
+            "Solo los coleccionistas pueden realizar esta acción",
+        )
+
+    def test_unauthorized_user_cannot_create_page_prize(self):
+        for pack in self.packs:
+            pack.open(self.album.collector)
+
+        stickers = Sticker.objects.filter(
+            on_the_board=True, coordinate__absolute_number__lte=6
+        )
+        for slot in self.page.slots.all():
+            sticker = stickers.get(coordinate__absolute_number=slot.absolute_number)
+            slot.place_sticker(sticker)
+
+        self.client.logout()
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data["detail"], "Debe iniciar sesión para realizar esta acción"
+        )
+
+    def test_cannot_create_page_prize_twice(self):
+        for pack in self.packs:
+            pack.open(self.album.collector)
+
+        stickers = Sticker.objects.filter(
+            on_the_board=True, coordinate__absolute_number__lte=6
+        )
+        for slot in self.page.slots.all():
+            sticker = stickers.get(coordinate__absolute_number=slot.absolute_number)
+            slot.place_sticker(sticker)
+
+        self.client.force_authenticate(user=self.collector.user)
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        response2 = self.client.post(self.url)
+        print(response2)
+        self.assertEqual(response2.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response2.data["detail"], "Esta página ya tiene un premio asignado"
+        )
+
+    def test_cannot_create_page_prize_for_an_empty_page(self):
+
+        self.client.force_authenticate(user=self.collector.user)
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # self.assertEqual(
+        #     response.data["detail"], "Esta página ya tiene un premio asignado"
+        # )

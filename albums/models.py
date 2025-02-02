@@ -132,7 +132,7 @@ class Page(models.Model):
 
     @property
     def is_full(self):
-        return Slot.objects.filter(page=self, sticker__isnull=True).count() == 0
+        return not self.slots.filter(sticker__isnull=True).exists()
 
     @property
     def prize_was_created(self):
@@ -149,7 +149,9 @@ class Page(models.Model):
         if hasattr(self, "page_prize"):
             raise ValidationError("Esta página ya tiene un premio asignado")
 
-        prize = StandardPrize.objects.get(collection=self.album.edition.collection)
+        prize = StandardPrize.objects.get(
+            collection=self.album.edition.collection, page=self.number
+        )
 
         return PagePrize.objects.create(page=self, prize=prize)
 
