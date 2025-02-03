@@ -650,7 +650,7 @@ class DiscoverPrizeViewTest(APITestCase):
 
         url = reverse("discover-prize", kwargs={"sticker_id": regular_sticker.pk})
         response = self.client.post(url)
-        # print(response.data)
+
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
             response.data["detail"],
@@ -797,7 +797,7 @@ class CreatePagePrizeViewTest(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         response2 = self.client.post(self.url)
-        print(response2)
+
         self.assertEqual(response2.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
             response2.data["detail"], "Esta página ya tiene un premio asignado"
@@ -809,6 +809,6 @@ class CreatePagePrizeViewTest(APITestCase):
         response = self.client.post(self.url)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        # self.assertEqual(
-        #     response.data["detail"], "Esta página ya tiene un premio asignado"
-        # )
+        self.assertEqual(
+            response.data["page"][0], "Cannot create a prize for an incomplete page."
+        )

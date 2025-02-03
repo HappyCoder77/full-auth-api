@@ -1,8 +1,8 @@
 from django.utils import timezone
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError
-from rest_framework.exceptions import NotFound
-from rest_framework.serializers import ValidationError
+from rest_framework.exceptions import NotFound, ValidationError
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.generics import GenericAPIView, RetrieveAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -235,7 +235,7 @@ class DiscoverStickerPrizeView(APIView):
                 )
             except DjangoValidationError as e:
                 return Response(
-                    {"detail": str(e.message)}, status=status.HTTP_400_BAD_REQUEST
+                    {"detail": e.message}, status=status.HTTP_400_BAD_REQUEST
                 )
 
         except Sticker.DoesNotExist:
@@ -263,11 +263,13 @@ class CreatePagePrizeView(APIView):
                     PagePrizeSerializer(prize).data, status=status.HTTP_201_CREATED
                 )
 
-            except ValidationError as e:
-                return Response(
-                    {"detail": e.messages[0] if e.messages else str(e)},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+            except DjangoValidationError as e:
+                if hasattr(e, "message_dict"):
+                    error_message = e.message_dict
+                else:
+                    error_message = {"detail": e.message}
+                return Response(error_message, status=status.HTTP_400_BAD_REQUEST)
+
         except Page.DoesNotExist:
             return Response(
                 {"detail": "Page not found"}, status=status.HTTP_404_NOT_FOUND
