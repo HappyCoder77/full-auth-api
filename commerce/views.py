@@ -225,6 +225,8 @@ class SurprizePriseListApiView(ListAPIView):
     permission_classes = [IsAuthenticatedCollector]
 
     def get_queryset(self):
-        queryset = StickerPrize.objects.filter(sticker__collector=self.request.user)
+        queryset = StickerPrize.objects.filter(
+            sticker__collector=self.request.user
+        ).order_by("-id")
 
         return queryset if queryset.exists() else StickerPrize.objects.none()

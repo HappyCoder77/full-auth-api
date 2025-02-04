@@ -1,4 +1,4 @@
-from rest_framework.serializers import ModelSerializer, SerializerMethodField
+from rest_framework.serializers import ModelSerializer, SerializerMethodField, CharField
 
 from collection_manager.serializers import CollectionSerializer
 from collection_manager.serializers import CoordinateSerializer, SurprisePrizeSerializer
@@ -17,10 +17,19 @@ class EditionSerializer(ModelSerializer):
 
 class StickerPrizeSerializer(ModelSerializer):
     prize = SurprisePrizeSerializer(read_only=True)
+    status_display = CharField(source="get_status_display")
 
     class Meta:
         model = StickerPrize
-        fields = ["id", "prize", "claimed", "claimed_date", "claimed_by", "status"]
+        fields = [
+            "id",
+            "prize",
+            "claimed",
+            "claimed_date",
+            "claimed_by",
+            "status",
+            "status_display",
+        ]
 
 
 class StickerSerializer(ModelSerializer):

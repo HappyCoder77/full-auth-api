@@ -64,4 +64,12 @@ class StickerAdmin(admin.ModelAdmin):
 
 @admin.register(StickerPrize)
 class StickerPrizeAdmin(admin.ModelAdmin):
-    list_display = ("id", "sticker", "prize", "claimed", "claimed_date", "claimed_by")
+    list_display = (
+        "id",
+        "sticker",
+        "prize",
+        "claimed",
+        "claimed_date",
+        "claimed_by",
+        "status",
+    )
