@@ -10,6 +10,7 @@ from promotions.models import Promotion
 from promotions.test.factories import PromotionFactory
 from editions.test.factories import EditionFactory
 from editions.models import Sticker
+from editions.serializers import StickerPrizeSerializer
 from authentication.test.factories import UserFactory
 from users.test.factories import DealerFactory
 from commerce.models import Order, Sale
@@ -20,7 +21,6 @@ from rest_framework import status
 from ..serializers import OrderSerializer, PaymentSerializer
 from ..models import Payment, MobilePayment
 from commerce.models import DealerBalance
-from commerce.test.factories import DealerBalanceFactory
 
 
 class OrderListCreateAPIViewAPITestCase(APITestCase):
@@ -1174,6 +1174,7 @@ class RequestSurprisePrizeViewAPITestCase(APITestCase):
             response.data["claimed_date"], date.today().strftime("%Y-%m-%d")
         )
         self.assertEqual(response.data["claimed_by"], self.dealer.user.id)
+        self.assertEqual(response.data["status"], 2)
 
     def test_superuser_cannot_request_surprize_prize(self):
         self.client.force_authenticate(user=self.superuser)
@@ -1217,3 +1218,70 @@ class RequestSurprisePrizeViewAPITestCase(APITestCase):
             response.data["detail"],
             "StickerPrize not found.",
         )
+
+
+class SurprisePrizeListAPIViewTest(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.client = APIClient()
+        cls.edition = EditionFactory(promotion=PromotionFactory())
+        cls.superuser = UserFactory(is_superuser=True)
+        cls.basic_user = UserFactory()
+        cls.dealer_user = UserFactory()
+        cls.dealer = DealerFactory(user=cls.dealer_user, email=cls.dealer_user.email)
+        cls.collector = CollectorFactory(user=UserFactory())
+        cls.prized_sticker = Sticker.objects.filter(
+            coordinate__absolute_number=0
+        ).first()
+        cls.prized_sticker.pack.open(cls.collector.user)
+        cls.prized_sticker.refresh_from_db()
+        cls.stickerprize = cls.prized_sticker.discover_prize()
+
+        cls.url = reverse("surprise-prize-list")
+
+    def setUp(self):
+        self.client.force_authenticate(user=self.collector.user)
+
+    def test_collector_can_get_surprize_prize_list(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(
+            response.data[0], StickerPrizeSerializer(self.stickerprize).data
+        )
+
+    def test_superuser_cannot_get_surprize_prize_list(self):
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"],
+            "Solo los coleccionistas pueden realizar esta acción",
+        )
+
+    def test_basic_user_cannot_get_surprize_prize_list(self):
+        self.client.force_authenticate(user=self.basic_user)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"],
+            "Solo los coleccionistas pueden realizar esta acción",
+        )
+
+    def test_unauthenticated_user_get_surprize_prize_list(self):
+        self.client.logout()
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data["detail"], "Debe iniciar sesión para realizar esta acción"
+        )
+
+    def test_method_not_allowed(self):
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(str(response.data["detail"]), 'Método "POST" no permitido.')

@@ -604,6 +604,12 @@ class Sticker(models.Model):
 
 
 class StickerPrize(models.Model):
+    STICKERPRIZE_STATUS = [
+        (1, "No reclamado"),
+        (2, "Reclamado"),
+        (3, "En tránsito"),
+        (4, "Entregado"),
+    ]
     sticker = models.OneToOneField(
         Sticker, on_delete=models.CASCADE, related_name="prize"
     )
@@ -618,6 +624,7 @@ class StickerPrize(models.Model):
     claimed_by = models.ForeignKey(
         User, null=True, blank=True, on_delete=models.SET_NULL
     )
+    status = models.SmallIntegerField(choices=STICKERPRIZE_STATUS, default=1)
 
     def clean(self):
         if self.sticker.coordinate.absolute_number != 0:
@@ -637,9 +644,10 @@ class StickerPrize(models.Model):
             raise ValidationError("Este premio ya ha sido reclamado")
 
         if not user.is_dealer:
-            raise ValidationError("Sólo los coleccionistas pueden reclamr premios")
+            raise ValidationError("Sólo los coleccionistas pueden reclamar premios")
 
         self.claimed_by = user
         self.claimed = True
         self.claimed_date = date.today()
+        self.status = 2
         self.save()

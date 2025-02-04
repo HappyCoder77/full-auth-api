@@ -140,7 +140,7 @@ class Page(models.Model):
 
     @property
     def prize_was_claimed(self):
-        return PagePrize.objects.filter(page=self, claimed_by__isnull=True)
+        return PagePrize.objects.filter(page=self, claimed_by__isnull=False)
 
     class Meta:
         ordering = ["number"]

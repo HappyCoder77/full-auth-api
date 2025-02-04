@@ -8,12 +8,14 @@ from rest_framework.generics import (
     ListCreateAPIView,
     RetrieveAPIView,
     CreateAPIView,
+    ListAPIView,
 )
 from rest_framework.response import Response
 from promotions.utils import (
     get_last_promotion,
 )
 from .models import Order, Payment, MobilePayment, DealerBalance
+from albums.permissions import IsAuthenticatedCollector
 from editions.models import StickerPrize
 from editions.serializers import StickerPrizeSerializer
 from .permissions import IsAuthenticatedDealer
@@ -215,3 +217,14 @@ class RequestSurprisePrizeView(APIView):
         if isinstance(exc, DRFValidationError):
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return super().handle_exception(exc)
+
+
+class SurprizePriseListApiView(ListAPIView):
+    serializer_class = StickerPrizeSerializer
+    http_method_names = ["get"]
+    permission_classes = [IsAuthenticatedCollector]
+
+    def get_queryset(self):
+        queryset = StickerPrize.objects.filter(sticker__collector=self.request.user)
+
+        return queryset if queryset.exists() else StickerPrize.objects.none()

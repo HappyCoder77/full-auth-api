@@ -477,6 +477,11 @@ class StickerPrizeTestCase(TestCase):
         self.assertFalse(self.sticker_prize.claimed)
         self.assertIsNone(self.sticker_prize.claimed_date)
         self.assertIsNone(self.sticker_prize.claimed_by)
+        self.assertEqual(self.sticker_prize.status, 1)
+        self.assertEqual(
+            str(self.sticker_prize),
+            f"Premio sorpresa para barajita con el id {self.prized_sticker.id}: {self.sticker_prize.prize.description}",
+        )
 
     def test_sticker_prize_data_after_claimed(self):
         self.sticker_prize.claim(self.dealer.user)
@@ -485,10 +490,7 @@ class StickerPrizeTestCase(TestCase):
         self.assertTrue(self.sticker_prize.claimed)
         self.assertEqual(self.sticker_prize.claimed_date, datetime.date.today())
         self.assertEqual(self.sticker_prize.claimed_by, self.dealer.user)
-        self.assertEqual(
-            str(self.sticker_prize),
-            f"Premio sorpresa para barajita con el id {self.prized_sticker.id}: {self.sticker_prize.prize.description}",
-        )
+        self.assertEqual(self.sticker_prize.status, 2)
 
     def test_sticker_prize_validation(self):
         sticker = Sticker.objects.filter(coordinate__absolute_number__gt=0).first()
