@@ -11,6 +11,7 @@ from .views import (
     SaleCreateView,
     RequestSurprisePrizeView,
     SurprizePriseListApiView,
+    ClaimPagePrizeView,
 )
 
 
@@ -41,5 +42,10 @@ urlpatterns = [
         "prizes/surprise/list",
         SurprizePriseListApiView.as_view(),
         name="surprise-prize-list",
+    ),
+    path(
+        "prizes/page/<int:page_prize_id>/claim/",
+        ClaimPagePrizeView.as_view(),
+        name="claim-page-prize",
     ),
 ]

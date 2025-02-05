@@ -6,21 +6,23 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient, APITestCase
+from albums.models import Page, PagePrize
+from albums.test.factories import AlbumFactory
 from promotions.models import Promotion
 from promotions.test.factories import PromotionFactory
+from collection_manager.models import Coordinate
+from collection_manager.test.factories import CollectionFactory
 from editions.test.factories import EditionFactory
-from editions.models import Sticker
+from editions.models import Sticker, Coordinate, Pack
 from editions.serializers import StickerPrizeSerializer
 from authentication.test.factories import UserFactory
 from users.test.factories import DealerFactory
-from commerce.models import Order, Sale
 from users.test.factories import CollectorFactory
 from promotions.tasks import check_ended_promotions
 from .factories import OrderFactory, PaymentFactory
 from rest_framework import status
 from ..serializers import OrderSerializer, PaymentSerializer
-from ..models import Payment, MobilePayment
-from commerce.models import DealerBalance
+from ..models import Payment, MobilePayment, DealerBalance, Order, Sale
 
 
 class OrderListCreateAPIViewAPITestCase(APITestCase):
@@ -1194,7 +1196,7 @@ class RequestSurprisePrizeViewAPITestCase(APITestCase):
             response.data["detail"], "Solo los detallistas pueden realizar esta acción"
         )
 
-    def test_unauthenticated_user_cannot_create_payment(self):
+    def test_unauthenticated_user_cannot_request_surprize_prize(self):
         self.client.logout()
         response = self.client.post(self.url)
 
@@ -1218,6 +1220,12 @@ class RequestSurprisePrizeViewAPITestCase(APITestCase):
             response.data["detail"],
             "StickerPrize not found.",
         )
+
+    def test_collector_cannot_request_surprise_prize_twice(self):
+        response = self.client.post(self.url)
+        response2 = self.client.post(self.url)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response2.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 class SurprisePrizeListAPIViewTest(APITestCase):
@@ -1285,3 +1293,112 @@ class SurprisePrizeListAPIViewTest(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
         self.assertEqual(str(response.data["detail"]), 'Método "POST" no permitido.')
+
+
+class ClaimPagePrizeViewAPITestCase(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.client = APIClient()
+        collection = CollectionFactory()
+        coordinate = Coordinate.objects.get(rarity_factor=0.02)
+        coordinate.rarity_factor = 1
+        coordinate.save()
+        cls.superuser = UserFactory(is_superuser=True)
+        cls.dealer = DealerFactory(user=UserFactory())
+        cls.basic_user = UserFactory()
+        cls.collector = CollectorFactory(user=UserFactory())
+        cls.album = AlbumFactory(
+            collector=cls.collector.user, edition__collection=collection
+        )
+        cls.page = Page.objects.get(number=1)
+        cls.packs = Pack.objects.all()
+        cls.create_page_prize_url = reverse(
+            "create-page-prize", kwargs={"page_id": cls.page.id}
+        )
+
+    def setUp(self):
+        for pack in self.packs:
+            pack.open(self.album.collector)
+
+        stickers = Sticker.objects.filter(
+            on_the_board=True, coordinate__absolute_number__lte=6
+        )
+        for slot in self.page.slots.all():
+            sticker = stickers.get(coordinate__absolute_number=slot.absolute_number)
+            slot.place_sticker(sticker)
+
+        self.client.force_authenticate(user=self.collector.user)
+        self.client.post(self.create_page_prize_url)
+        self.page.refresh_from_db()
+        self.page_prize = PagePrize.objects.get(page=self.page)
+        self.claim_page_prize_url = reverse(
+            "claim-page-prize", kwargs={"page_prize_id": self.page_prize.id}
+        )
+
+    def test_dealer_can_claim_page_prize(self):
+        self.client.force_authenticate(user=self.dealer.user)
+
+        response = self.client.post(self.claim_page_prize_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["id"], self.page_prize.id)
+        self.assertEqual(
+            response.data["prize"]["description"], self.page_prize.prize.description
+        )
+        self.assertEqual(
+            response.data["claimed_date"], date.today().strftime("%Y-%m-%d")
+        )
+        self.assertEqual(response.data["claimed_by"], self.dealer.user.id)
+        self.assertEqual(response.data["status"], 2)
+
+    def test_superuser_cannot_claim_page_prize(self):
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.post(self.claim_page_prize_url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"], "Solo los detallistas pueden realizar esta acción"
+        )
+
+    def test_basic_user_cannot_claim_page_prize(self):
+        self.client.force_authenticate(user=self.basic_user)
+        response = self.client.post(self.claim_page_prize_url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"], "Solo los detallistas pueden realizar esta acción"
+        )
+
+    def test_unauthenticated_user_claim_page_prize(self):
+        self.client.logout()
+        response = self.client.post(self.claim_page_prize_url)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data["detail"], "Debe iniciar sesión para realizar esta acción"
+        )
+
+    def test_method_not_allowed(self):
+        self.client.force_authenticate(user=self.dealer.user)
+        response = self.client.get(self.claim_page_prize_url)
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(str(response.data["detail"]), 'Método "GET" no permitido.')
+
+    def test_dealer_claim_page_prize_with_invalid_page_prize_id(self):
+        self.client.force_authenticate(user=self.dealer.user)
+        url = reverse("claim-page-prize", kwargs={"page_prize_id": 9999})
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(
+            response.data["detail"],
+            "PagePrize not found.",
+        )
+
+    def test_collector_cannot_claim_page_prize_twice(self):
+        self.client.force_authenticate(user=self.dealer.user)
+        response = self.client.post(self.claim_page_prize_url)
+        response2 = self.client.post(self.claim_page_prize_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response2.status_code, status.HTTP_400_BAD_REQUEST)

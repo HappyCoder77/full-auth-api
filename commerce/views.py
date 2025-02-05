@@ -15,7 +15,9 @@ from promotions.utils import (
     get_last_promotion,
 )
 from .models import Order, Payment, MobilePayment, DealerBalance
+from albums.models import PagePrize
 from albums.permissions import IsAuthenticatedCollector
+from albums.serializers import PagePrizeSerializer
 from editions.models import StickerPrize
 from editions.serializers import StickerPrizeSerializer
 from .permissions import IsAuthenticatedDealer
@@ -230,3 +232,30 @@ class SurprizePriseListApiView(ListAPIView):
         ).order_by("-id")
 
         return queryset if queryset.exists() else StickerPrize.objects.none()
+
+
+class ClaimPagePrizeView(APIView):
+    permission_classes = [IsAuthenticatedDealer]
+
+    def post(self, request, page_prize_id):
+        try:
+            page_prize = PagePrize.objects.get(id=page_prize_id)
+            page_prize.claim(request.user)
+            return Response(
+                PagePrizeSerializer(page_prize).data,
+                status=status.HTTP_200_OK,
+            )
+        except PagePrize.DoesNotExist:
+            return Response(
+                {"detail": "PagePrize not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except DjangoValidationError as e:
+            return Response(
+                {"detail": str(e.message)}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def handle_exception(self, exc):
+        if isinstance(exc, DRFValidationError):
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return super().handle_exception(exc)
