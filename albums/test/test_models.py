@@ -31,8 +31,11 @@ class AlbumTestCase(TestCase):
     def test_album_data(self):
 
         self.assertEqual(self.album.collector.email, "albumcollector@example.com")
-        self.assertEqual(self.album.edition.collection.name, "Los Simpsons")
-        self.assertEqual(str(self.album), str(self.album.edition.collection))
+        self.assertEqual(
+            self.album.edition.collection.name,
+            "Los Simpsons",
+        )
+        self.assertEqual(str(self.album), str(self.album.edition))
         self.assertEqual(self.album.pages.count(), self.pages)
         self.assertEqual(Slot.objects.count(), self.total_slots)
         self.assertEqual(self.album.missing_stickers, 24)

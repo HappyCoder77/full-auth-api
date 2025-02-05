@@ -19,7 +19,7 @@ class Album(models.Model):
     )
 
     def __str__(self):
-        return str(self.edition.collection)
+        return f"{self.edition}"
 
     class Meta:
         verbose_name_plural = "Albums"
@@ -121,6 +121,9 @@ class Album(models.Model):
 class Page(models.Model):
     album = models.ForeignKey(Album, on_delete=models.CASCADE, related_name="pages")
     number = models.PositiveSmallIntegerField()
+
+    def __str__(self):
+        return f"Album {self.album}: página {self.number}"
 
     @property
     def prize(self):

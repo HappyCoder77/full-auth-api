@@ -49,7 +49,7 @@ class Promotion(models.Model):
         start_full_date = f"{start_day} {start_month} {start_year}"
         end_full_date = f"{end_day} {end_month} {end_year}"
 
-        return f"{start_full_date} / {end_full_date}"
+        return f"del {start_full_date} al {end_full_date}"
 
     @transaction.atomic
     def save(self, *args, **kwargs):

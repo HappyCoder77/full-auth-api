@@ -40,7 +40,7 @@ class Edition(models.Model):
         return self.promotion.pack_cost * self.collection.PACKS_PER_BOX
 
     def __str__(self):
-        return self.collection.name
+        return f"{self.collection.name} {self.promotion}"
 
     def clean(self):
         try:  # verifica que exista una promotion

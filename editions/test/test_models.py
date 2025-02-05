@@ -38,7 +38,10 @@ class EditionTestCase(TestCase):
         boxes = Box.objects.filter(edition=self.edition).order_by("pk")
         packs = Pack.objects.filter(box__edition_id=self.edition.id)
         self.assertEqual(self.edition.box_cost, 150)
-        self.assertEqual(str(self.edition), "Minecraft")
+        self.assertEqual(
+            str(self.edition),
+            f"{self.edition.collection.name} {self.edition.promotion}",
+        )
         self.assertEqual(boxes.count(), 37)
         self.assertEqual(packs.count(), 3695)
 
