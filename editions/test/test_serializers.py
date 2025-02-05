@@ -76,7 +76,16 @@ class StickerPrizeSerializerTestCase(TestCase):
         data = serializer.data
 
         self.assertEqual(
-            set(data.keys()), {"id", "prize", "claimed", "claimed_date", "claimed_by"}
+            set(data.keys()),
+            {
+                "id",
+                "prize",
+                "claimed",
+                "claimed_date",
+                "claimed_by",
+                "status",
+                "status_display",
+            },
         )
         self.assertEqual(data["id"], self.sticker_prize.id)
         self.assertEqual(

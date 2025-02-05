@@ -7,6 +7,7 @@ from .views import (
     PlaceStickerView,
     DiscoverStickerPrizeView,
     CreatePagePrizeView,
+    PagePrizeListAPIView,
 )
 
 
@@ -35,6 +36,11 @@ urlpatterns = [
     path(
         "pages/<int:page_id>/create-prize/",
         CreatePagePrizeView.as_view(),
+        name="create-page-prize",
+    ),
+    path(
+        "prizes/page-prize/list/",
+        PagePrizeListAPIView.as_view(),
         name="create-page-prize",
     ),
 ]

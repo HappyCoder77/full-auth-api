@@ -13,10 +13,19 @@ class SlotSerializer(serializers.ModelSerializer):
 
 class PagePrizeSerializer(serializers.ModelSerializer):
     prize = StandardPrizeSerializer(read_only=True)
+    status_display = serializers.CharField(source="get_status_display")
 
     class Meta:
         model = PagePrize
-        fields = ("page", "prize", "claimed_by", "claimed_date")
+        fields = (
+            "id",
+            "page",
+            "prize",
+            "claimed_by",
+            "claimed_date",
+            "status",
+            "status_display",
+        )
 
 
 class PageSerializer(serializers.ModelSerializer):

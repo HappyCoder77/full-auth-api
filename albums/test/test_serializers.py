@@ -114,7 +114,15 @@ class PagePrizeSerializerTestCase(TestCase):
         cls.serializer = PagePrizeSerializer(instance=cls.page_prize)
 
     def test_page_prize_data(self):
-        expected_fields = {"page", "prize", "claimed_by", "claimed_date"}
+        expected_fields = {
+            "id",
+            "page",
+            "prize",
+            "claimed_by",
+            "claimed_date",
+            "status",
+            "status_display",
+        }
         expected_prize_fields = {
             "id",
             "collection",
@@ -140,7 +148,7 @@ class PagePrizeSerializerTestCase(TestCase):
         )
 
         self.assertIsNone(serialized_data["claimed_by"])
-        self.assertEqual(serialized_data["claimed_date"], date.today().isoformat())
+        self.assertIsNone(serialized_data["claimed_date"])
 
 
 class PageSerializerTestCase(TestCase):

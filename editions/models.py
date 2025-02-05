@@ -644,7 +644,7 @@ class StickerPrize(models.Model):
             raise ValidationError("Este premio ya ha sido reclamado")
 
         if not user.is_dealer:
-            raise ValidationError("Sólo los coleccionistas pueden reclamar premios")
+            raise ValidationError("Sólo los detallistas pueden reclamar premios")
 
         self.claimed_by = user
         self.claimed = True

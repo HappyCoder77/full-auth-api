@@ -703,6 +703,7 @@ class CreatePagePrizeViewTest(APITestCase):
             slot.place_sticker(sticker)
 
         expected_data = {
+            "id": 1,
             "page": self.page.id,
             "prize": {
                 "id": self.page.prize.id,
@@ -712,7 +713,9 @@ class CreatePagePrizeViewTest(APITestCase):
                 "description": self.page.prize.description,
             },
             "claimed_by": None,
-            "claimed_date": date.today().isoformat(),
+            "claimed_date": None,
+            "status": 1,
+            "status_display": "No reclamado",
         }
 
         self.client.force_authenticate(user=self.collector.user)

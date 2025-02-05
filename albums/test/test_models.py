@@ -1,11 +1,17 @@
+from datetime import date
 from django.db import IntegrityError
+from django.core.exceptions import ValidationError
 from django.test import TestCase
+from django.urls import reverse
 
+from authentication.test.factories import UserFactory
 from promotions.test.factories import PromotionFactory
 from editions.models import Sticker
-from collection_manager.models import Coordinate
+from collection_manager.models import Coordinate, StandardPrize
+from collection_manager.test.factories import CollectionFactory
+from users.test.factories import CollectorFactory, DealerFactory
 
-from ..models import Slot
+from ..models import Slot, Page, Pack, PagePrize
 from .factories import AlbumFactory
 
 
@@ -198,3 +204,68 @@ class StickStickerTestCase(TestCase):
             str(context.exception),
             f"Casilla equivocada. Intentas pegar la barajita número {sticker.number} en la casilla número {slot.number}",
         )
+
+
+class PagePrizeTestCase(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        collection = CollectionFactory()
+        coordinate = Coordinate.objects.get(rarity_factor=0.02)
+        coordinate.rarity_factor = 1
+        coordinate.save()
+        cls.user = UserFactory()
+        cls.dealer = DealerFactory(user=UserFactory())
+        cls.collector = CollectorFactory(user=UserFactory())
+        cls.album = AlbumFactory(
+            collector=cls.collector.user, edition__collection=collection
+        )
+        cls.page = Page.objects.get(number=1)
+        cls.packs = Pack.objects.all()
+        for pack in cls.packs:
+            pack.open(cls.album.collector)
+
+        stickers = Sticker.objects.filter(
+            on_the_board=True, coordinate__absolute_number__lte=6
+        )
+        for slot in cls.page.slots.all():
+            sticker = stickers.get(coordinate__absolute_number=slot.absolute_number)
+            slot.place_sticker(sticker)
+
+    def setUp(self):
+        self.prize = StandardPrize.objects.get(page=self.page.number)
+        self.page_prize = self.page.create_prize()
+
+    def test_page_prize_data(self):
+
+        self.assertEqual(self.page_prize.page, self.page)
+        self.assertEqual(self.page_prize.prize.description, self.prize.description)
+        self.assertFalse(self.page_prize.claimed)
+        self.assertIsNone(self.page_prize.claimed_date)
+        self.assertIsNone(self.page_prize.claimed_by)
+        self.assertEqual(self.page_prize.status, 1)
+        self.assertEqual(str(self.page_prize), self.prize.description)
+
+    def test_claim_method(self):
+        self.page_prize.claim(self.dealer.user)
+
+        self.assertTrue(self.page_prize.claimed)
+        self.assertEqual(self.page_prize.claimed_date, date.today())
+        self.assertEqual(self.page_prize.claimed_by, self.dealer.user)
+        self.assertEqual(self.page_prize.status, 2)
+
+    def test_create_prize_for_an_incomplete_page(self):
+        page = Page.objects.get(number=2)
+
+        with self.assertRaises(ValidationError):
+            page.create_prize()
+
+    def claim_already_claimed_prize(self):
+        self.page_prize.claim(self.dealer.user)
+
+        with self.assertRaises(ValidationError):
+            self.page_prize.claim(self.dealer.user)
+
+    def test_not_dealer_claim_prize(self):
+        with self.assertRaises(ValidationError):
+            self.page_prize.claim(self.user)

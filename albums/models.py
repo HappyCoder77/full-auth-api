@@ -214,14 +214,35 @@ class Slot(models.Model):
 
 
 class PagePrize(models.Model):
+    PAGEPRIZE_STATUS = [
+        (1, "No reclamado"),
+        (2, "Reclamado"),
+        (3, "En tránsito"),
+        (4, "Entregado"),
+    ]
     page = models.OneToOneField(
         Page, on_delete=models.CASCADE, null=True, related_name="page_prize"
     )
     prize = models.ForeignKey(StandardPrize, on_delete=models.CASCADE, null=True)
+    claimed = models.BooleanField(default=False)
     claimed_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True
     )
-    claimed_date = models.DateField(default=date.today, editable=False)
+    claimed_date = models.DateField(null=True, blank=True)
+    status = models.SmallIntegerField(choices=PAGEPRIZE_STATUS, default=1)
+
+    def claim(self, user):
+        if self.claimed:
+            raise ValidationError("Este premio ya ha sido reclamado")
+
+        if not user.is_dealer:
+            raise ValidationError("Sólo los detallistas pueden reclamar premios")
+
+        self.claimed_by = user
+        self.claimed = True
+        self.claimed_date = date.today()
+        self.status = 2
+        self.save()
 
     def clean(self):
         if self.page and not self.page.is_full:

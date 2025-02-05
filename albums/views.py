@@ -3,14 +3,14 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError
 from rest_framework.exceptions import NotFound, ValidationError
 from django.core.exceptions import ValidationError as DjangoValidationError
-from rest_framework.generics import GenericAPIView, RetrieveAPIView
+from rest_framework.generics import GenericAPIView, RetrieveAPIView, ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status, mixins
 from editions.models import Edition, Pack, Sticker
 from editions.serializers import PackSerializer, StickerPrizeSerializer
 from promotions.models import Promotion
-from .models import Album, Slot, Page
+from .models import Album, Slot, Page, PagePrize
 from .permissions import IsAuthenticatedCollector
 from .serializers import AlbumSerializer, PagePrizeSerializer
 
@@ -274,3 +274,15 @@ class CreatePagePrizeView(APIView):
             return Response(
                 {"detail": "Page not found"}, status=status.HTTP_404_NOT_FOUND
             )
+
+
+class PagePrizeListAPIView(ListAPIView):
+    serializer_class = PagePrizeSerializer
+    permission_classes = [IsAuthenticatedCollector]
+    http_method_names = ["get"]
+
+    def get_queryset(self):
+        query = PagePrize.objects.filter(
+            page__album__collector=self.request.user
+        ).order_by("-id")
+        return query if query.exists() else PagePrize.objects.none()
