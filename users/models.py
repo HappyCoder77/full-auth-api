@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from albums.models import PagePrize
 from editions.models import Pack, StickerPrize
 from authentication.models import UserAccount
 from promotions.utils import promotion_is_running, get_current_promotion
@@ -90,4 +91,11 @@ class Collector(BaseProfile):
     @property
     def unclaimed_surprise_prizes(self):
         query = StickerPrize.objects.filter(sticker__collector=self.user, claimed=False)
+        return query if query.exists() else StickerPrize.objects.none()
+
+    @property
+    def unclaimed_page_prizes(self):
+        query = PagePrize.objects.filter(
+            page__album__collector=self.user, claimed=False
+        )
         return query if query.exists() else StickerPrize.objects.none()

@@ -712,14 +712,14 @@ class CollectorViewSetTestCase(APITestCase):
         response = self.client.get(self.detail_url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 11)
+        self.assertEqual(len(response.data), 12)
 
     def test_get_collector_detail_with_superuser(self):
         self.client.force_authenticate(user=self.superuser)
         response = self.client.get(self.detail_url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 11)
+        self.assertEqual(len(response.data), 12)
 
     def test_get_collector_detail_unauthorized(self):
         self.client.logout()

@@ -2,9 +2,11 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from albums.models import Page, Pack
+from albums.test.factories import AlbumFactory
+from collection_manager.test.factories import CollectionFactory, Coordinate
 from editions.models import Sticker
-from editions.test.factories import EditionFactory
-from promotions.test.factories import PromotionFactory
+
 from ..models import BaseProfile, RegionalManager, Dealer, Collector
 from authentication.test.factories import UserFactory
 from .factories import DealerFactory, CollectorFactory
@@ -152,39 +154,56 @@ class DealerTestCase(TestCase):
 class CollectorTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
+        collection = CollectionFactory()
+        coordinate = Coordinate.objects.get(rarity_factor=0.02)
+        coordinate.rarity_factor = 1
+        coordinate.save()
         cls.user = UserFactory()
+        cls.dealer = DealerFactory(user=UserFactory())
         cls.collector = CollectorFactory(user=cls.user, email=cls.user.email)
+        cls.album = AlbumFactory(
+            collector=cls.collector.user, edition__collection=collection
+        )
+        cls.page = Page.objects.get(number=1)
+        cls.packs = Pack.objects.all()
 
-    def test_collector_data(self):
+        for pack in cls.packs:
+            pack.open(cls.album.collector)
+
+        stickers = Sticker.objects.filter(
+            on_the_board=True, coordinate__absolute_number__lte=6
+        )
+
+        for slot in cls.page.slots.all():
+            sticker = stickers.get(coordinate__absolute_number=slot.absolute_number)
+            slot.place_sticker(sticker)
+
+    def test_collector_default_data(self):
         self.assertEqual(Collector.objects.all().count(), 1)
         self.assertEqual(self.collector.email, self.user.email)
         self.assertEqual(self.collector.user, self.user)
         self.assertQuerySetEqual(self.collector.unclaimed_surprise_prizes, [])
+        self.assertQuerySetEqual(self.collector.unclaimed_page_prizes, [])
 
-    def test_data_after_discover_surprise_prizes(self):
-        EditionFactory(promotion=PromotionFactory())
-        prized_sticker = Sticker.objects.filter(coordinate__absolute_number=0).first()
-        prized_sticker.pack.open(self.collector.user)
-        prized_sticker.refresh_from_db()
-        stickerprize = prized_sticker.discover_prize()
+    def test_collector_data_after_create_page_prize(self):
+        page_prize = self.page.create_prize()
 
-        self.assertEqual(self.collector.unclaimed_surprise_prizes.count(), 1)
+        self.assertEqual(self.collector.unclaimed_page_prizes.count(), 1)
+        self.assertEqual(self.collector.unclaimed_page_prizes[0].id, page_prize.id)
+        self.assertEqual(self.collector.unclaimed_page_prizes[0].page, page_prize.page)
         self.assertEqual(
-            self.collector.unclaimed_surprise_prizes[0].id, stickerprize.id
+            self.collector.unclaimed_page_prizes[0].prize, page_prize.prize
         )
         self.assertEqual(
-            self.collector.unclaimed_surprise_prizes[0].sticker, prized_sticker
+            self.collector.unclaimed_page_prizes[0].prize.description,
+            page_prize.prize.description,
         )
-        self.assertEqual(
-            self.collector.unclaimed_surprise_prizes[0].prize, stickerprize.prize
+        self.assertFalse(self.collector.unclaimed_page_prizes[0].claimed)
+        self.assertIsNone(
+            self.collector.unclaimed_page_prizes[0].claimed_date,
         )
-        self.assertEqual(
-            self.collector.unclaimed_surprise_prizes[0].prize.description,
-            stickerprize.prize.description,
+        self.assertIsNone(
+            self.collector.unclaimed_page_prizes[0].claimed_by,
         )
-        self.assertFalse(self.collector.unclaimed_surprise_prizes[0].claimed)
-        self.assertEqual(
-            self.collector.unclaimed_surprise_prizes[0].claimed_date,
-            stickerprize.claimed_date,
-        )
-        self.assertIsNone(self.collector.unclaimed_surprise_prizes[0].claimed_by)
+
+        self.assertEqual(self.collector.unclaimed_page_prizes[0].status, 1)

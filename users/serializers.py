@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from albums.serializers import PagePrizeSerializer
 from editions.serializers import StickerPrizeSerializer
 from .models import (
     RegionalManager,
@@ -106,6 +107,7 @@ class BaseProfileSerializer(serializers.ModelSerializer):
 
 class CollectorSerializer(serializers.ModelSerializer):
     unclaimed_surprise_prizes = StickerPrizeSerializer(many=True, read_only=True)
+    unclaimed_page_prizes = PagePrizeSerializer(many=True, read_only=True)
     full_name = serializers.CharField(source="get_full_name", read_only=True)
     user_id = serializers.IntegerField(source="user.id", read_only=True)
 
@@ -124,6 +126,7 @@ class CollectorSerializer(serializers.ModelSerializer):
             "birthdate",
             "email",
             "unclaimed_surprise_prizes",
+            "unclaimed_page_prizes",
         ]
 
         extra_kwargs = {"user": {"write_only": True}}
