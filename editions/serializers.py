@@ -45,6 +45,7 @@ class StickerSerializer(ModelSerializer):
             "number",
             "on_the_board",
             "is_repeated",
+            "is_rescued",
             "coordinate",
             "prize",
             "has_prize_discovered",

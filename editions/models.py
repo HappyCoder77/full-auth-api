@@ -537,6 +537,7 @@ class Sticker(models.Model):
     )
     on_the_board = models.BooleanField(default=False)
     is_repeated = models.BooleanField(default=False)
+    is_rescued = models.BooleanField(default=False)
 
     def check_is_repeated(self):
         """
@@ -601,6 +602,16 @@ class Sticker(models.Model):
 
     def has_prize_discovered(self):
         return hasattr(self, "prize")
+
+    def rescue(self, user):
+        if not user.is_collector:
+            raise ValidationError("Solo los coleccionistas pueden rescatar barajitas")
+
+        self.is_repeated = False
+        self.collector = user
+        self.on_the_board = True
+        self.is_rescued = True
+        self.save()
 
 
 class StickerPrize(models.Model):

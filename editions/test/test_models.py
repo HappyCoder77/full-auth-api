@@ -282,6 +282,9 @@ class StickerTestCase(TestCase):
         )
         cls.common_coordinates = cls.coordinates.filter(rarity_factor__gte=1)
 
+    def setUp(self):
+        self.sticker = Sticker.objects.filter(coordinate__absolute_number__gt=0).first()
+
     def get_stickers_by_coordinate(self, coordinate_id):
         return self.stickers.filter(coordinate_id=coordinate_id).count()
 
@@ -330,6 +333,10 @@ class StickerTestCase(TestCase):
             self.assertEqual(each_sticker.page, each_sticker.coordinate.page)
             self.assertEqual(each_sticker.rarity, each_sticker.coordinate.rarity_factor)
             self.assertEqual(each_sticker.box, each_sticker.pack.box)
+            self.assertFalse(each_sticker.is_repeated)
+            self.assertFalse(each_sticker.on_the_board)
+            self.assertFalse(each_sticker.is_rescued)
+            self.assertIsNone(each_sticker.collector)
             try:
                 each_sticker.slot
                 self.fail(
@@ -447,6 +454,21 @@ class StickerTestCase(TestCase):
         self.assertEqual(sticker.page, sticker.coordinate.page)
         self.assertEqual(sticker.rarity, sticker.coordinate.rarity_factor)
         self.assertEqual(sticker.box, sticker.pack.box)
+        self.assertFalse(sticker.is_rescued)
+
+    def test_rescue_method(self):
+        collector = CollectorFactory(user=UserFactory())
+        self.sticker.rescue(collector.user)
+
+        self.assertEqual(self.sticker.collector, collector.user)
+        self.assertFalse(self.sticker.is_repeated)
+        self.assertTrue(self.sticker.is_rescued)
+        self.assertTrue(self.sticker.on_the_board)
+
+    def test_rescue_method_validation(self):
+        user = UserFactory()
+        with self.assertRaises(ValidationError):
+            self.sticker.rescue(user)
 
 
 class StickerPrizeTestCase(TestCase):
