@@ -4,7 +4,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from .models import Promotion
 from commerce.models import DealerBalance
-from users.models import Dealer
+from users.models import Dealer, Collector
 
 
 @receiver(post_save, sender=Promotion)
@@ -21,7 +21,7 @@ def handle_promotion_ending(sender, instance, created, **kwargs):
     If an existing promotion is updated:
     - It checks if the promotion has ended.
     - If the promotion has ended and there are no open balances for the dealers, it creates a new balance for each dealer.
-    - The start date of the balnce depends on the existence or not of aprevious balance.
+    - The start date of the balance depends on the existence or not of a previous balance.
 
     Args:
         sender (Model): The model class that sent the signal.
@@ -31,6 +31,8 @@ def handle_promotion_ending(sender, instance, created, **kwargs):
     """
 
     if created:
+        Collector.objects.all().update(rescue_tickets=0)
+
         open_balances = DealerBalance.objects.filter(promotion__isnull=True)
 
         for balance in open_balances:

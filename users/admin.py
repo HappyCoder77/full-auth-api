@@ -117,6 +117,7 @@ class CollectorAdmin(admin.ModelAdmin):
         "gender",
         "birthdate",
     ]
+    list_display = ("id", "user", "email", "first_name", "last_name", "rescue_tickets")
 
 
 admin.site.register(RegionalManager, RegionalManagerAdmin)
