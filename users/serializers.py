@@ -125,6 +125,7 @@ class CollectorSerializer(serializers.ModelSerializer):
             "gender",
             "birthdate",
             "email",
+            "rescue_tickets",
             "unclaimed_surprise_prizes",
             "unclaimed_page_prizes",
         ]

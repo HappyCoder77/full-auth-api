@@ -52,6 +52,7 @@ class CollectorSerializerTest(TestCase):
             "gender",
             "birthdate",
             "email",
+            "rescue_tickets",
             "unclaimed_surprise_prizes",
             "unclaimed_page_prizes",
         }
@@ -110,6 +111,7 @@ class CollectorSerializerTest(TestCase):
             "gender",
             "birthdate",
             "email",
+            "rescue_tickets",
             "unclaimed_surprise_prizes",
             "unclaimed_page_prizes",
         }

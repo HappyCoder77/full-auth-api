@@ -13,6 +13,7 @@ from django.db.models.signals import post_delete
 from django.db.models import Q
 from django.utils import timezone
 
+from users.models import Collector
 from editions.models import Edition, Box, Pack
 from promotions.models import Promotion
 from promotions.utils import promotion_is_running
@@ -91,13 +92,9 @@ class Sale(models.Model):
             pack.is_open = False
 
         Pack.objects.bulk_update(available_packs, fields=["collector", "is_open"])
-        # self.collector.rescue_options += self.quantity
-        # self.collector.save(update_fields=['rescue_options'])
-
-        # each_pack.sale = self
-        # pack_list.append(each_pack)
-
-        # Pack.objects.bulk_update(pack_list, ['sale'])
+        collector = self.collector.baseprofile.collector
+        collector.rescue_tickets += self.quantity
+        collector.save(update_fields=["rescue_tickets"])
 
 
 class SaleDetail(models.Model):

@@ -8,7 +8,7 @@ from django.utils import timezone
 from authentication.test.factories import UserFactory
 from editions.test.factories import EditionFactory
 from promotions.test.factories import PromotionFactory
-from users.test.factories import DealerFactory
+from users.test.factories import DealerFactory, CollectorFactory
 
 from ..models import Payment, MobilePayment, DealerBalance, Sale
 from .factories import (
@@ -30,19 +30,20 @@ class SaleTestCase(TestCase):
         cls.edition = EditionFactory(promotion=cls.promotion)
         cls.user = UserFactory()
         cls.dealer = DealerFactory(user=cls.user, email=cls.user.email)
-        cls.collector = UserFactory()
+        cls.collector = CollectorFactory(user=UserFactory())
         cls.order = OrderFactory(dealer=cls.dealer.user, edition=cls.edition)
         cls.sale = SaleFactory(
             edition=cls.edition,
             dealer=cls.dealer.user,
-            collector=cls.collector,
+            collector=cls.collector.user,
         )
+        cls.collector.refresh_from_db()
 
     def test_sale_data(self):
         self.assertEqual(self.sale.date, date.today())
         self.assertEqual(self.sale.edition, self.edition)
         self.assertEqual(self.sale.dealer, self.dealer.user)
-        self.assertEqual(self.sale.collector, self.collector)
+        self.assertEqual(self.sale.collector, self.collector.user)
         self.assertEqual(self.sale.quantity, 1)
         self.assertEqual(
             self.sale.__str__(),
@@ -52,8 +53,10 @@ class SaleTestCase(TestCase):
         self.assertEqual(self.sale.packs.count(), 1)
 
         for each_pack in self.sale.packs.all():
-            self.assertEqual(each_pack.pack.collector, self.collector)
+            self.assertEqual(each_pack.pack.collector, self.collector.user)
             self.assertFalse(each_pack.pack.is_open)
+
+        self.assertEqual(self.collector.rescue_tickets, 1)
 
     def test_validation_not_raised(self):
         self.sale.clean()
@@ -62,7 +65,7 @@ class SaleTestCase(TestCase):
         sale = Sale(
             edition=self.edition,
             dealer=self.dealer.user,
-            collector=self.collector,
+            collector=self.collector.user,
             quantity=15,
         )
 

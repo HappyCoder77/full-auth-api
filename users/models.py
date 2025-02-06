@@ -86,7 +86,7 @@ class Dealer(BaseProfile):
 
 
 class Collector(BaseProfile):
-    rescue_options = models.PositiveSmallIntegerField(default=0)
+    rescue_tickets = models.PositiveSmallIntegerField(default=0)
 
     @property
     def unclaimed_surprise_prizes(self):

@@ -179,9 +179,10 @@ class CollectorTestCase(TestCase):
             slot.place_sticker(sticker)
 
     def test_collector_default_data(self):
-        self.assertEqual(Collector.objects.all().count(), 1)
+        self.assertEqual(Collector.objects.all().count(), 0)
         self.assertEqual(self.collector.email, self.user.email)
         self.assertEqual(self.collector.user, self.user)
+        self.assertEqual(self.collector.rescue_tickets, 1)
         self.assertQuerySetEqual(self.collector.unclaimed_surprise_prizes, [])
         self.assertQuerySetEqual(self.collector.unclaimed_page_prizes, [])
 
