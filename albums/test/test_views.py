@@ -1,15 +1,12 @@
-from decimal import Decimal
 from django.db import IntegrityError
 from unittest.mock import patch
 from django.urls import reverse
 from rest_framework.test import APIClient, APITestCase
 from rest_framework import status, mixins
-from datetime import date
-
 from authentication.test.factories import UserFactory
 from collection_manager.test.factories import CollectionFactory
-from collection_manager.models import StandardPrize, Coordinate
-from editions.models import Pack, Sticker
+from collection_manager.models import Coordinate
+from editions.models import Pack, Sticker, Edition
 from editions.test.factories import EditionFactory
 from promotions.models import Promotion
 from promotions.test.factories import PromotionFactory
@@ -814,4 +811,103 @@ class CreatePagePrizeViewTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
             response.data["page"][0], "Cannot create a prize for an incomplete page."
+        )
+
+    def test_method_not_allowed(self):
+        self.client.force_authenticate(user=self.collector.user)
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.data["detail"], 'Método "GET" no permitido.')
+
+
+class RescuePoolViewTest(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.client = APIClient()
+        cls.user = UserFactory()
+        cls.collector = CollectorFactory(user=UserFactory())
+        cls.url = reverse("rescue-pool")
+
+    def setUp(self):
+        self.album = AlbumFactory(collector=self.collector.user)
+        packs = Pack.objects.all()
+
+        for pack in packs:
+            pack.open(self.album.collector)
+
+        self.collector.rescue_tickets = 3
+        self.collector.save()
+        self.collector.refresh_from_db()
+        self.client.force_authenticate(user=self.collector.user)
+
+    def test_collector_can_access_rescue_pool_view(self):
+        collector = CollectorFactory(user=UserFactory())
+        collector.rescue_tickets = 3
+        collector.save()
+        collector.refresh_from_db()
+        response = self.client.get(self.url)
+
+        self.client.force_authenticate(user=collector.user)
+
+        response2 = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertQuerySetEqual(response.data, [])
+        self.assertEqual(response2.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response2.data), 16)
+
+    def test_not_collector_cannot_access_rescue_pool_view(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"],
+            "Solo los coleccionistas pueden realizar esta acción",
+        )
+
+    def test_unauthenticated_user_cannot_access_rescue_pool_view(self):
+        self.client.logout()
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data["detail"], "Debe iniciar sesión para realizar esta acción"
+        )
+
+    def test_collector_with_not_enough_tickets_cannot_access_rescue_pool_view(self):
+        self.collector.rescue_tickets = 0
+        self.collector.save()
+        self.collector.refresh_from_db()
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"],
+            "Necesitas 3 tickets para acceder al pool de rescate. Por cada compra de 1 sobre, obtienes un ticket.",
+        )
+
+    def test_method_not_allowed(self):
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.data["detail"], 'Método "POST" no permitido.')
+
+    def test_response_without_promotion(self):
+        Promotion.objects.all().delete()
+        response = self.client.get(self.url)
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_404_NOT_FOUND,
+            "No hay ninguna promoción en curso, no es posible la consulta.",
+        )
+
+    def test_response_without_editions(self):
+        Edition.objects.all().delete()
+        response = self.client.get(self.url)
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_404_NOT_FOUND,
+            "No se han creado ediciones para la promoción en curso.",
         )

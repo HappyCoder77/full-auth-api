@@ -1,6 +1,9 @@
+from django.conf import settings
 from django.utils import timezone
+from django.db import transaction
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError
+from django.db.models import Min
 from rest_framework.exceptions import NotFound, ValidationError
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.generics import GenericAPIView, RetrieveAPIView, ListAPIView
@@ -8,10 +11,18 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status, mixins
 from editions.models import Edition, Pack, Sticker
-from editions.serializers import PackSerializer, StickerPrizeSerializer
+from editions.utils import get_current_promotion, get_current_editions
+from editions.serializers import (
+    PackSerializer,
+    StickerPrizeSerializer,
+    StickerSerializer,
+)
+
+
 from promotions.models import Promotion
 from .models import Album, Slot, Page, PagePrize
-from .permissions import IsAuthenticatedCollector
+from users.models import Collector
+from .permissions import IsAuthenticatedCollector, HasEnoughTickets
 from .serializers import AlbumSerializer, PagePrizeSerializer
 
 
@@ -286,3 +297,48 @@ class PagePrizeListAPIView(ListAPIView):
             page__album__collector=self.request.user
         ).order_by("-id")
         return query if query.exists() else PagePrize.objects.none()
+
+
+class RescuePoolView(ListAPIView):
+    serializer_class = StickerSerializer
+    permission_classes = [IsAuthenticatedCollector, HasEnoughTickets]
+    http_method_names = ["get"]
+
+    def get_queryset(self):
+        with transaction.atomic():
+            current_promotion = get_current_promotion()
+
+            if not current_promotion:
+                raise NotFound(
+                    "No hay ninguna promoción en curso, no es posible la consulta."
+                )
+
+            current_editions = get_current_editions()
+
+            if not current_editions:
+                raise NotFound("No se han creado ediciones para la promoción en curso.")
+
+            user = self.request.user
+            collector_profile = Collector.objects.select_for_update().get(user=user)
+            collector_profile.rescue_tickets -= 3
+            collector_profile.save()
+
+        base_queryset = (
+            Sticker.objects.select_for_update()
+            .filter(is_repeated=True, pack__box__edition__in=current_editions)
+            .exclude(collector=user)
+            .exclude(
+                coordinate__in=user.stickers.filter(
+                    pack__box__edition__in=current_editions
+                ).values("coordinate")
+            )
+        )
+
+        ids_queryset = (
+            base_queryset.values("coordinate")
+            .annotate(min_id=Min("id"))
+            .values("min_id")
+        )
+        queryset = Sticker.objects.filter(id__in=ids_queryset)
+
+        return queryset if queryset.exists() else Sticker.objects.none()

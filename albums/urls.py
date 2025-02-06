@@ -8,6 +8,7 @@ from .views import (
     DiscoverStickerPrizeView,
     CreatePagePrizeView,
     PagePrizeListAPIView,
+    RescuePoolView,
 )
 
 
@@ -42,5 +43,10 @@ urlpatterns = [
         "prizes/page-prize/list/",
         PagePrizeListAPIView.as_view(),
         name="create-page-prize",
+    ),
+    path(
+        "stickers/rescue-pool/",
+        RescuePoolView.as_view(),
+        name="rescue-pool",
     ),
 ]

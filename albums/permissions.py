@@ -9,7 +9,7 @@ class IsAuthenticatedCollector(permissions.BasePermission):
         if not request.user.is_authenticated:
             raise DetailedPermissionDenied(
                 detail="Debe iniciar sesión para realizar esta acción",
-                status_code=status.HTTP_401_UNAUTHORIZED
+                status_code=status.HTTP_401_UNAUTHORIZED,
             )
 
         if not request.user.is_collector:
@@ -20,6 +20,17 @@ class IsAuthenticatedCollector(permissions.BasePermission):
         return True
 
 
+class HasEnoughTickets(permissions.BasePermission):
+
+    def has_permission(self, request, view):
+
+        if not request.user.baseprofile.collector.rescue_tickets >= 3:
+            raise DetailedPermissionDenied(
+                detail="Necesitas 3 tickets para acceder al pool de rescate. Por cada compra de 1 sobre, obtienes un ticket."
+            )
+        return True
+
+
 class AlbumPermission(permissions.BasePermission):
 
     def has_permission(self, request, view):
@@ -27,10 +38,10 @@ class AlbumPermission(permissions.BasePermission):
         if not request.user.is_authenticated:
             raise DetailedPermissionDenied(
                 detail="Debe estar autenticado para realizar esta acción",
-                status_code=status.HTTP_401_UNAUTHORIZED
+                status_code=status.HTTP_401_UNAUTHORIZED,
             )
 
-        if view.action in ['partial_update', 'me-albums', 'get_or_create', 'me']:
+        if view.action in ["partial_update", "me-albums", "get_or_create", "me"]:
 
             if not request.user.is_collector and not request.user.is_superuser:
                 raise DetailedPermissionDenied(
@@ -39,10 +50,11 @@ class AlbumPermission(permissions.BasePermission):
 
             return True
 
-        if view.action in ['create', 'list', 'update', 'retrieve', 'destroy']:
+        if view.action in ["create", "list", "update", "retrieve", "destroy"]:
             if not request.user.is_superuser:
                 raise DetailedPermissionDenied(
-                    "Sólo los  superusuarios pueden realizar esta acción")
+                    "Sólo los  superusuarios pueden realizar esta acción"
+                )
 
             return True
 
@@ -51,8 +63,6 @@ class AlbumPermission(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
 
         if obj.collector != request.user and not request.user.is_superuser:
-            raise DetailedPermissionDenied(
-                detail="Solo puedes ver tu propio álbum"
-            )
+            raise DetailedPermissionDenied(detail="Solo puedes ver tu propio álbum")
 
         return True
