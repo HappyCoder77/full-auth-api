@@ -607,6 +607,9 @@ class Sticker(models.Model):
         if not user.is_collector:
             raise ValidationError("Solo los coleccionistas pueden rescatar barajitas")
 
+        if self.collector == user:
+            raise ValidationError("No puedes rescatar tus propias barajitas repetidas")
+
         self.is_repeated = False
         self.collector = user
         self.on_the_board = True

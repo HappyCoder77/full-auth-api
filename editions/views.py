@@ -4,12 +4,15 @@ from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import ReadOnlyModelViewSet
+from rest_framework.views import APIView
 from rest_framework import status
 from utils.exceptions import DetailedPermissionDenied
+from albums.permissions import IsAuthenticatedCollector
 from promotions.models import Promotion
 from .permissions import EditionPermission
 from .serializers import EditionSerializer
-from .models import Edition
+from .models import Edition, Sticker
+from django.core.exceptions import ValidationError as DjangoValidationError
 
 
 class EditionViewSet(ReadOnlyModelViewSet):
@@ -70,4 +73,20 @@ class EditionViewSet(ReadOnlyModelViewSet):
             return Response(
                 {"detail": "Se produjo un error inesperado.", "error": str(exc)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class RescueStickerView(APIView):
+    permission_classes = [IsAuthenticatedCollector]
+
+    def post(self, request, sticker_id):
+        try:
+            sticker = Sticker.objects.get(id=sticker_id)
+            sticker.rescue(request.user)
+            return Response(status=status.HTTP_200_OK)
+        except DjangoValidationError as e:
+            return Response({"detail": e.message}, status=status.HTTP_400_BAD_REQUEST)
+        except Sticker.DoesNotExist:
+            return Response(
+                {"detail": "Sticker not found"}, status=status.HTTP_404_NOT_FOUND
             )

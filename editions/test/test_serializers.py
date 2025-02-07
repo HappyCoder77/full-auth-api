@@ -146,6 +146,7 @@ class StickerSerializerTestCase(TestCase):
         self.assertEqual(data["number"], self.sticker.number)
         self.assertEqual(data["on_the_board"], self.sticker.on_the_board)
         self.assertEqual(data["is_repeated"], self.sticker.is_repeated)
+        self.assertEqual(data["is_rescued"], self.sticker.is_repeated)
         self.assertEqual(data["coordinate"]["id"], self.coordinate.id)
         self.assertEqual(
             data["coordinate"]["absolute_number"], self.coordinate.absolute_number

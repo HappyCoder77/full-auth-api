@@ -1,8 +1,12 @@
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase, APIClient
+from albums.models import Pack
+from albums.test.factories import AlbumFactory
 from authentication.test.factories import UserFactory
 from promotions.test.factories import PromotionFactory
+from users.test.factories import CollectorFactory
+from ..models import Sticker
 from .factories import EditionFactory
 
 
@@ -154,3 +158,91 @@ class EditionViewSetTestCase(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
         self.assertEqual(response.data["detail"], "Método no permitido.")
+
+
+class RescueStickerViewTest(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.client = APIClient()
+        cls.user = UserFactory()
+        cls.collector = CollectorFactory(user=UserFactory())
+
+    def setUp(self):
+        self.album = AlbumFactory(collector=self.collector.user)
+        packs = Pack.objects.all()
+
+        for pack in packs:
+            pack.open(self.album.collector)
+
+        self.collector.rescue_tickets = 3
+        self.collector.save()
+        self.collector.refresh_from_db()
+        self.client.force_authenticate(user=self.collector.user)
+        self.sticker = Sticker.objects.filter(is_repeated=True).first()
+        self.url = reverse("rescue-sticker", kwargs={"sticker_id": self.sticker.id})
+
+    def test_collector_cannot_rescue_his_own_repeated_sticker(self):
+        sticker = Sticker.objects.filter(is_repeated=True).first()
+        url = reverse("rescue-sticker", kwargs={"sticker_id": sticker.id})
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["detail"],
+            "No puedes rescatar tus propias barajitas repetidas",
+        )
+
+    def test_user_cannot_rescue_sticker(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"],
+            "Solo los coleccionistas pueden realizar esta acción",
+        )
+
+    def test_unauthenticated_user_cannot_rescue_sticker(self):
+        self.client.logout()
+        response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.data["detail"],
+            "Debe iniciar sesión para realizar esta acción",
+        )
+
+    def test_other_collector_can_rescue_sticker(self):
+        collector = CollectorFactory(user=UserFactory())
+        self.client.force_authenticate(user=collector.user)
+        response = self.client.post(self.url)
+        self.sticker.refresh_from_db()
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(self.sticker.is_rescued)
+        self.assertFalse(self.sticker.is_repeated)
+        self.assertTrue(self.sticker.on_the_board)
+        self.assertEqual(self.sticker.collector, collector.user)
+
+    def test_other_collector_cannot_rescue_unvalid_sticker(self):
+        collector = CollectorFactory(user=UserFactory())
+        self.client.force_authenticate(user=collector.user)
+        self.url = reverse("rescue-sticker", kwargs={"sticker_id": 9999})
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(
+            response.data["detail"],
+            "Sticker not found",
+        )
+
+    def test_method_not_allowed(self):
+        collector = CollectorFactory(user=UserFactory())
+        self.client.force_authenticate(user=collector.user)
+        response = self.client.get(self.url)
+        self.sticker.refresh_from_db()
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(
+            response.data["detail"],
+            'Método "GET" no permitido.',
+        )

@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.utils import timezone
 from django.db import transaction
 from django.core.exceptions import ValidationError as DjangoValidationError

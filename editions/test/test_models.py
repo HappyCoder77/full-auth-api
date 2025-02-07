@@ -465,10 +465,16 @@ class StickerTestCase(TestCase):
         self.assertTrue(self.sticker.is_rescued)
         self.assertTrue(self.sticker.on_the_board)
 
-    def test_rescue_method_validation(self):
+    def test_rescue_sticker_with_no_collector(self):
         user = UserFactory()
         with self.assertRaises(ValidationError):
             self.sticker.rescue(user)
+
+    def test_rescue_sticker_that_collector_already_owns(self):
+        collector = CollectorFactory(user=UserFactory())
+        self.sticker.collector = collector.user
+        with self.assertRaises(ValidationError):
+            self.sticker.rescue(collector.user)
 
 
 class StickerPrizeTestCase(TestCase):
