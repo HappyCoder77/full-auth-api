@@ -116,6 +116,7 @@ class CollectorAdmin(admin.ModelAdmin):
         "second_last_name",
         "gender",
         "birthdate",
+        "rescue_tickets",
     ]
     list_display = ("id", "user", "email", "first_name", "last_name", "rescue_tickets")
 

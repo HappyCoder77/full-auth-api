@@ -129,6 +129,7 @@ WSGI_APPLICATION = "full_auth.wsgi.application"
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 if DEVELOPMENT_MODE is True:
+
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -138,6 +139,7 @@ if DEVELOPMENT_MODE is True:
             "NAME": BASE_DIR / "test_db.sqlite3",
         },
     }
+
 elif len(sys.argv) > 0 and sys.argv[1] != "collectstatic":
     if getenv("DATABASE_URL", None) is None:
         raise Exception("DATABASE_URL environment variable not defined")

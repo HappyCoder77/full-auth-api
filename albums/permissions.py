@@ -26,7 +26,7 @@ class HasEnoughTickets(permissions.BasePermission):
 
         if not request.user.baseprofile.collector.rescue_tickets >= 3:
             raise DetailedPermissionDenied(
-                detail="Necesitas 3 tickets para acceder al pool de rescate. Por cada compra de 1 sobre, obtienes un ticket."
+                detail="Necesitas 3 tickets para acceder al pool de rescate. Por cada sobre comprado, obtienes 1 ticket."
             )
         return True
 
