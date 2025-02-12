@@ -257,7 +257,7 @@ DJOSER = {
     "USER_CREATE_PASSWORD_RETYPE": True,
     "PASSWORD_RESET_CONFIRM_RETYPE": True,
     "TOKEN_MODEL": None,
-    "SOCIAL_AUTH_ALLOWED_REDIRECT_URIS": getenv("REDIRECT_URLS").split(","),
+    # "SOCIAL_AUTH_ALLOWED_REDIRECT_URIS": getenv("REDIRECT_URLS").split(","),
     "PASSWORD_VALIDATORS": [password_validation.validate_password],
 }
 
