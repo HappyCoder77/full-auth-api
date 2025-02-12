@@ -198,11 +198,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 if DEVELOPMENT_MODE is True:
+    # Your existing development settings are perfect
     STATIC_URL = "/static/"
     STATIC_ROOT = BASE_DIR / "staticfiles"
     MEDIA_URL = "media/"
     MEDIA_ROOT = BASE_DIR / "media"
 else:
+    # Your existing AWS settings are great
     AWS_S3_ACCESS_KEY_ID = getenv("AWS_S3_ACCESS_KEY_ID")
     AWS_S3_SECRET_ACCESS_KEY = getenv("AWS_S3_SECRET_ACCESS_KEY")
     AWS_STORAGE_BUCKET_NAME = getenv("AWS_STORAGE_BUCKET_NAME")
@@ -214,10 +216,16 @@ else:
     AWS_MEDIA_LOCATION = "media"
     AWS_S3_CUSTOM_DOMAIN = getenv("AWS_S3_CUSTOM_DOMAIN")
 
+    # Add these optimizations
+    AWS_S3_ADDRESSING_STYLE = "virtual"
+    AWS_S3_SIGNATURE_VERSION = "s3v4"
+    AWS_S3_FILE_OVERWRITE = False
+
     STORAGES = {
         "default": {"BACKEND": "custom_storages.CustomS3Storage"},
         "staticfiles": {"BACKEND": "storages.backends.s3boto3.S3Boto3Storage"},
     }
+
 
 AUTHENTICATION_BACKENDS = [
     "social_core.backends.google.GoogleOAuth2",
