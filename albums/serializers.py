@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from editions.serializers import PackSerializer
 from editions.serializers import StickerSerializer
-from collection_manager.serializers import StandardPrizeSerializer
+from collection_manager.serializers import StandardPrizeSerializer, CollectionSerializer
 from .models import Album, Page, Slot, PagePrize
 from django.conf import settings
 
@@ -47,12 +47,14 @@ class AlbumSerializer(serializers.ModelSerializer):
     stickers_on_the_board = StickerSerializer(many=True, read_only=True)
     prized_stickers = StickerSerializer(many=True, read_only=True)
     image = serializers.SerializerMethodField()
+    collection = CollectionSerializer(source="edition.collection", read_only=True)
 
     class Meta:
         model = Album
         fields = (
             "id",
             "edition",
+            "collection",
             "image",
             "collector",
             "pages",
@@ -64,9 +66,7 @@ class AlbumSerializer(serializers.ModelSerializer):
     def get_image(self, obj):
         if obj.image:
             try:
-                if settings.DEVELOPMENT_MODE:
-                    return obj.image.url
-                return f"https://spaces.misbarajitas.com{obj.image.url}"
+                return obj.image.url
             except:
                 return None
         return None
