@@ -140,25 +140,44 @@ class Edition(models.Model):
             Sticker.objects.bulk_create(sticker_list)
 
     # aplica orden aleatorio a los valores del atributo ordinal de los stickers
-
     def shuffle_stickers(self):
         stickers = Sticker.objects.filter(pack__isnull=True).only("ordinal")
-        list = []
-        counter = 1
+        total_stickers = stickers.count()
 
-        # llena la list con un rango cuyo límite es el número de stickers
-        while counter <= stickers.count():
-            list.append(counter)
-            counter += 1
+        if total_stickers > 0:
+            # Create shuffled ordinal numbers
+            ordinal_numbers = list(range(1, total_stickers + 1))
+            random.shuffle(ordinal_numbers)
 
-        random.shuffle(list)  # desordena la list
-        counter = 0
+            # Update stickers in batches
+            batch_size = 1000
+            sticker_list = list(stickers)
 
-        # asigna los ordinales desordenados a cada ejemplar
-        for cada_sticker in stickers:
-            cada_sticker.ordinal = list[counter]
-            cada_sticker.save()
-            counter += 1
+            for i in range(0, total_stickers, batch_size):
+                batch = sticker_list[i : i + batch_size]
+                for j, sticker in enumerate(batch):
+                    sticker.ordinal = ordinal_numbers[i + j]
+
+                Sticker.objects.bulk_update(batch, ["ordinal"])
+
+    # def shuffle_stickers(self):
+    #     stickers = Sticker.objects.filter(pack__isnull=True).only("ordinal")
+    #     list = []
+    #     counter = 1
+
+    #     # llena la list con un rango cuyo límite es el número de stickers
+    #     while counter <= stickers.count():
+    #         list.append(counter)
+    #         counter += 1
+
+    #     random.shuffle(list)  # desordena la list
+    #     counter = 0
+
+    #     # asigna los ordinales desordenados a cada ejemplar
+    #     for cada_sticker in stickers:
+    #         cada_sticker.ordinal = list[counter]
+    #         cada_sticker.save()
+    #         counter += 1
 
     def create_packs(self):  # crea los packs de la edición
         pack_list = []
