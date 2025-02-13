@@ -61,13 +61,12 @@ class AlbumSerializer(serializers.ModelSerializer):
             "prized_stickers",
         )
 
-
-def get_image(self, obj):
-    if obj.image:
-        try:
-            if settings.DEVELOPMENT_MODE:
-                return obj.image.url
-            return f"https://spaces.misbarajitas.com{obj.image.url}"
-        except:
-            return None
-    return None
+    def get_image(self, obj):
+        if obj.image:
+            try:
+                if settings.DEVELOPMENT_MODE:
+                    return obj.image.url
+                return f"https://spaces.misbarajitas.com{obj.image.url}"
+            except:
+                return None
+        return None
