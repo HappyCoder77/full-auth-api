@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "corsheaders",
     "rest_framework",
+    "drf_spectacular",
     "djoser",
     "social_django",
     "storages",
@@ -238,7 +239,16 @@ REST_FRAMEWORK = {
         "authentication.authentication.CustomJWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
-    "DEFAULT_SCHEMA_CLASS": "rest_framework.schemas.coreapi.AutoSchema",
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+API_TITLE = "Mis Barajitas API"
+API_DESCRIPTION = "backend de aplicacion web Mis Barajitas"
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": API_TITLE,
+    "DESCRIPTION": API_DESCRIPTION,
+    "VERSION": "1.0.0",
 }
 
 # # Detectar si estamos en modo testing
