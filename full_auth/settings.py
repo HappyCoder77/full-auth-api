@@ -154,13 +154,14 @@ if getenv("DEBUG", "False") == "True":
 else:
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
-# EMAIL_HOST = 'smtp.privateemail.com'
-# EMAIL_PORT = 465
-# EMAIL_HOST_USER = 'cuentas@misbarajitas.xyz'
-# EMAIL_HOST_PASSWORD = getenv('EMAIL_PASSWORD')
-# EMAIL_USE_SSL = True
-DEFAULT_FROM_EMAIL = "Equipo de cuentas Mis Barajitas <cuentas@misbarajitas.xyz>"
-
+EMAIL_HOST = "smtp.privateemail.com"
+EMAIL_PORT = 465
+EMAIL_HOST_USER = "cuentas@misbarajitas.com"
+EMAIL_HOST_PASSWORD = getenv("EMAIL_PASSWORD")
+EMAIL_USE_SSL = True
+EMAIL_USE_TLS = False
+DEFAULT_FROM_EMAIL = "Equipo de cuentas Mis Barajitas <cuentas@misbarajitas.com>"
+EMAIL_TIMEOUT = 30
 
 DOMAIN = getenv("DOMAIN")
 SITE_NAME = "Mis Barajitas"
