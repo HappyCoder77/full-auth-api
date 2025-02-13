@@ -3,6 +3,7 @@ from editions.serializers import PackSerializer
 from editions.serializers import StickerSerializer
 from collection_manager.serializers import StandardPrizeSerializer
 from .models import Album, Page, Slot, PagePrize
+from django.conf import settings
 
 
 class SlotSerializer(serializers.ModelSerializer):
@@ -60,10 +61,13 @@ class AlbumSerializer(serializers.ModelSerializer):
             "prized_stickers",
         )
 
-    def get_image(self, obj):
-        if obj.image:
-            try:
-                return f"{obj.image.url}"
-            except:
-                return None
-        return None
+
+def get_image(self, obj):
+    if obj.image:
+        try:
+            if settings.DEVELOPMENT_MODE:
+                return obj.image.url
+            return f"https://spaces.misbarajitas.com{obj.image.url}"
+        except:
+            return None
+    return None
