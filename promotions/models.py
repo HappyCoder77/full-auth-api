@@ -123,7 +123,9 @@ class Promotion(models.Model):
         verbose_name_plural = "promotions"
 
     def clean(self):
-        unclose_promotions = self.__class__.objects.filter(balances_created=False)
+        unclose_promotions = self.__class__.objects.filter(
+            balances_created=False
+        ).exclude(pk=self.pk)
 
         if unclose_promotions.exists():
             raise ValidationError(

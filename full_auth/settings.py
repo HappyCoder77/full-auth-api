@@ -205,6 +205,7 @@ if DEVELOPMENT_MODE is True:
     STATIC_ROOT = BASE_DIR / "staticfiles"
     MEDIA_URL = "media/"
     MEDIA_ROOT = BASE_DIR / "media"
+
 else:
     # Your existing AWS settings are great
     AWS_S3_ACCESS_KEY_ID = getenv("AWS_S3_ACCESS_KEY_ID")
@@ -223,16 +224,16 @@ else:
     AWS_S3_SIGNATURE_VERSION = "s3v4"
     AWS_S3_FILE_OVERWRITE = False
 
-STORAGES = {
-    "default": {
-        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-        "OPTIONS": {"location": "media"},
-    },
-    "staticfiles": {
-        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-        "OPTIONS": {"location": "static"},
-    },
-}
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "OPTIONS": {"location": "media"},
+        },
+        "staticfiles": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "OPTIONS": {"location": "static"},
+        },
+    }
 
 
 AUTHENTICATION_BACKENDS = [
