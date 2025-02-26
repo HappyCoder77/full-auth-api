@@ -1,4 +1,7 @@
 import random
+import logging
+
+from collections import deque
 from decimal import Decimal, ROUND_CEILING, ROUND_DOWN
 
 from django.contrib import admin
@@ -12,20 +15,20 @@ from datetime import date
 from promotions.models import Promotion
 from collection_manager.models import Collection, Coordinate, SurprisePrize
 
+logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
-# TODO: This app should be renamed to casino or something like that
 class Edition(models.Model):
-    # clase para crear las editiones que se haran en cada promoción
-    """TODO: Explorar una mecanica de creacion mas eficiente y menos propensa a errores.
-    Podria ser creando pack y boxes
-    sobre la marcha,consolidando el atributo edition en un solo lugar,
-    Se podria crear un clase diagramado o algo asi para contener la configuracion del album
-    crear rama para este trabajo exclusivamente"""
+    """
+    Represents a specific printing run of a collection within a promotion.
+    Handles sticker generation, pack creation, and box distribution.
+    """
 
-    promotion = models.ForeignKey(Promotion, on_delete=models.CASCADE)
-    # TODO: este campo deberia null True porque se establece a traves del metodo clean
+    BATCH_SIZE = 1000
+    MIN_PACK_POSITION = 1
+    MIN_PRIZES_POSITON_GAP = 10
+    promotion = models.ForeignKey(Promotion, on_delete=models.CASCADE, db_index=True)
     collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
     circulation = models.DecimalField(
         max_digits=20, decimal_places=0, default=Decimal("1")
@@ -160,25 +163,6 @@ class Edition(models.Model):
 
                 Sticker.objects.bulk_update(batch, ["ordinal"])
 
-    # def shuffle_stickers(self):
-    #     stickers = Sticker.objects.filter(pack__isnull=True).only("ordinal")
-    #     list = []
-    #     counter = 1
-
-    #     # llena la list con un rango cuyo límite es el número de stickers
-    #     while counter <= stickers.count():
-    #         list.append(counter)
-    #         counter += 1
-
-    #     random.shuffle(list)  # desordena la list
-    #     counter = 0
-
-    #     # asigna los ordinales desordenados a cada ejemplar
-    #     for cada_sticker in stickers:
-    #         cada_sticker.ordinal = list[counter]
-    #         cada_sticker.save()
-    #         counter += 1
-
     def create_packs(self):  # crea los packs de la edición
         pack_list = []
         stickers = Decimal(Sticker.objects.filter(pack__isnull=True).count())
@@ -200,38 +184,64 @@ class Edition(models.Model):
 
         Pack.objects.bulk_create(pack_list)
         current_total = Pack.objects.all().count()
+        # logging.info(f"Total de packs creados: {current_total}")
 
-    def fill_packs(self):  # asigna los stickers a los  packs
+    def remove_excess_prize_stickers(self):
+        """
+        Ensures exactly 2 prize stickers per box by removing excess ones
+        """
+        total_boxes = self.boxes.count()
+        needed_prize_stickers = total_boxes * 2
+        # logging.info(f"Needed prize stickers: {needed_prize_stickers}")
+        prize_stickers = Sticker.objects.filter(
+            pack__box__isnull=True, coordinate__absolute_number=0
+        )
+        # logging.info(f"Total prize stickers: {prize_stickers.count()}")
+        excess_count = prize_stickers.count() - needed_prize_stickers
+        # logging.info(f"Excess prize stickers: {excess_count}")
+
+        if excess_count > 0:
+            excess_sticker_ids = prize_stickers.values_list("id", flat=True)[
+                :excess_count
+            ]
+            Sticker.objects.filter(id__in=excess_sticker_ids).delete()
+        # logging.info(f"Total prize stickers after removal: {prize_stickers.count()}")
+
+    def fill_packs(self):
+        skipped_prized_stickers = deque()
         sticker_list = []
-        packs = iter(Pack.objects.filter(box__isnull=True))
+        packs = list(Pack.objects.filter(box__isnull=True))
+        stickers = list(Sticker.objects.filter(pack__isnull=True).order_by("ordinal"))
 
-        stickers = iter(Sticker.objects.filter(pack__isnull=True).order_by("ordinal"))
-        counter_stickers = 1
+        for pack in packs:
+            prized_sticker_in_pack = False
+            stickers_in_pack = 0
 
-        while True:
-            pack = next(packs, "end_of_packs")
+            while stickers_in_pack < self.collection.STICKERS_PER_PACK:
 
-            if pack != "end_of_packs":
+                if not stickers and not skipped_prized_stickers:
+                    break
 
-                while True:
-                    sticker = next(stickers, "end_of_stickers")
+                sticker = (
+                    stickers.pop(0) if stickers else skipped_prized_stickers.popleft()
+                )
 
-                    if sticker != "end_of_stickers":
-                        sticker.pack = pack
-                        sticker_list.append(sticker)
-                        counter_stickers += 1
+                if sticker.coordinate.absolute_number == 0:
+                    if prized_sticker_in_pack:
+                        skipped_prized_stickers.append(sticker)
+                        continue
+                    prized_sticker_in_pack = True
 
-                        if counter_stickers > self.collection.STICKERS_PER_PACK:
+                sticker.pack = pack
+                sticker_list.append(sticker)
+                stickers_in_pack += 1
 
-                            counter_stickers = 1
-                            break
-                    else:
-                        break
+            if len(sticker_list) >= self.BATCH_SIZE:
+                Sticker.objects.bulk_update(sticker_list, ["pack"])
+                sticker_list.clear()
 
-            else:
-                break
-
-        Sticker.objects.bulk_update(sticker_list, ["pack"])
+        if sticker_list:
+            Sticker.objects.bulk_update(sticker_list, ["pack"])
 
     def shuffle_packs(self):  # desordena el atributo ordinal de los packs
         packs = Pack.objects.filter(box__isnull=True)
@@ -274,198 +284,129 @@ class Edition(models.Model):
 
         Box.objects.bulk_create(box_list)
 
-    def fill_boxes(self):  # asigna los packs a los boxes
-        # print("---------------------------filling boxes")
-        # print("available stickers: ", Sticker.objects.all().count())
-        print
-        pack_list = []
-        boxes = list(self.boxes.all())
-        # print("available boxes: ", len(boxes))
-        standard_packs = list(
-            Pack.objects.filter(box__isnull=True)
-            .annotate(Count("stickers"))
-            .exclude(stickers__coordinate__page=99)
-            .order_by("ordinal")
+    def _generate_prize_positions(self):
+        """Generate random positions for prize packs with significant spacing."""
+        positions = set()
+
+        while len(positions) < 2:
+            pos = random.randrange(1, self.collection.PACKS_PER_BOX)
+            if not any(abs(pos - p) <= self.MIN_PRIZES_POSITON_GAP for p in positions):
+                positions.add(pos)
+        return sorted(positions)
+
+    def _fill_single_box(
+        self, box, prize_positions, standard_packs, prize_packs, pack_list
+    ):
+        """
+        Fill a box with packs. The last box can contain fewer packs than expected.
+        Returns the number of packs placed in the box.
+        """
+        pack_counter = 0
+        position = 1
+        # logging.info(f"Placing packs in box {box.id}")
+        box_packs = []
+        # logging.info(f"Prize positions for box {box.id}: {prize_positions}")
+        packs_to_place = min(
+            self.collection.PACKS_PER_BOX, len(standard_packs) + len(prize_packs)
         )
-        # print("standars packs: ", len(standard_packs))
+        # logging.info(f"Packs to place in box {box.id}: {packs_to_place}")
+        # if packs_to_place < 100:
+
+        # logging.info(f"Starting to fill box {box.id}")
+        # logging.info(f"Prize positions: {prize_positions}")
+        # logging.info(f"Available standard packs: {len(standard_packs)}")
+        # logging.info(f"Available prize packs: {len(prize_packs)}")
+
+        while position <= packs_to_place:
+            pack_counter = position
+            # if packs_to_place < 100:
+            # logging.info(f"Pack counter: {pack_counter}")
+
+            if pack_counter in prize_positions and prize_packs:
+                pack = prize_packs.pop(0)
+                # if packs_to_place < 100:
+                # logging.info(f"Position {position}: Placed prize pack")
+            elif standard_packs:
+                pack = standard_packs.pop(0)
+                # if packs_to_place < 100:
+                # logging.info(f"Position {position}: Placed standard pack")
+            elif prize_packs:
+                pack = prize_packs.pop(0)
+                # logging.info(f"Position {position}: Placed prize pack")
+            else:
+                # logging.info("No more packs to place")
+
+                break
+            pack.box = box
+            box_packs.append(pack)
+            position += 1
+
+        # logging.info(f"Total packs placed in box {box.id}: {len(box_packs)}")
+        pack_list.extend(box_packs)
+
+        # logger.info(f"Box {box.id} filled with {len(box_packs)} packs")
+        if len(pack_list) >= self.BATCH_SIZE:
+            Pack.objects.bulk_update(pack_list, ["box"])
+            pack_list.clear()
+
+        return len(box_packs)
+
+    def fill_boxes(self):
+        """
+        Distributes packs into boxes ensuring prize pack distribution.
+        Returns the total number of boxes filled.
+        """
         prize_packs = list(
             Pack.objects.filter(box__isnull=True)
-            .annotate(Count("stickers"))
+            .prefetch_related("stickers")
             .filter(stickers__coordinate__page=99)
+            .distinct()
             .order_by("ordinal")
         )
-        # print("prize packs: ", len(prize_packs))
-        random_number_1 = random.randrange(1, self.collection.PACKS_PER_BOX)
-        pack_counter = 1
+        # logging.info(f"Prize packs before removal: {len(prize_packs)}")
 
-        random_number_2 = 0
+        self.remove_excess_prize_stickers()
+        pack_list = []
+        total_packs_distributed = 0
 
-        while True:
-            # determina la posicion en el box del segundo pack premiado
-            random_number_2 = random.randrange(1, self.collection.PACKS_PER_BOX)
-            """Como en el ciclo de llenado de los boxes al agregar un prize pack sea agrega
-            un standar pack inmediatamente, se deben evitar aletorios contiuos hacia arriba o
-            hacia abajo"""
-            if (
-                random_number_2 != random_number_1
-                and random_number_2 != (random_number_1 + 1)
-                and random_number_2 != (random_number_1 - 1)
-            ):
-                break
+        total_packs = Pack.objects.filter(box__isnull=True).count()
+        # logging.info(f"Total packs before classification: {total_packs}")
+        standard_packs = list(
+            Pack.objects.filter(box__isnull=True)
+            .prefetch_related("stickers")
+            .exclude(stickers__coordinate__page=99)
+            .distinct()
+            .order_by("ordinal")
+        )
+        # logging.info(f"standard_packs: {len(standard_packs)}")
 
-        standard_packs_iter = iter(standard_packs)
-        prize_packs_iter = iter(prize_packs)
-        prize_counter = 0  # solo para us en prints
-        for box in boxes:
-            # print("box: ", box)
-            # print("random 1: ", random_number_1)
-            # print("random 2: ", random_number_2)
-            while True:
-                # iteración pack cada pack
-                standar_pack = next(standard_packs_iter, "end_of_file")
+        prize_packs = list(
+            Pack.objects.filter(box__isnull=True)
+            .prefetch_related("stickers")
+            .filter(stickers__coordinate__page=99)
+            .distinct()
+            .order_by("ordinal")
+        )
+        # logging.info(f"prize_packs: {len(prize_packs)}")
+        remaining_packs = len(standard_packs) + len(prize_packs)
 
-                if standar_pack != "end_of_file":
+        # logging.info(f"Total packs after classification: {remaining_packs}")
 
-                    if (
-                        pack_counter == random_number_1
-                        or pack_counter == random_number_2
-                    ):
-                        # print(
-                        # f"colocando {standar_pack} en posición {pack_counter}")
-                        prize_pack = next(prize_packs_iter, "end_of_file")
+        for box in self.boxes.iterator():
+            packs_for_this_box = min(self.collection.PACKS_PER_BOX, remaining_packs)
+            # # logging.info(f"Box {box.id} will receive {packs_for_this_box} packs")
+            prize_positions = self._generate_prize_positions()
+            packs_placed = self._fill_single_box(
+                box, prize_positions, standard_packs, prize_packs, pack_list
+            )
+            total_packs_distributed += packs_placed
+            # # logging.info(f"Total packs placed in box {box.id}: {packs_placed}")
+            remaining_packs -= packs_placed
+            # logging.info(f"Remaining packs: {remaining_packs}")
+        if pack_list:
+            Pack.objects.bulk_update(pack_list, ["box"])
 
-                        if (
-                            prize_pack != "end_of_file"
-                        ):  # si la posicion es para pack premiado
-                            # se guarda un pack premiado y uno standard
-                            prize_pack.box = box
-                            prize_pack.save()
-                            # pack_list.append(prize_pack)
-                            pack_counter += 1
-                            standar_pack.box = box
-                            pack_list.append(standar_pack)
-                            pack_counter += 1
-                            prize_counter += 1
-
-                        else:  # si ya no hay packs premiados se guarda uno standard
-                            # print(
-                            #     "No hay mas packs premiados, colocando standard pack en posicion: ", pack_counter)
-                            standar_pack.box = box
-                            pack_list.append(standar_pack)
-                            pack_counter += 1
-                            # print("pack counter: ", pack_counter)
-                    else:  # se guarda un pack standard
-                        standar_pack.box = box
-                        pack_list.append(standar_pack)
-                        pack_counter += 1
-
-                    if (
-                        pack_counter > self.collection.PACKS_PER_BOX
-                    ):  # si se alcanza el number de packs
-                        # necesarios, se reinicia el counter
-                        # de packs y se adelanta el counter de boxes
-                        # print("reiniciando contador para proximo box")
-                        pack_counter = 1  # reinicio el counter de packs
-                        # counter_boxes += 1 #adelanto el counter de boxes
-                        # se recalculan las posiciones premiadas
-                        random_number_1 = random.randrange(
-                            1, self.collection.PACKS_PER_BOX
-                        )
-
-                        while True:
-                            random_number_2 = random.randrange(
-                                1, self.collection.PACKS_PER_BOX
-                            )
-
-                            if (
-                                random_number_2 != random_number_1
-                                and random_number_2 != (random_number_1 + 1)
-                            ):
-
-                                break  # salgo del bucle de los aleatorios
-                        break  # y salgo del bucle de los packs
-
-                else:
-                    # print("prize packs boxed normal flow: ", len(list(
-                    #     Pack.objects.filter(
-                    #         box__isnull=False
-                    #     ).annotate(
-                    #         Count('stickers')
-                    #     ).filter(
-                    #         stickers__coordinate__page=99
-                    #     ).order_by('ordinal'))
-                    # ))
-                    # si se acabaron los packs standard y aun quedan premiados, se continúan
-                    # colocando en el box
-                    remaining_packs = list(
-                        Pack.objects.filter(box__isnull=True)
-                        .annotate(Count("stickers"))
-                        .filter(stickers__coordinate__page=99)
-                        .order_by("ordinal")
-                    )
-                    # print("remaining packs: ", len(remaining_packs))
-                    remaining_packs_iter = iter(remaining_packs)
-
-                    while True:
-                        prize_pack = next(remaining_packs_iter, "end_of_file")
-
-                        if prize_pack != "end_of_file":
-                            # print(
-                            #     f"colocando {prize_pack} en posición {pack_counter}")
-
-                            prize_pack.box = box
-                            prize_pack.save()
-                            pack_counter += 1
-                        else:
-                            break
-                    # sino salgo del bucle de los packs
-                    break
-
-            else:  # salgo del bucle de los boxes
-                break
-
-        Pack.objects.bulk_update(pack_list, ["box"])
-        # print("prize packs boxed: ", len(list(
-        #     Pack.objects.filter(
-        #         box__isnull=False
-        #     ).annotate(
-        #         Count('stickers')
-        #     ).filter(
-        #         stickers__coordinate__page=99
-        #     ).order_by('ordinal'))
-        # ))
-        # print("prize packs unboxed: ", len(list(
-        #     Pack.objects.filter(
-        #         box__isnull=True
-        #     ).annotate(
-        #         Count('stickers')
-        #     ).filter(
-        #         stickers__coordinate__page=99
-        #     ).order_by('ordinal'))
-        # ))
-
-        # print("standard packs boxed: ", len(list(
-        #     Pack.objects.filter(
-        #         box__isnull=False
-        #     ).annotate(
-        #         Count('stickers')
-        #     ).exclude(
-        #         stickers__coordinate__page=99
-        #     ).order_by('ordinal'))))
-        # print("standard packs unboxed: ", len(list(
-        #     Pack.objects.filter(
-        #         box__isnull=True
-        #     ).annotate(
-        #         Count('stickers')
-        #     ).exclude(
-        #         stickers__coordinate__page=99
-        #     ).order_by('ordinal'))))
-        # print("total packs unboxed: ",
-        #       Pack.objects.filter(box__isnull=True).count())
-        # print("total packs boxed: ", Pack.objects.filter(
-        #     box__isnull=False).count())
-
-    # funcion que desordena el atributo ordinal de los boxes
+        return self.boxes.count()
 
     def shuffle_boxes(self):
         boxes = self.boxes.all()
