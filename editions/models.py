@@ -6,6 +6,7 @@ from decimal import Decimal, ROUND_CEILING, ROUND_DOWN
 
 from django.contrib import admin
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import Count
@@ -37,6 +38,84 @@ class Edition(models.Model):
     class Meta:
         verbose_name = "Edition"
         verbose_name_plural = "Editions"
+        index_together = [("promotion", "collection"), ("circulation", "promotion")]
+
+    def get_distribution_stats(self):
+        """Returns key statistics about the edition distribution"""
+        cache_key = f"edition_{self.id}_stats"
+        stats = cache.get(cache_key)
+
+        if stats is None:
+            stats = {
+                "total_boxes": self.boxes.count(),
+                "total_packs": Pack.objects.filter(box__edition=self).count(),
+                "prize_packs": Pack.objects.filter(
+                    box__edition=self, stickers__coordinate__page=99
+                )
+                .distinct()
+                .count(),
+                "standard_packs": Pack.objects.filter(box__edition=self)
+                .exclude(stickers__coordinate__page=99)
+                .distinct()
+                .count(),
+            }
+            cache.set(cache_key, stats, timeout=3600)
+
+        return stats
+
+    def validate_distribution(self):
+        """Validates the complete distribution of the edition"""
+        validations = {
+            "prize_distribution": self.validate_prize_distribution(),
+            "pack_counts": self.validate_pack_counts(),
+            "box_integrity": self.validate_box_integrity(),
+        }
+        return all(validations.values()), validations
+
+    def validate_prize_distribution(self):
+        """Ensures correct prize pack distribution"""
+        boxes = self.boxes.all().order_by("pk")
+        total_boxes = boxes.count()
+
+        if total_boxes == 0:
+            return True
+
+        # Check all boxes except the last one
+        for box in boxes[: total_boxes - 1]:
+            prize_packs = (
+                box.packs.filter(stickers__coordinate__page=99).distinct().count()
+            )
+            if prize_packs != 2:
+                return False
+
+        return True
+
+    def validate_pack_counts(self):
+        """Validates pack counts in boxes"""
+        boxes = self.boxes.all().order_by("pk")
+        total_boxes = boxes.count()
+        # Check all boxes except the last one
+        for box in boxes[: total_boxes - 1]:
+            if box.packs.count() != self.collection.PACKS_PER_BOX:
+                return False
+
+        # Last box can have fewer packs - no validation needed
+        return True
+
+    def validate_box_integrity(self):
+        """Ensures boxes have correct pack arrangement"""
+        return all(self._validate_single_box(box) for box in self.boxes.all())
+
+    def _validate_single_box(self, box):
+        """Helper method to validate individual box integrity"""
+        packs = box.packs.all()
+
+        # Only validate that:
+        # 1. Pack ordinals are unique
+        # 2. Each pack has at least one sticker
+        return len(set(pack.ordinal for pack in packs)) == len(packs) and all(
+            pack.stickers.count() > 0 for pack in packs
+        )
 
     @property
     def box_cost(self):
@@ -108,39 +187,36 @@ class Edition(models.Model):
 
     # crea la quantity estipulada de stickers segun en el circulation de cada sticker
     def create_stickers(self):
-        sticker_list = []
-        ordinal = 1  # hace un conteo general de los stickers
-        limit = 0
-        prize_rarity = self.collection.PRIZE_STICKER_RARITY
-
-        for each_coordinate in self.collection.coordinates.all():
-            circulation_counter = 1
-
-            # asigna el limit de circulation, dependiendo de si
-            # es una barajia premiada o no
-            if each_coordinate.rarity_factor == prize_rarity:
-                limit = (each_coordinate.rarity_factor * self.circulation).quantize(
-                    Decimal("1"), rounding=ROUND_CEILING
-                )
-            else:
-                limit = (each_coordinate.rarity_factor * self.circulation).quantize(
-                    Decimal("1"), rounding=ROUND_DOWN
-                )
-
+        with transaction.atomic():
             sticker_list = []
+            ordinal = 1  # hace un conteo general de los stickers
+            prize_rarity = self.collection.PRIZE_STICKER_RARITY
+            coordinates = list(self.collection.coordinates.all())
 
-            while circulation_counter <= limit:
-                sticker = Sticker(coordinate=each_coordinate, ordinal=ordinal)
+            for coordinate in coordinates:
+                limit = (coordinate.rarity_factor * self.circulation).quantize(
+                    Decimal("1"),
+                    rounding=(
+                        ROUND_CEILING
+                        if coordinate.rarity_factor == prize_rarity
+                        else ROUND_DOWN
+                    ),
+                )
 
-                sticker_list.append(sticker)
+                for _ in range(1, int(limit) + 1):
+                    sticker = Sticker(
+                        coordinate=coordinate,
+                        ordinal=ordinal,
+                    )
+                    sticker_list.append(sticker)
+                    ordinal += 1
 
-                if len(sticker_list) >= 500:
-                    Sticker.objects.bulk_create(sticker_list)
-                    sticker_list = []
-                circulation_counter += 1
-                ordinal += 1
+                    if len(sticker_list) >= self.BATCH_SIZE:
+                        Sticker.objects.bulk_create(sticker_list)
+                        sticker_list.clear()
 
-            Sticker.objects.bulk_create(sticker_list)
+            if sticker_list:
+                Sticker.objects.bulk_create(sticker_list)
 
     # aplica orden aleatorio a los valores del atributo ordinal de los stickers
     def shuffle_stickers(self):
@@ -244,27 +320,16 @@ class Edition(models.Model):
             Sticker.objects.bulk_update(sticker_list, ["pack"])
 
     def shuffle_packs(self):  # desordena el atributo ordinal de los packs
-        packs = Pack.objects.filter(box__isnull=True)
-        list = []
+        pack_list = list(Pack.objects.filter(box__isnull=True))
+        ordinals = list(range(1, len(pack_list) + 1))
+        random.shuffle(ordinals)
+
         counter = 1
 
-        while (
-            counter <= packs.count()
-        ):  # llena una list auxiliar con los ordinales de los packs
-            list.append(counter)
-            counter += 1
+        for i, pack in enumerate(pack_list):
+            pack.ordinal = ordinals[i]
 
-        random.shuffle(list)  # desordena la list auxiliar
-        counter = 0
-
-        for (
-            each_pack
-        ) in (
-            packs
-        ):  # reasigna los valores desordenados al atributo ordinal de cada pack
-            each_pack.ordinal = list[counter]
-            each_pack.save()
-            counter += 1
+        Pack.objects.bulk_update(pack_list, ["ordinal"], batch_size=self.BATCH_SIZE)
 
     def create_boxes(self):  # crea los boxes correspondientes a la edition
         box_list = []

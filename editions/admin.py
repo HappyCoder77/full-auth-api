@@ -1,13 +1,57 @@
 from django.contrib import admin
-
+from django.utils.html import format_html
 from .models import Edition, Box, Pack, Sticker, StickerPrize
 
 
 @admin.register(Edition)
 class EditionAdmin(admin.ModelAdmin):
-    list_display = ("id", "promotion", "collection", "circulation")
+    list_display = (
+        "id",
+        "promotion",
+        "collection",
+        "circulation",
+        "distribution_status",
+    )
+    readonly_fields = ["distribution_status", "validation_details"]
     list_filter = ("promotion", "collection")
     exclude = ("promotion",)
+
+    def distribution_status(self, obj):
+        is_valid, results = obj.validate_distribution()
+        if is_valid:
+            return format_html('<span style="color: green;">✓ Valid</span>')
+        return format_html('<span style="color: red;">✗ Invalid</span>')
+
+    def distribution_stats(self, obj):
+        stats = obj.get_distribution_stats()
+        return format_html(
+            """
+            <div style="padding: 10px; background: #f9f9f9; border: 1px solid #ddd;">
+                <p><strong>Total Boxes:</strong> {}</p>
+                <p><strong>Total Packs:</strong> {}</p>
+                <p><strong>Prize Packs:</strong> {}</p>
+                <p><strong>Standard Packs:</strong> {}</p>
+            </div>
+            """,
+            stats["total_boxes"],
+            stats["total_packs"],
+            stats["prize_packs"],
+            stats["standard_packs"],
+        )
+
+    def validation_details(self, obj):
+        _, results = obj.validate_distribution()
+        html = ['<div style="padding: 10px;">']
+        for check, passed in results.items():
+            status = "✓" if passed else "✗"
+            color = "green" if passed else "red"
+            html.append(f'<p style="color: {color}">{status} {check}</p>')
+        html.append("</div>")
+        return format_html("".join(html))
+
+    distribution_status.short_description = "Status"
+    distribution_stats.short_description = "Distribution Statistics"
+    validation_details.short_description = "Validation Details"
 
 
 @admin.register(Box)
