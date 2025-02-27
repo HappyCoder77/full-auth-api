@@ -12,9 +12,20 @@ class EditionAdmin(admin.ModelAdmin):
         "circulation",
         "distribution_status",
     )
-    readonly_fields = ["distribution_status", "validation_details"]
+    readonly_fields = ["distribution_stats", "validation_details"]
     list_filter = ("promotion", "collection")
     exclude = ("promotion",)
+    search_fields = ["collection__name", "promotion__name"]
+    fieldsets = (
+        (None, {"fields": ("collection", "circulation")}),
+        (
+            "Distribution Information",
+            {
+                "fields": ("distribution_stats", "validation_details"),
+                "classes": ("wide",),
+            },
+        ),
+    )
 
     def distribution_status(self, obj):
         is_valid, results = obj.validate_distribution()
@@ -26,11 +37,11 @@ class EditionAdmin(admin.ModelAdmin):
         stats = obj.get_distribution_stats()
         return format_html(
             """
-            <div style="padding: 10px; background: #f9f9f9; border: 1px solid #ddd;">
-                <p><strong>Total Boxes:</strong> {}</p>
-                <p><strong>Total Packs:</strong> {}</p>
-                <p><strong>Prize Packs:</strong> {}</p>
-                <p><strong>Standard Packs:</strong> {}</p>
+            <div style="padding: 15px; border: 2px solid #ddd; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <p style="color: white; margin: 5px 0;"><strong>Total Boxes:</strong> <span style="color: green">{0}</span></p>
+                <p style="color: white; margin: 5px 0;"><strong>Total Packs:</strong> <span style="color: green">{1}</span></p>
+                <p style="color: white; margin: 5px 0;"><strong>Prize Packs:</strong> <span style="color: green">{2}</span></p>
+                <p style="color: white; margin: 5px 0;"><strong>Standard Packs:</strong> <span style="color: green">{3}</span></p>
             </div>
             """,
             stats["total_boxes"],
@@ -75,6 +86,7 @@ class PackAdmin(admin.ModelAdmin):
         "collector",
         "is_open",
     )
+    list_select_related = ("box", "box__edition", "collector", "sale")
     ordering = ("id",)
     list_filter = ("box", "box__edition", "sale__sale", "collector", "is_open")
     search_fields = ("box__edition__name",)
