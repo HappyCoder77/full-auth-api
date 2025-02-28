@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
-from django.db.models import Count
+from django.db.models import Case, When
 from django.utils import timezone
 from datetime import date
 
@@ -38,7 +38,10 @@ class Edition(models.Model):
     class Meta:
         verbose_name = "Edition"
         verbose_name_plural = "Editions"
-        index_together = [("promotion", "collection"), ("circulation", "promotion")]
+        indexes = [
+            models.Index(fields=["promotion", "collection"]),
+            models.Index(fields=["circulation"]),
+        ]
 
     def get_distribution_stats(self):
         """Returns key statistics about the edition distribution"""
@@ -172,7 +175,6 @@ class Edition(models.Model):
     @transaction.atomic
     def save(self, *args, **kwargs):
         super(Edition, self).save(*args, **kwargs)
-        # start = time.time()
         self.create_stickers()
         self.shuffle_stickers()
         self.create_packs()
@@ -181,29 +183,29 @@ class Edition(models.Model):
         self.create_boxes()
         self.fill_boxes()
         self.shuffle_boxes()
-        # end = time.time()
-        # duracion = end - start
-        # ('duracion metodo save:', duracion)
 
-    # crea la quantity estipulada de stickers segun en el circulation de cada sticker
     def create_stickers(self):
         with transaction.atomic():
+            BATCH_SIZE = 5000
             sticker_list = []
-            ordinal = 1  # hace un conteo general de los stickers
+            ordinal = 1
             prize_rarity = self.collection.PRIZE_STICKER_RARITY
-            coordinates = list(self.collection.coordinates.all())
+            coordinates = list(self.collection.coordinates.select_related())
 
-            for coordinate in coordinates:
-                limit = (coordinate.rarity_factor * self.circulation).quantize(
+            limits = {
+                coord: (coord.rarity_factor * self.circulation).quantize(
                     Decimal("1"),
                     rounding=(
                         ROUND_CEILING
-                        if coordinate.rarity_factor == prize_rarity
+                        if coord.rarity_factor == prize_rarity
                         else ROUND_DOWN
                     ),
                 )
+                for coord in coordinates
+            }
 
-                for _ in range(1, int(limit) + 1):
+            for coordinate, limit in limits.items():
+                for _ in range(int(limit)):
                     sticker = Sticker(
                         coordinate=coordinate,
                         ordinal=ordinal,
@@ -211,33 +213,43 @@ class Edition(models.Model):
                     sticker_list.append(sticker)
                     ordinal += 1
 
-                    if len(sticker_list) >= self.BATCH_SIZE:
+                    if len(sticker_list) >= BATCH_SIZE:
                         Sticker.objects.bulk_create(sticker_list)
                         sticker_list.clear()
 
             if sticker_list:
                 Sticker.objects.bulk_create(sticker_list)
 
-    # aplica orden aleatorio a los valores del atributo ordinal de los stickers
     def shuffle_stickers(self):
-        stickers = Sticker.objects.filter(pack__isnull=True).only("ordinal")
-        total_stickers = stickers.count()
+        BATCH_SIZE = 5000
 
-        if total_stickers > 0:
-            # Create shuffled ordinal numbers
+        with transaction.atomic():
+            total_stickers = Sticker.objects.filter(pack__isnull=True).count()
+
             ordinal_numbers = list(range(1, total_stickers + 1))
             random.shuffle(ordinal_numbers)
 
-            # Update stickers in batches
-            batch_size = 1000
-            sticker_list = list(stickers)
+            for start in range(0, total_stickers, BATCH_SIZE):
+                end = start + BATCH_SIZE
+                batch_stickers = list(
+                    Sticker.objects.filter(pack__isnull=True)
+                    .only("id", "ordinal")
+                    .order_by("ordinal")[start:end]
+                )
 
-            for i in range(0, total_stickers, batch_size):
-                batch = sticker_list[i : i + batch_size]
-                for j, sticker in enumerate(batch):
-                    sticker.ordinal = ordinal_numbers[i + j]
+                updates = {
+                    sticker.id: ordinal_numbers[i]
+                    for i, sticker in enumerate(batch_stickers, start=start)
+                }
 
-                Sticker.objects.bulk_update(batch, ["ordinal"])
+                cases = [
+                    When(id=sticker_id, then=ordinal)
+                    for sticker_id, ordinal in updates.items()
+                ]
+
+                Sticker.objects.filter(id__in=updates.keys()).update(
+                    ordinal=Case(*cases)
+                )
 
     def create_packs(self):  # crea los packs de la edición
         pack_list = []
