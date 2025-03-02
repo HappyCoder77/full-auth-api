@@ -68,54 +68,66 @@ class Edition(models.Model):
 
     def validate_distribution(self):
         """Validates the complete distribution of the edition"""
-        validations = {
-            "prize_distribution": self.validate_prize_distribution(),
-            "pack_counts": self.validate_pack_counts(),
-            "box_integrity": self.validate_box_integrity(),
-        }
+        cache_keys = [
+            f"edition_{self.id}_prize_dist",
+            f"edition_{self.id}_pack_counts",
+            f"edition_{self.id}_box_integrity",
+        ]
+
+        validations = {}
+        for key, validator in zip(
+            cache_keys,
+            [
+                self.validate_prize_distribution,
+                self.validate_pack_counts,
+                self.validate_box_integrity,
+            ],
+        ):
+            cached_result = cache.get(key)
+            if cached_result is None:
+                cached_result = validator()
+                cache.set(key, cached_result, timeout=3600)
+            validations[key] = cached_result
+
         return all(validations.values()), validations
 
     def validate_prize_distribution(self):
         """Ensures correct prize pack distribution"""
-        boxes = self.boxes.all().order_by("pk")
+        boxes = (
+            self.boxes.all()
+            .prefetch_related("packs__stickers__coordinate")
+            .order_by("pk")
+        )
         total_boxes = boxes.count()
 
         if total_boxes == 0:
             return True
 
-        # Check all boxes except the last one
-        for box in boxes[: total_boxes - 1]:
-            prize_packs = (
-                box.packs.filter(stickers__coordinate__page=99).distinct().count()
-            )
-            if prize_packs != 2:
-                return False
-
-        return True
+        return all(
+            box.packs.filter(stickers__coordinate__page=99).distinct().count() == 2
+            for box in boxes[: total_boxes - 1]
+        )
 
     def validate_pack_counts(self):
         """Validates pack counts in boxes"""
-        boxes = self.boxes.all().order_by("pk")
+        boxes = self.boxes.all().prefetch_related("packs").order_by("pk")
         total_boxes = boxes.count()
-        # Check all boxes except the last one
-        for box in boxes[: total_boxes - 1]:
-            if box.packs.count() != self.collection.PACKS_PER_BOX:
-                return False
 
-        # Last box can have fewer packs - no validation needed
-        return True
+        return all(
+            box.packs.count() == self.collection.PACKS_PER_BOX
+            for box in boxes[: total_boxes - 1]
+        )
 
     def validate_box_integrity(self):
         """Ensures boxes have correct pack arrangement"""
-        return all(self._validate_single_box(box) for box in self.boxes.all())
+        boxes = self.boxes.all().prefetch_related("packs__stickers").order_by("pk")
+
+        return all(self._validate_single_box(box) for box in boxes)
 
     def _validate_single_box(self, box):
         """Helper method to validate individual box integrity"""
-        packs = box.packs.all()
+        packs = box.packs.all().prefetch_related("stickers").order_by("ordinal")
 
-        # Only validate that:
-        # 1. Pack ordinals are unique
-        # 2. Each pack has at least one sticker
         return len(set(pack.ordinal for pack in packs)) == len(packs) and all(
             pack.stickers.count() > 0 for pack in packs
         )
