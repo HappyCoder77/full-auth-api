@@ -21,14 +21,6 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
-@shared_task
-def delete_edition_data(edition_id):
-    with transaction.atomic():
-        Sticker.objects.filter(pack__box__edition_id=edition_id).delete()
-        Pack.objects.filter(box__edition_id=edition_id).delete()
-        Box.objects.filter(edition_id=edition_id).delete()
-
-
 class Edition(models.Model):
     """
     Represents a specific printing run of a collection within a promotion.
@@ -51,10 +43,6 @@ class Edition(models.Model):
             models.Index(fields=["promotion", "collection"]),
             models.Index(fields=["circulation"]),
         ]
-
-    def delete(self, *args, **kwargs):
-        delete_edition_data.delay(self.id)
-        return super().delete(*args, **kwargs)
 
     def get_distribution_stats(self):
         """Returns key statistics about the edition distribution"""
