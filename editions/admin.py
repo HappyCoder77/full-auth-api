@@ -67,7 +67,7 @@ class EditionAdmin(admin.ModelAdmin):
 
 @admin.register(Box)
 class BoxAdmin(admin.ModelAdmin):
-    list_display = ("edition", "id", "ordinal")
+    list_display = ("edition", "edition_id", "id", "ordinal")
     ordering = ("id",)
     list_filter = ("edition", "ordinal")
 
@@ -86,7 +86,12 @@ class PackAdmin(admin.ModelAdmin):
         "collector",
         "is_open",
     )
-    list_select_related = ("box", "box__edition", "collector", "sale")
+    list_select_related = (
+        "box",
+        "box__edition",
+        "collector",
+        "sale",
+    )
     ordering = ("id",)
     list_filter = ("box", "box__edition", "sale__sale", "collector", "is_open")
     search_fields = ("box__edition__name",)
