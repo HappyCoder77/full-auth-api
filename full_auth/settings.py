@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "corsheaders",
     "rest_framework",
+    "django_spaghetti",
     "drf_spectacular",
     "djoser",
     "social_django",
@@ -65,6 +66,12 @@ INSTALLED_APPS = [
     "commerce",
     "albums",
 ]
+
+SPAGHETTI_SAUCE = {
+    "apps": ["users", "promotions", "editions", "collection_manager", "commerce"],
+    "show_fields": False,
+    "exclude": {"auth": ["user"]},
+}
 
 CELERY_BROKER_URL = "redis://localhost:6379/0"
 CELERY_RESULT_BACKEND = "redis://localhost:6379/0"

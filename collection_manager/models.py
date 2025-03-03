@@ -4,6 +4,18 @@ from decimal import Decimal
 from django.db import models, transaction
 
 
+class Theme(models.Model):
+    name = models.CharField("Tema", max_length=50, unique=True)
+    image = models.ImageField(upload_to="images/themes/")
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = "theme"
+        verbose_name_plural = "themes"
+
+
 class Collection(models.Model):
     PAGES = 4
     SLOTS_PER_PAGE = 6

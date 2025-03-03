@@ -1,7 +1,32 @@
+from django.db import IntegrityError, transaction
 from django.test import TestCase
 
-from ..models import Collection, SurprisePrize
-from .factories import CollectionFactory
+from ..models import Collection, SurprisePrize, Theme
+from .factories import CollectionFactory, ThemeFactory
+
+
+class ThemeTestCase(TestCase):
+    def setUp(self):
+        self.theme = ThemeFactory(with_image=True)
+
+    def tearDown(self):
+        """Clean up data after each test method."""
+        self.theme.image.delete(save=False)
+        Theme.objects.all().delete()
+
+    def test_theme_data(self):
+        self.assertEqual(self.theme.name, "Minecraft")
+        self.assertEqual(self.theme.image.name, "images/themes/test_image.png")
+        self.assertEqual(str(self.theme), "Minecraft")
+
+    def test_theme_unique_name_constraint(self):
+        with transaction.atomic():
+            with self.assertRaises(IntegrityError):
+                ThemeFactory(with_image=True)
+
+    def test_theme_verbose_names(self):
+        self.assertEqual(Theme._meta.verbose_name, "theme")
+        self.assertEqual(Theme._meta.verbose_name_plural, "themes")
 
 
 class CollectionTestCase(TestCase):
