@@ -11,7 +11,7 @@ from albums.test.factories import AlbumFactory
 from promotions.models import Promotion
 from promotions.test.factories import PromotionFactory
 from collection_manager.models import Coordinate
-from collection_manager.test.factories import CollectionFactory
+from collection_manager.test.factories import OldCollectionFactory
 from editions.test.factories import EditionFactory
 from editions.models import Sticker, Coordinate, Pack
 from editions.serializers import StickerPrizeSerializer
@@ -1299,7 +1299,7 @@ class ClaimPagePrizeViewAPITestCase(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
-        collection = CollectionFactory()
+        collection = OldCollectionFactory()
         coordinate = Coordinate.objects.get(rarity_factor=0.02)
         coordinate.rarity_factor = 1
         coordinate.save()

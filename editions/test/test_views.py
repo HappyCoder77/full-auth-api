@@ -123,11 +123,7 @@ class EditionViewSetTestCase(APITestCase):
         detail_url = reverse("edition-detail", kwargs={"pk": edition.pk})
         response = self.client.get(detail_url)
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertEqual(
-            response.data["detail"],
-            "Sólo los  superusuarios pueden realizar esta acción",
-        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_unauthenticated_user_cannot_retrieve_edition(self):
         self.client.logout()

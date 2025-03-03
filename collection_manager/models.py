@@ -2,6 +2,7 @@ import random
 from decimal import Decimal
 
 from django.db import models, transaction
+from promotions.models import Promotion
 
 
 class Theme(models.Model):
@@ -17,6 +18,20 @@ class Theme(models.Model):
 
 
 class Collection(models.Model):
+    """Represents a specific collection within a theme"""
+
+    theme = models.ForeignKey(Theme, on_delete=models.PROTECT)
+    promotion = models.ForeignKey(Promotion, on_delete=models.CASCADE, db_index=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["theme", "promotion"], name="unique_collection"
+            )
+        ]
+
+
+class OldCollection(models.Model):
     PAGES = 4
     SLOTS_PER_PAGE = 6
     STICKERS_PER_PACK = 3
@@ -43,7 +58,7 @@ class Collection(models.Model):
 
     @transaction.atomic
     def save(self, *args, **kwargs):
-        super(Collection, self).save(*args, **kwargs)
+        super(OldCollection, self).save(*args, **kwargs)
         self.create_coordinates()
         self.shuffle_coordinates()
         self.distribute_rarity()
@@ -171,7 +186,7 @@ class Collection(models.Model):
 
 class Coordinate(models.Model):
     collection = models.ForeignKey(
-        Collection, on_delete=models.CASCADE, related_name="coordinates"
+        OldCollection, on_delete=models.CASCADE, related_name="coordinates"
     )
     page = models.BigIntegerField("Página")
     slot_number = models.BigIntegerField("Casilla")
@@ -192,7 +207,10 @@ class Coordinate(models.Model):
 class SurprisePrize(models.Model):
     # TODO: agregar undefined como valor por defecto
     collection = models.ForeignKey(
-        Collection, on_delete=models.CASCADE, null=True, related_name="surprise_prizes"
+        OldCollection,
+        on_delete=models.CASCADE,
+        null=True,
+        related_name="surprise_prizes",
     )
     number = models.SmallIntegerField(default=0)
     description = models.CharField(max_length=100)
@@ -207,7 +225,10 @@ class SurprisePrize(models.Model):
 
 class StandardPrize(models.Model):
     collection = models.ForeignKey(
-        Collection, on_delete=models.CASCADE, null=True, related_name="standard_prizes"
+        OldCollection,
+        on_delete=models.CASCADE,
+        null=True,
+        related_name="standard_prizes",
     )
     page = models.SmallIntegerField()
     description = models.CharField(max_length=100)

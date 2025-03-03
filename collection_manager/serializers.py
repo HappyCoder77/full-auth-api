@@ -1,11 +1,11 @@
 from rest_framework.serializers import ModelSerializer
 
-from .models import Collection, Coordinate, SurprisePrize
+from .models import OldCollection, Coordinate, SurprisePrize
 
 
 class CollectionSerializer(ModelSerializer):
     class Meta:
-        model = Collection
+        model = OldCollection
         fields = ("name", "image")
 
 

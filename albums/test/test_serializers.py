@@ -35,6 +35,7 @@ class AlbumSerializerTest(APITestCase):
         expected_fields = {
             "id",
             "edition",
+            "collection",
             "collector",
             "pages",
             "pack_inbox",

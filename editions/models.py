@@ -15,7 +15,7 @@ from django.utils import timezone
 from datetime import date
 
 from promotions.models import Promotion
-from collection_manager.models import Collection, Coordinate, SurprisePrize
+from collection_manager.models import OldCollection, Coordinate, SurprisePrize
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -31,7 +31,7 @@ class Edition(models.Model):
     MIN_PACK_POSITION = 1
     MIN_PRIZES_POSITON_GAP = 10
     promotion = models.ForeignKey(Promotion, on_delete=models.CASCADE, db_index=True)
-    collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
+    collection = models.ForeignKey(OldCollection, on_delete=models.CASCADE)
     circulation = models.DecimalField(
         max_digits=20, decimal_places=0, default=Decimal("1")
     )

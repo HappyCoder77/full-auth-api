@@ -1,6 +1,6 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
-from ..models import StandardPrize, Collection
+from ..models import StandardPrize, OldCollection
 from ..serializers import StandardPrizeSerializer
 
 User = get_user_model()
@@ -8,7 +8,7 @@ User = get_user_model()
 
 class StandardPrizeSerializerTest(TestCase):
     def setUp(self):
-        self.collection = Collection.objects.create(name="Test Collection")
+        self.collection = OldCollection.objects.create(name="Test Collection")
         self.prize_data = {
             "collection": self.collection,
             "page": 1,

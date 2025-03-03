@@ -1,9 +1,9 @@
 from django.contrib import admin
 
-from .models import Collection, Coordinate, StandardPrize, SurprisePrize
+from .models import OldCollection, Coordinate, StandardPrize, SurprisePrize
 
 
-@admin.register(Collection)
+@admin.register(OldCollection)
 class CollectionAdmin(admin.ModelAdmin):
     list_display = ("id", "name")
 

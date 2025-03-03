@@ -8,7 +8,7 @@ from authentication.test.factories import UserFactory
 from promotions.test.factories import PromotionFactory
 from editions.models import Sticker
 from collection_manager.models import Coordinate, StandardPrize
-from collection_manager.test.factories import CollectionFactory
+from collection_manager.test.factories import OldCollectionFactory
 from users.test.factories import CollectorFactory, DealerFactory
 
 from ..models import Slot, Page, Pack, PagePrize
@@ -213,7 +213,7 @@ class PagePrizeTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        collection = CollectionFactory()
+        collection = OldCollectionFactory()
         coordinate = Coordinate.objects.get(rarity_factor=0.02)
         coordinate.rarity_factor = 1
         coordinate.save()

@@ -4,7 +4,7 @@ from albums.models import Page, Pack
 from albums.test.factories import AlbumFactory
 from authentication.test.factories import UserFactory
 from collection_manager.models import Coordinate
-from collection_manager.test.factories import CollectionFactory
+from collection_manager.test.factories import OldCollectionFactory
 from editions.models import Sticker
 from editions.test.factories import EditionFactory
 from promotions.test.factories import PromotionFactory
@@ -15,7 +15,7 @@ from ..serializers import CollectorSerializer
 class CollectorSerializerTest(TestCase):
     @classmethod
     def setUpTestData(cls):
-        collection = CollectionFactory()
+        collection = OldCollectionFactory()
         coordinate = Coordinate.objects.get(rarity_factor=0.02)
         coordinate.rarity_factor = 1
         coordinate.save()

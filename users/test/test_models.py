@@ -4,7 +4,8 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from albums.models import Page, Pack
 from albums.test.factories import AlbumFactory
-from collection_manager.test.factories import CollectionFactory, Coordinate
+from collection_manager.test.factories import OldCollectionFactory
+from collection_manager.models import Coordinate
 from editions.models import Sticker
 
 from ..models import BaseProfile, RegionalManager, Dealer, Collector
@@ -154,7 +155,7 @@ class DealerTestCase(TestCase):
 class CollectorTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        collection = CollectionFactory()
+        collection = OldCollectionFactory()
         coordinate = Coordinate.objects.get(rarity_factor=0.02)
         coordinate.rarity_factor = 1
         coordinate.save()

@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from promotions.test.factories import PromotionFactory
 from collection_manager.models import Coordinate, SurprisePrize
-from collection_manager.test.factories import CollectionFactory
+from collection_manager.test.factories import OldCollectionFactory
 from authentication.test.factories import UserFactory
 from users.test.factories import CollectorFactory, DealerFactory
 from ..models import Box, Pack, Sticker, StickerPrize
@@ -117,7 +117,7 @@ class EditionValidationTestCase(TestCase):
 
     def test_no_validation_raised(self):
         PromotionFactory()
-        collection = CollectionFactory()
+        collection = OldCollectionFactory()
         edition = EditionFactory.build(collection=collection)
 
         for each_prize in edition.collection.standard_prizes.all():
@@ -136,7 +136,7 @@ class EditionValidationTestCase(TestCase):
             )
 
     def test_no_promotion_at_all(self):
-        collection = CollectionFactory(name="Loolapaloza")
+        collection = OldCollectionFactory(name="Loolapaloza")
         edition = EditionFactory.build(collection=collection)
 
         with self.assertRaises(ValidationError) as context:
@@ -153,7 +153,7 @@ class EditionValidationTestCase(TestCase):
         PromotionFactory(
             start_date=timezone.now() - datetime.timedelta(days=30), duration=29
         )
-        collection = CollectionFactory(name="Angela")
+        collection = OldCollectionFactory(name="Angela")
         edition = EditionFactory.build(collection=collection)
 
         with self.assertRaises(ValidationError) as context:
@@ -195,7 +195,7 @@ class EditionValidationTestCase(TestCase):
 
     def test_no_standard_prizes_defined(self):
         promotion = PromotionFactory()
-        collection = CollectionFactory()
+        collection = OldCollectionFactory()
         edition = EditionFactory.build(collection=collection)
 
         with self.assertRaises(ValidationError) as context:
@@ -211,7 +211,7 @@ class EditionValidationTestCase(TestCase):
 
     def test_no_surprise_prizes_defined(self):
         promotion = PromotionFactory()
-        collection = CollectionFactory()
+        collection = OldCollectionFactory()
         edition = EditionFactory.build(collection=collection)
 
         for each_prize in collection.standard_prizes.all():

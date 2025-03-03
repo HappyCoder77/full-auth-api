@@ -3,7 +3,8 @@ import tempfile
 from PIL import Image
 from django.core.files.base import ContentFile
 
-from ..models import Collection, Theme
+from promotions.test.factories import PromotionFactory
+from ..models import OldCollection, Theme, Collection
 
 
 class ThemeFactory(factory.django.DjangoModelFactory):
@@ -19,10 +20,10 @@ class ThemeFactory(factory.django.DjangoModelFactory):
         )
 
 
-class CollectionFactory(factory.django.DjangoModelFactory):
+class OldCollectionFactory(factory.django.DjangoModelFactory):
 
     class Meta:
-        model = Collection
+        model = OldCollection
 
     name = "Minecraft"
 
@@ -30,6 +31,15 @@ class CollectionFactory(factory.django.DjangoModelFactory):
         with_image = factory.Trait(
             image=factory.lazy_attribute(lambda x: create_test_image()),
         )
+
+
+class CollectionFactory(factory.django.DjangoModelFactory):
+
+    class Meta:
+        model = Collection
+
+    theme = factory.SubFactory(ThemeFactory)
+    promotion = factory.SubFactory(PromotionFactory)
 
 
 def create_test_image(filename="test_image.png"):

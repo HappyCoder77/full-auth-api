@@ -1,8 +1,53 @@
 from django.db import IntegrityError, transaction
+from django.db.models import ProtectedError
 from django.test import TestCase
 
-from ..models import Collection, SurprisePrize, Theme
-from .factories import CollectionFactory, ThemeFactory
+from ..models import OldCollection, SurprisePrize, Theme, Collection
+from .factories import OldCollectionFactory, ThemeFactory, CollectionFactory
+
+
+class CollectionTestCase(TestCase):
+
+    def setUp(self):
+        self.collection = CollectionFactory(theme__with_image=True)
+
+    def tearDown(self):
+        """Clean up data after each test method."""
+        self.collection.theme.image.delete(save=False)
+        Collection.objects.all().delete()
+
+    def test_collection_data(self):
+        self.assertEqual(self.collection.theme.name, "Minecraft")
+        self.assertTrue(self.collection.theme.image.name.startswith("images/themes/"))
+        self.assertTrue(self.collection.theme.image.name.endswith(".png"))
+
+    def test_collection_unique_constraint(self):
+        with transaction.atomic():
+            with self.assertRaises(IntegrityError):
+                CollectionFactory(
+                    theme=self.collection.theme, promotion=self.collection.promotion
+                )
+
+    def test_collection_relationships(self):
+        self.assertIsNotNone(self.collection.promotion)
+        self.assertIsNotNone(self.collection.theme)
+
+    def test_theme_protection(self):
+        with self.assertRaises(ProtectedError):
+            self.collection.theme.delete()
+
+    def test_promotion_cascade(self):
+        promotion_id = self.collection.promotion.id
+        self.collection.promotion.delete()
+        self.assertFalse(Collection.objects.filter(promotion_id=promotion_id).exists())
+
+    def test_collection_filtering(self):
+        theme2 = ThemeFactory(name="Angela")
+        CollectionFactory(theme=theme2)
+        self.assertEqual(
+            Collection.objects.filter(theme=self.collection.theme).count(), 1
+        )
+        self.assertEqual(Collection.objects.count(), 2)
 
 
 class ThemeTestCase(TestCase):
@@ -29,16 +74,16 @@ class ThemeTestCase(TestCase):
         self.assertEqual(Theme._meta.verbose_name_plural, "themes")
 
 
-class CollectionTestCase(TestCase):
+class OldCollectionTestCase(TestCase):
     COLLECTION_NAME = "Minecraft"
 
     def setUp(self):
-        self.collection = CollectionFactory(with_image=True)
+        self.collection = OldCollectionFactory(with_image=True)
 
     def tearDown(self):
         """Clean up data after each test method."""
         self.collection.image.delete(save=False)
-        Collection.objects.all().delete()
+        OldCollection.objects.all().delete()
 
     def test_collection_data(self):
         standard_coordinates = self.collection.coordinates.exclude(page=99).count()
@@ -46,7 +91,7 @@ class CollectionTestCase(TestCase):
         self.assertEqual(standard_coordinates, 24)
         self.assertEqual(self.collection.name, self.COLLECTION_NAME)
         self.assertEqual(
-            self.collection.image.name, "images/collections/collection_image.png"
+            self.collection.image.name, "images/collections/test_image.png"
         )
         self.assertEqual(str(self.collection), "Minecraft")
         self.assertEqual(self.collection.coordinates.count(), 25)

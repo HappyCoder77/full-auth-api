@@ -4,7 +4,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient, APITestCase
 from rest_framework import status, mixins
 from authentication.test.factories import UserFactory
-from collection_manager.test.factories import CollectionFactory
+from collection_manager.test.factories import OldCollectionFactory
 from collection_manager.models import Coordinate
 from editions.models import Pack, Sticker, Edition
 from editions.test.factories import EditionFactory
@@ -675,7 +675,7 @@ class CreatePagePrizeViewTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
-        collection = CollectionFactory()
+        collection = OldCollectionFactory()
         coordinate = Coordinate.objects.get(rarity_factor=0.02)
         coordinate.rarity_factor = 1
         coordinate.save()
@@ -879,7 +879,7 @@ class RescuePoolViewTest(APITestCase):
         self.collector.save()
         self.collector.refresh_from_db()
         response = self.client.get(self.url)
-
+        print(response.data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(
             response.data["detail"],
