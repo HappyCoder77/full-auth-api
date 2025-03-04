@@ -1,8 +1,10 @@
+from datetime import timedelta, date
 from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
 from django.test import TestCase
 
-from ..models import OldCollection, SurprisePrize, Theme, Collection
+from promotions.models import Promotion
+from ..models import OldCollection, SurprisePrize, Theme, Collection, Layout
 from .factories import OldCollectionFactory, ThemeFactory, CollectionFactory
 
 
@@ -10,16 +12,146 @@ class CollectionTestCase(TestCase):
 
     def setUp(self):
         self.collection = CollectionFactory(theme__with_image=True)
+        self.promotion = Promotion.objects.first()
+        self.layout = Layout.objects.first()
 
     def tearDown(self):
         """Clean up data after each test method."""
         self.collection.theme.image.delete(save=False)
         Collection.objects.all().delete()
 
-    def test_collection_data(self):
+    def test_str_method(self):
+        self.assertEqual(
+            str(self.collection), f"{self.collection.theme} {self.collection.promotion}"
+        )
+
+    def test_collection_theme_data(self):
         self.assertEqual(self.collection.theme.name, "Minecraft")
         self.assertTrue(self.collection.theme.image.name.startswith("images/themes/"))
         self.assertTrue(self.collection.theme.image.name.endswith(".png"))
+
+    def test_collection_promotion_data(self):
+        self.assertEqual(self.collection.promotion.start_date, date.today())
+        self.assertEqual(self.collection.promotion.end_date, date.today())
+        self.assertEqual(self.collection.promotion.duration, 1)
+        self.assertEqual(self.collection.promotion.pack_cost, 1.5)
+        self.assertFalse(self.collection.promotion.balances_created)
+        self.assertEqual(str(self.collection.promotion), str(self.promotion))
+
+    def test_collection_layout_data(self):
+        self.assertEqual(self.collection.layout.PAGES, self.layout.PAGES)
+        self.assertEqual(
+            self.collection.layout.SLOTS_PER_PAGE, self.layout.SLOTS_PER_PAGE
+        )
+        self.assertEqual(
+            self.collection.layout.STICKERS_PER_PACK, self.layout.STICKERS_PER_PACK
+        )
+        self.assertEqual(
+            self.collection.layout.PACKS_PER_BOX, self.layout.PACKS_PER_BOX
+        )
+        self.assertEqual(
+            self.collection.layout.PRIZE_STICKER_COORDINATE,
+            self.layout.PRIZE_STICKER_COORDINATE,
+        )
+        self.assertEqual(
+            self.collection.layout.SURPRISE_PRIZE_OPTIONS,
+            self.layout.SURPRISE_PRIZE_OPTIONS,
+        )
+        self.assertEqual(self.collection.layout.RARITY_1, self.layout.RARITY_1)
+        self.assertEqual(self.collection.layout.RARITY_2, self.layout.RARITY_2)
+        self.assertEqual(self.collection.layout.RARITY_3, self.layout.RARITY_3)
+        self.assertEqual(self.collection.layout.RARITY_4, self.layout.RARITY_4)
+        self.assertEqual(self.collection.layout.RARITY_5, self.layout.RARITY_5)
+        self.assertEqual(self.collection.layout.RARITY_6, self.layout.RARITY_6)
+        self.assertEqual(self.collection.layout.RARITY_7, self.layout.RARITY_7)
+        self.assertEqual(
+            self.collection.layout.PRIZE_STICKER_RARITY,
+            self.layout.PRIZE_STICKER_RARITY,
+        )
+
+    def test_rarity_distribution(self):
+        expected_coordinates = self.layout.PAGES * self.layout.SLOTS_PER_PAGE
+        self.assertEqual(
+            self.collection.coordinates.exclude(page=99).count(), expected_coordinates
+        )
+        self.assertEqual(self.collection.coordinates.count(), expected_coordinates + 1)
+        self.assertEqual(
+            self.collection.coordinates.filter(
+                rarity_factor=self.collection.layout.RARITY_2
+            ).count(),
+            8,
+        )
+        self.assertEqual(
+            self.collection.coordinates.filter(
+                rarity_factor=self.collection.layout.RARITY_3
+            ).count(),
+            4,
+        )
+        self.assertEqual(
+            self.collection.coordinates.filter(
+                rarity_factor=self.collection.layout.RARITY_4
+            ).count(),
+            1,
+        )
+        self.assertEqual(
+            self.collection.coordinates.filter(
+                rarity_factor=self.collection.layout.RARITY_5
+            ).count(),
+            1,
+        )
+        self.assertEqual(
+            self.collection.coordinates.filter(
+                rarity_factor=self.collection.layout.RARITY_6
+            ).count(),
+            1,
+        )
+        self.assertEqual(
+            self.collection.coordinates.filter(
+                rarity_factor=self.collection.layout.RARITY_7
+            ).count(),
+            1,
+        )
+        self.assertEqual(
+            self.collection.coordinates.filter(
+                rarity_factor=self.collection.layout.PRIZE_STICKER_RARITY
+            ).count(),
+            1,
+        )
+        self.assertEqual(
+            self.collection.standard_prizes.count(), self.collection.layout.PAGES
+        )
+        self.assertEqual(
+            self.collection.surprise_prizes.count(),
+            self.collection.layout.SURPRISE_PRIZE_OPTIONS,
+        )
+
+    def test_coordinates_data(self):
+
+        counter = 1
+        current_page = 1
+
+        while current_page <= self.collection.layout.PAGES:
+            coordinates = iter(
+                self.collection.coordinates.filter(page=current_page).order_by(
+                    "slot_number"
+                )
+            )
+            current_slot = 1
+
+            while True:
+                coordinate = next(coordinates, "fin_de_archivo")
+
+                if coordinate != "fin_de_archivo":
+                    self.assertEqual(coordinate.page, current_page)
+                    self.assertEqual(coordinate.slot_number, current_slot)
+                    self.assertEqual(coordinate.absolute_number, counter)
+                    self.assertEqual(str(coordinate), str(counter))
+                    current_slot += 1
+                    counter += 1
+                else:
+                    break
+
+            current_page += 1
 
     def test_collection_unique_constraint(self):
         with transaction.atomic():
@@ -31,10 +163,15 @@ class CollectionTestCase(TestCase):
     def test_collection_relationships(self):
         self.assertIsNotNone(self.collection.promotion)
         self.assertIsNotNone(self.collection.theme)
+        self.assertIsNotNone(self.collection.layout)
 
     def test_theme_protection(self):
         with self.assertRaises(ProtectedError):
             self.collection.theme.delete()
+
+    def test_layout_protection(self):
+        with self.assertRaises(ProtectedError):
+            self.collection.layout.delete()
 
     def test_promotion_cascade(self):
         promotion_id = self.collection.promotion.id
@@ -48,6 +185,31 @@ class CollectionTestCase(TestCase):
             Collection.objects.filter(theme=self.collection.theme).count(), 1
         )
         self.assertEqual(Collection.objects.count(), 2)
+
+    def test_prize_coordinate_data(self):
+        prize_coordinate = self.collection.coordinates.get(page=99)
+
+        self.assertEqual(
+            prize_coordinate.slot_number,
+            self.collection.layout.PRIZE_STICKER_COORDINATE,
+        )
+        self.assertEqual(
+            prize_coordinate.rarity_factor, self.collection.layout.PRIZE_STICKER_RARITY
+        )
+        self.assertEqual(prize_coordinate.ordinal, 0)
+
+    def test_standard_prizes_data(self):
+        for counter in range(1, self.collection.layout.PAGES + 1):
+            standard_prize = self.collection.standard_prizes.get(page=counter)
+            self.assertEqual(standard_prize.collection, self.collection)
+            self.assertEqual(standard_prize.description, "undefined")
+            self.assertEqual(standard_prize.__str__(), "undefined")
+
+    def test_surprise_prizes_data(self):
+        for counter in range(1, self.collection.layout.SURPRISE_PRIZE_OPTIONS + 1):
+            surprise_prize = self.collection.surprise_prizes.get(number=counter)
+            self.assertEqual(surprise_prize.description, "undefined")
+            self.assertEqual(str(surprise_prize), "undefined")
 
 
 class ThemeTestCase(TestCase):
