@@ -1,11 +1,28 @@
 from django.contrib import admin
 
-from .models import OldCollection, Coordinate, StandardPrize, SurprisePrize
+from .models import (
+    OldCollection,
+    Coordinate,
+    StandardPrize,
+    SurprisePrize,
+    Collection,
+    Theme,
+)
+
+
+@admin.register(Theme)
+class ThemeAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "image")
 
 
 @admin.register(OldCollection)
-class CollectionAdmin(admin.ModelAdmin):
+class OldCollectionAdmin(admin.ModelAdmin):
     list_display = ("id", "name")
+
+
+@admin.register(Collection)
+class CollectionAdmin(admin.ModelAdmin):
+    list_display = ("id", "theme", "promotion")
 
 
 @admin.register(Coordinate)

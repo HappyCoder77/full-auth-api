@@ -171,7 +171,7 @@ class Edition(models.Model):
                 standard_prize = self.collection.standard_prizes.first()
                 if standard_prize.description == "descripción de premio standard":
                     raise ValidationError(
-                        """La edición a la que se hace referencia parece no tener definidos los premios
+                        """La colección a la que se hace referencia parece no tener definidos los premios
                         standard. Revise e intente de nuevo guardar el registro"""
                     )
 

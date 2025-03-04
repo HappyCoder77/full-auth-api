@@ -6,8 +6,8 @@ from promotions.models import Promotion
 
 
 class Theme(models.Model):
-    name = models.CharField("Tema", max_length=50, unique=True)
-    image = models.ImageField(upload_to="images/themes/")
+    name = models.CharField("Nombre", max_length=50, unique=True)
+    image = models.ImageField("Imagen", upload_to="images/themes/")
 
     def __str__(self):
         return self.name
@@ -53,8 +53,8 @@ class OldCollection(models.Model):
         return self.name
 
     class Meta:
-        verbose_name = "collection"
-        verbose_name_plural = "collections"
+        verbose_name = "old collection"
+        verbose_name_plural = "old collections"
 
     @transaction.atomic
     def save(self, *args, **kwargs):
