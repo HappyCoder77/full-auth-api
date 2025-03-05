@@ -5,10 +5,35 @@ from datetime import timedelta, date
 from django.db import models, transaction
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.db.models import Manager
 from django.utils import timezone
 
 
 User = get_user_model()
+
+
+class PromotionManager(Manager):
+    def is_running(self):
+        now = timezone.now().date()
+        return Promotion.objects.filter(start_date__lte=now, end_date__gte=now).exists()
+
+    def get_current(self):
+        now = timezone.now().date()
+
+        try:
+            return Promotion.objects.get(start_date__lte=now, end_date__gte=now)
+        except Promotion.DoesNotExist:  # pragma: no cover
+            return None
+
+    def get_last(self):
+        now = timezone.now().date()
+
+        try:
+            return (
+                Promotion.objects.filter(end_date__lt=now).order_by("-end_date").first()
+            )
+        except Promotion.DoesNotExist:
+            return None
 
 
 class Promotion(models.Model):
@@ -23,6 +48,7 @@ class Promotion(models.Model):
         pack_cost (DecimalField): El costo unitario del pack para esta promoción.
     """
 
+    objects = PromotionManager()
     start_date = models.DateField("Fecha de Inicio", default=date.today, editable=False)
     duration = models.PositiveSmallIntegerField(
         "duración en días",

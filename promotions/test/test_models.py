@@ -291,3 +291,46 @@ class PromotionValidationTestCase(TestCase):
             "Hay promociones sin cerrar, no se puede crear una nueva promoción.",
             error_messages,
         )
+
+
+class PromotionManagerTestCase(TestCase):
+    def setUp(self):
+        self.today = timezone.now().date()
+        Promotion.objects.all().delete()
+
+    def test_manager_methods_with_ongoing_promotion(self):
+        promotion = PromotionFactory()
+
+        self.assertTrue(Promotion.objects.is_running())
+        self.assertEqual(Promotion.objects.get_current(), promotion)
+        self.assertIsNone(Promotion.objects.get_last())
+
+    def test_manager_methods_with_past_promotion(self):
+        promotion = PromotionFactory(past=True)
+
+        self.assertFalse(Promotion.objects.is_running())
+        self.assertIsNone(Promotion.objects.get_current())
+        self.assertEqual(Promotion.objects.get_last(), promotion)
+
+    def test_manager_methods_with_future_promotion(self):
+        PromotionFactory(future=True)
+
+        self.assertFalse(Promotion.objects.is_running())
+        self.assertIsNone(Promotion.objects.get_current())
+        self.assertIsNone(Promotion.objects.get_last())
+
+    def test_manager_methods_with_no_promotion(self):
+
+        self.assertFalse(Promotion.objects.is_running())
+        self.assertIsNone(Promotion.objects.get_current())
+        self.assertIsNone(Promotion.objects.get_last())
+
+    def test_manager_methods_with_mutiple_promotions(self):
+        past_promotion = PromotionFactory(past=True)
+        current_promotion = PromotionFactory()
+        PromotionFactory(future=True)
+
+        self.assertEqual(Promotion.objects.count(), 3)
+        self.assertTrue(Promotion.objects.is_running())
+        self.assertEqual(Promotion.objects.get_current(), current_promotion)
+        self.assertEqual(Promotion.objects.get_last(), past_promotion)
