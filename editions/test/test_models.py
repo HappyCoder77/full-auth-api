@@ -1,6 +1,7 @@
 import datetime
 
 from unittest import skip
+from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
 from django.test import TestCase
@@ -46,7 +47,7 @@ class EditionTestCase(TestCase):
         packs = Pack.objects.filter(
             box__in=Box.objects.filter(edition_id=self.edition.id)
         )
-        self.assertEqual(self.edition.box_cost, 150)
+        self.assertEqual(self.edition.collection.box_cost, 150)
         self.assertEqual(
             str(self.edition),
             f"{self.edition.collection}",
@@ -186,8 +187,9 @@ class EditionValidationTestCase(TestCase):
 class PromotionMaxDebtTestCase(TestCase):
     def test_promotion_max_debt(self):
         promotion = PromotionFactory()
-        EditionFactory(promotion=promotion, collection__name="Test Promotion")
-        EditionFactory(promotion=promotion, collection__name="Test Promotion 2")
+        CollectionFactory()
+        theme_2 = ThemeFactory(name="Angela")
+        CollectionFactory(theme=theme_2)
 
         self.assertEqual(promotion.max_debt, 150)
 
@@ -218,7 +220,8 @@ class StickerTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.edition = EditionFactory(promotion=PromotionFactory())
+        PromotionFactory()
+        cls.edition = EditionFactory()
 
         for each_prize in cls.edition.collection.standard_prizes.all():
             each_prize.description = "Bingo"
@@ -274,7 +277,7 @@ class StickerTestCase(TestCase):
         for each_pack in self.packs:
             self.assertLessEqual(
                 self.get_stickers_by_pack(each_pack.id),
-                self.edition.collection.STICKERS_PER_PACK,
+                self.edition.collection.layout.STICKERS_PER_PACK,
             )
         counter = 1
         for each_sticker in self.stickers:
@@ -325,44 +328,54 @@ class StickerTestCase(TestCase):
         self.assertTrue(sticker2.is_repeated)
 
     def test_sticker_from_diferent_promotions_are_not_repeated(self):
-        collector = CollectorFactory(user=UserFactory())
-        promotion = PromotionFactory(future=True)
-        edition = EditionFactory(
-            promotion=promotion, collection=self.edition.collection
-        )
+        with patch(
+            "promotions.models.Promotion.objects.get_current"
+        ) as mock_get_current:
+            collector = CollectorFactory(user=UserFactory())
+            promotion = PromotionFactory(future=True)
+            mock_get_current.return_value = promotion
+            collection = CollectionFactory(promotion=promotion, theme__name="Mario")
+            edition = EditionFactory(collection=collection)
+            coordinate = edition.collection.coordinates.filter(rarity_factor=2).first()
+            previous_edition_stickers = self.stickers.filter(
+                coordinate=coordinate
+            ).order_by("id")
 
-        coordinate = self.edition.collection.coordinates.filter(rarity_factor=2).first()
-        previous_edition_stickers = self.stickers.filter(
-            coordinate=coordinate
-        ).order_by("id")
+            print(
+                f"Edition stickers count: {Sticker.objects.filter(pack__box__edition=edition).count()}"
+            )
+            print(
+                f"Coordinate stickers: {Sticker.objects.filter(pack__box__edition=edition, coordinate=coordinate).count()}"
+            )
+            sticker1 = previous_edition_stickers[0]
+            sticker2 = previous_edition_stickers[1]
+            pack1 = sticker1.pack
+            pack1.open(collector.user)
+            sticker1.refresh_from_db()
 
-        sticker1 = previous_edition_stickers[0]
-        sticker2 = previous_edition_stickers[1]
-        pack1 = sticker1.pack
-        pack1.open(collector.user)
-        sticker1.refresh_from_db()
+            pack2 = sticker2.pack
+            pack2.open(collector.user)
+            sticker2.refresh_from_db()
 
-        pack2 = sticker2.pack
-        pack2.open(collector.user)
-        sticker2.refresh_from_db()
+            self.assertTrue(sticker2.is_repeated)
 
-        self.assertTrue(sticker2.is_repeated)
+            # Get a sticker from new edition with same coordinate
+            current_sticker = Sticker.objects.filter(
+                pack__box__edition=edition, coordinate=coordinate
+            ).first()
 
-        # Get a sticker from new edition with same coordinate
-        current_sticker = Sticker.objects.filter(
-            pack__box__edition=edition, coordinate=coordinate
-        ).first()
+            pack3 = current_sticker.pack
+            pack3.open(collector.user)
+            current_sticker.refresh_from_db()
 
-        pack3 = current_sticker.pack
-        pack3.open(collector.user)
-        current_sticker.refresh_from_db()
+            # Should not be repeated since it's from a different edition
+            self.assertFalse(current_sticker.is_repeated)
 
-        # Should not be repeated since it's from a different edition
-        self.assertFalse(current_sticker.is_repeated)
-
-        # Test uncollected sticker
-        uncollected_sticker = self.stickers.filter(coordinate__rarity_factor=1).first()
-        self.assertFalse(uncollected_sticker.is_repeated)
+            # Test uncollected sticker
+            uncollected_sticker = self.stickers.filter(
+                coordinate__rarity_factor=1
+            ).first()
+            self.assertFalse(uncollected_sticker.is_repeated)
 
     def test_create_prize(self):
         prize_sticker = self.stickers.filter(coordinate__absolute_number=0).first()
@@ -436,7 +449,8 @@ class StickerTestCase(TestCase):
 class StickerPrizeTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.edition = EditionFactory(promotion=PromotionFactory())
+        PromotionFactory()
+        cls.edition = EditionFactory()
         cls.dealer = DealerFactory(user=UserFactory())
         cls.collector = CollectorFactory(user=UserFactory())
         cls.user = UserFactory()
@@ -504,15 +518,18 @@ class BoxTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         PromotionFactory()
-        cls.edition = EditionFactory.build()
-        cls.edition.collection.save()
-        for each_prize in cls.edition.collection.standard_prizes.all():
+        theme = ThemeFactory()
+        collection = CollectionFactory(theme=theme)
+
+        for each_prize in collection.standard_prizes.all():
             each_prize.description = "Bingo"
             each_prize.save()
 
-        for each_prize in cls.edition.collection.surprise_prizes.all():
+        for each_prize in collection.surprise_prizes.all():
             each_prize.description = "Bingo"
             each_prize.save()
+
+        cls.edition = EditionFactory.build(collection=collection)
 
         cls.edition.clean()
         cls.edition.save()
@@ -530,8 +547,10 @@ class BoxTestCase(TestCase):
 class PackTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        promotion = PromotionFactory()
-        cls.edition = EditionFactory(promotion=promotion)
+        PromotionFactory()
+        theme = ThemeFactory()
+        collection = CollectionFactory(theme=theme)
+        cls.edition = EditionFactory(collection=collection)
 
     def test_box_data(self):
         for box in self.edition.boxes.all():
