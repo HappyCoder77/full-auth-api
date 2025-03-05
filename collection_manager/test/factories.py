@@ -39,7 +39,6 @@ class CollectionFactory(factory.django.DjangoModelFactory):
         model = Collection
 
     theme = factory.SubFactory(ThemeFactory)
-    promotion = factory.SubFactory(PromotionFactory)
 
 
 def create_test_image(filename="test_image.png"):

@@ -15,7 +15,7 @@ from django.utils import timezone
 from datetime import date
 
 from promotions.models import Promotion
-from collection_manager.models import OldCollection, Coordinate, SurprisePrize
+from collection_manager.models import Collection, Coordinate, SurprisePrize
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -30,8 +30,7 @@ class Edition(models.Model):
     BATCH_SIZE = 1000
     MIN_PACK_POSITION = 1
     MIN_PRIZES_POSITON_GAP = 10
-    promotion = models.ForeignKey(Promotion, on_delete=models.CASCADE, db_index=True)
-    collection = models.ForeignKey(OldCollection, on_delete=models.CASCADE)
+    collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
     circulation = models.DecimalField(
         max_digits=20, decimal_places=0, default=Decimal("1")
     )
@@ -40,7 +39,7 @@ class Edition(models.Model):
         verbose_name = "Edition"
         verbose_name_plural = "Editions"
         indexes = [
-            models.Index(fields=["promotion", "collection"]),
+            models.Index(fields=["collection"]),
             models.Index(fields=["circulation"]),
         ]
 
@@ -115,7 +114,7 @@ class Edition(models.Model):
         total_boxes = boxes.count()
 
         return all(
-            box.packs.count() == self.collection.PACKS_PER_BOX
+            box.packs.count() == self.collection.layout.PACKS_PER_BOX
             for box in boxes[: total_boxes - 1]
         )
 
@@ -135,55 +134,33 @@ class Edition(models.Model):
 
     @property
     def box_cost(self):
-        return self.promotion.pack_cost * self.collection.PACKS_PER_BOX
+        return (
+            self.collection.promotion.pack_cost * self.collection.layout.PACKS_PER_BOX
+        )
 
     def __str__(self):
-        return f"{self.collection.name} {self.promotion}"
+        return f"{self.collection}"
 
     def clean(self):
-        try:  # verifica que exista una promotion
-            last_promotion = Promotion.objects.latest("end_date")
-        except Promotion.DoesNotExist:
-            last_promotion = None
-        # valida la creación del registro dependiendo de si existe o no una promoción
-        # anterior o, en caso de existir, que la misma no haya terminado
+        has_undefined_standard_prize = self.collection.standard_prizes.filter(
+            description="undefined"
+        ).exists()
 
-        if last_promotion == None or last_promotion.end_date < timezone.now().date():
+        if has_undefined_standard_prize:
             raise ValidationError(
-                """No hay ninguna promoción en curso.
-            Por lo tanto, debe crearla primero y luego
-            intentar de nuevo agregar este registro"""
+                """La colección a la que se hace referencia parece no tener definidos los premios
+                standard. Revise e intente de nuevo guardar el registro"""
             )
-        else:
-            try:  # verifica que no exista otra collection con el mismo name
-                collection = self.__class__.objects.get(
-                    collection=self.collection, promotion=last_promotion
-                )
-            except self.__class__.DoesNotExist:
-                collection = None
 
-            if collection != None:
-                raise ValidationError(
-                    """Ya existe una edición con la misma colección;
-                    quiza deberia considerar realizar una reedición."""
-                )
-            else:
-                standard_prize = self.collection.standard_prizes.first()
-                if standard_prize.description == "descripción de premio standard":
-                    raise ValidationError(
-                        """La colección a la que se hace referencia parece no tener definidos los premios
-                        standard. Revise e intente de nuevo guardar el registro"""
-                    )
+        has_undefined_surprise_prize = self.collection.surprise_prizes.filter(
+            description="undefined"
+        ).exists()
 
-                surprise_prize = self.collection.surprise_prizes.first()
-
-                if surprise_prize.description == "descripción de premio sorpresa":
-                    raise ValidationError(
-                        """La edición a la que se hace referencia parece no tener definidos los prizes
-                        sorpresa. Revise e intente de nuevo guardar el registro"""
-                    )
-
-            self.promotion = last_promotion
+        if has_undefined_surprise_prize:
+            raise ValidationError(
+                """La edición a la que se hace referencia parece no tener definidos los prizes
+                sorpresa. Revise e intente de nuevo guardar el registro"""
+            )
 
     @transaction.atomic
     def save(self, *args, **kwargs):
@@ -202,7 +179,7 @@ class Edition(models.Model):
             BATCH_SIZE = 5000
             sticker_list = []
             ordinal = 1
-            prize_rarity = self.collection.PRIZE_STICKER_RARITY
+            prize_rarity = self.collection.layout.PRIZE_STICKER_RARITY
             coordinates = list(self.collection.coordinates.select_related())
 
             limits = {
@@ -267,7 +244,7 @@ class Edition(models.Model):
     def create_packs(self):  # crea los packs de la edición
         pack_list = []
         stickers = Decimal(Sticker.objects.filter(pack__isnull=True).count())
-        limit = (stickers / self.collection.STICKERS_PER_PACK).quantize(
+        limit = (stickers / self.collection.layout.STICKERS_PER_PACK).quantize(
             Decimal("1"), rounding=ROUND_CEILING
         )
 
@@ -318,7 +295,7 @@ class Edition(models.Model):
             prized_sticker_in_pack = False
             stickers_in_pack = 0
 
-            while stickers_in_pack < self.collection.STICKERS_PER_PACK:
+            while stickers_in_pack < self.collection.layout.STICKERS_PER_PACK:
 
                 if not stickers and not skipped_prized_stickers:
                     break
@@ -359,7 +336,7 @@ class Edition(models.Model):
     def create_boxes(self):  # crea los boxes correspondientes a la edition
         box_list = []
         total_packs = Pack.objects.filter(box__isnull=True).count()
-        limit = Decimal(total_packs / self.collection.PACKS_PER_BOX).quantize(
+        limit = Decimal(total_packs / self.collection.layout.PACKS_PER_BOX).quantize(
             Decimal("1"), rounding=ROUND_CEILING
         )
         counter = 1
@@ -379,7 +356,7 @@ class Edition(models.Model):
         positions = set()
 
         while len(positions) < 2:
-            pos = random.randrange(1, self.collection.PACKS_PER_BOX)
+            pos = random.randrange(1, self.collection.layout.PACKS_PER_BOX)
             if not any(abs(pos - p) <= self.MIN_PRIZES_POSITON_GAP for p in positions):
                 positions.add(pos)
         return sorted(positions)
@@ -397,7 +374,7 @@ class Edition(models.Model):
         box_packs = []
         # logging.info(f"Prize positions for box {box.id}: {prize_positions}")
         packs_to_place = min(
-            self.collection.PACKS_PER_BOX, len(standard_packs) + len(prize_packs)
+            self.collection.layout.PACKS_PER_BOX, len(standard_packs) + len(prize_packs)
         )
         # logging.info(f"Packs to place in box {box.id}: {packs_to_place}")
         # if packs_to_place < 100:
@@ -483,7 +460,9 @@ class Edition(models.Model):
         # logging.info(f"Total packs after classification: {remaining_packs}")
 
         for box in self.boxes.iterator():
-            packs_for_this_box = min(self.collection.PACKS_PER_BOX, remaining_packs)
+            packs_for_this_box = min(
+                self.collection.layout.PACKS_PER_BOX, remaining_packs
+            )
             # # logging.info(f"Box {box.id} will receive {packs_for_this_box} packs")
             prize_positions = self._generate_prize_positions()
             packs_placed = self._fill_single_box(

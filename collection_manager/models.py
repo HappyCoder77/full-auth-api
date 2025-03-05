@@ -1,8 +1,11 @@
 import random
 from decimal import Decimal
+from datetime import date
 
+from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from promotions.models import Promotion
+from promotions.utils import get_last_promotion
 
 
 class Theme(models.Model):
@@ -38,8 +41,10 @@ class Collection(models.Model):
     """Represents a specific collection within a theme"""
 
     theme = models.ForeignKey(Theme, on_delete=models.PROTECT)
-    promotion = models.ForeignKey(Promotion, on_delete=models.CASCADE, db_index=True)
-    layout = models.ForeignKey(Layout, on_delete=models.PROTECT, null=True)
+    promotion = models.ForeignKey(
+        Promotion, on_delete=models.CASCADE, db_index=True, null=True, blank=True
+    )
+    layout = models.ForeignKey(Layout, on_delete=models.PROTECT, null=True, blank=True)
 
     def __str__(self):
         return f"{self.theme} {self.promotion}"
@@ -51,11 +56,25 @@ class Collection(models.Model):
             )
         ]
 
+    def clean(self):
+        current_promotion = Promotion.objects.get_current()
+
+        if not current_promotion:
+            raise ValidationError(
+                """No hay ninguna promoción en curso.
+            Por lo tanto, debe crearla primero y luego
+            intentar de nuevo agregar este registro"""
+            )
+
+        self.promotion = current_promotion
+
     @transaction.atomic
     def save(self, *args, **kwargs):
         self.layout = Layout.objects.create()
+        self.full_clean()
         super(Collection, self).save(*args, **kwargs)
         self.create_coordinates()
+        self.refresh_from_db()
         self.shuffle_coordinates()
         self.distribute_rarity()
         self.create_standard_prizes()
@@ -104,25 +123,16 @@ class Collection(models.Model):
         coordinates_list = []
         current_page = 1
 
-        # bucle que itera pack cada page del álbum
         while current_page <= self.layout.PAGES:
-            list = []
-            counter = 1
+            page_coordinates = self.coordinates.filter(page=current_page)
+            slots_count = page_coordinates.count()
 
-            # bucle que itera pack cada cada sticker del la página en curso
-            # y llena la list con range_options igual al número de coordinates por page
-            while counter <= self.layout.SLOTS_PER_PAGE:
-                list.append(counter)
-                counter += 1
+            shuffle_list = list(range(1, slots_count + 1))
+            random.shuffle(shuffle_list)
 
-            random.shuffle(list)  # desordena la ista obtenida
-            counter = 0
-
-            # edito la propiedad ordinal para generar el desordenamiento de las coordinates por cada página
-            for each_coordinate in self.coordinates.filter(page=current_page):
-                each_coordinate.ordinal = list[counter]
-                coordinates_list.append(each_coordinate)
-                counter += 1
+            for idx, coordinate in enumerate(page_coordinates):
+                coordinate.ordinal = shuffle_list[idx]
+                coordinates_list.append(coordinate)
 
             current_page += 1
 

@@ -1,9 +1,13 @@
 from datetime import timedelta, date
+import datetime
 from django.db import IntegrityError, transaction
+from django.core.exceptions import ValidationError
 from django.db.models import ProtectedError
 from django.test import TestCase
+from django.utils import timezone
 
 from promotions.models import Promotion
+from promotions.test.factories import PromotionFactory
 from ..models import OldCollection, SurprisePrize, Theme, Collection, Layout
 from .factories import OldCollectionFactory, ThemeFactory, CollectionFactory
 
@@ -11,6 +15,7 @@ from .factories import OldCollectionFactory, ThemeFactory, CollectionFactory
 class CollectionTestCase(TestCase):
 
     def setUp(self):
+        PromotionFactory()
         self.collection = CollectionFactory(theme__with_image=True)
         self.promotion = Promotion.objects.first()
         self.layout = Layout.objects.first()
@@ -155,7 +160,7 @@ class CollectionTestCase(TestCase):
 
     def test_collection_unique_constraint(self):
         with transaction.atomic():
-            with self.assertRaises(IntegrityError):
+            with self.assertRaises(ValidationError):
                 CollectionFactory(
                     theme=self.collection.theme, promotion=self.collection.promotion
                 )
@@ -210,6 +215,30 @@ class CollectionTestCase(TestCase):
             surprise_prize = self.collection.surprise_prizes.get(number=counter)
             self.assertEqual(surprise_prize.description, "undefined")
             self.assertEqual(str(surprise_prize), "undefined")
+
+    def test_clean_with_no_promotion(self):
+        Promotion.objects.all().delete()
+
+        collection = CollectionFactory.build(promotion=None)
+        with self.assertRaises(ValidationError) as context:
+            collection.full_clean()
+        self.assertIn("No hay ninguna promoción en curso", str(context.exception))
+
+    def test_no_current_promotion(self):
+        Promotion.objects.all().delete()
+        PromotionFactory(past=True)
+        theme = ThemeFactory(name="barbie")
+        collection = CollectionFactory.build(theme=theme)
+
+        with self.assertRaises(ValidationError) as context:
+            collection.full_clean()
+        error_messages = context.exception.messages
+        self.assertTrue(
+            any(
+                "No hay ninguna promoción en curso." in message
+                for message in error_messages
+            )
+        )
 
 
 class ThemeTestCase(TestCase):

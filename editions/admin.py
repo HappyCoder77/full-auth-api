@@ -7,14 +7,12 @@ from .models import Edition, Box, Pack, Sticker, StickerPrize
 class EditionAdmin(admin.ModelAdmin):
     list_display = (
         "id",
-        "promotion",
         "collection",
         "circulation",
         "distribution_status",
     )
     readonly_fields = ["distribution_stats", "validation_details"]
-    list_filter = ("promotion", "collection")
-    exclude = ("promotion",)
+    list_filter = ("collection",)
     search_fields = ["collection__name", "promotion__name"]
     fieldsets = (
         (None, {"fields": ("collection", "circulation")}),

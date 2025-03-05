@@ -4,12 +4,12 @@ from .models import Promotion
 
 # TODO: eliminar este archivo. fue mudado al manager
 def promotion_is_running():
-    now = timezone.now()
+    now = timezone.now().date()
     return Promotion.objects.filter(start_date__lte=now, end_date__gte=now).exists()
 
 
 def get_current_promotion():
-    now = timezone.now()
+    now = timezone.now().date()
 
     try:
         return Promotion.objects.get(start_date__lte=now, end_date__gte=now)
@@ -18,7 +18,7 @@ def get_current_promotion():
 
 
 def get_last_promotion():
-    now = timezone.now()
+    now = timezone.now().date()
 
     try:
         return Promotion.objects.filter(end_date__lt=now).order_by("-end_date").first()
