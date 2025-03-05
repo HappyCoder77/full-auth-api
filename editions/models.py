@@ -132,12 +132,6 @@ class Edition(models.Model):
             pack.stickers.count() > 0 for pack in packs
         )
 
-    @property
-    def box_cost(self):
-        return (
-            self.collection.promotion.pack_cost * self.collection.layout.PACKS_PER_BOX
-        )
-
     def __str__(self):
         return f"{self.collection}"
 

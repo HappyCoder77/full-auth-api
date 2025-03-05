@@ -40,11 +40,28 @@ class Layout(models.Model):
 class Collection(models.Model):
     """Represents a specific collection within a theme"""
 
-    theme = models.ForeignKey(Theme, on_delete=models.PROTECT)
-    promotion = models.ForeignKey(
-        Promotion, on_delete=models.CASCADE, db_index=True, null=True, blank=True
+    theme = models.ForeignKey(
+        Theme, on_delete=models.PROTECT, related_name="collections"
     )
-    layout = models.ForeignKey(Layout, on_delete=models.PROTECT, null=True, blank=True)
+    promotion = models.ForeignKey(
+        Promotion,
+        on_delete=models.CASCADE,
+        db_index=True,
+        null=True,
+        blank=True,
+        related_name="collections",
+    )
+    layout = models.ForeignKey(
+        Layout,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="collections",
+    )
+
+    @property
+    def box_cost(self):
+        return self.promotion.pack_cost * self.layout.PACKS_PER_BOX
 
     def __str__(self):
         return f"{self.theme} {self.promotion}"
