@@ -491,7 +491,9 @@ class Edition(models.Model):
 
 
 class Box(models.Model):
-    edition = models.ForeignKey(Edition, on_delete=models.CASCADE, related_name="boxes")
+    collection = models.ForeignKey(
+        Collection, on_delete=models.CASCADE, related_name="boxes"
+    )
     ordinal = models.BigIntegerField("ordinal_box", default=0)
 
     class Meta:
