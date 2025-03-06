@@ -5,6 +5,7 @@ from datetime import date
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from editions.models import Edition, Pack, Sticker
+from collection_manager.models import Collection
 
 from collection_manager.models import StandardPrize
 
@@ -14,8 +15,8 @@ User = get_user_model()
 
 class Album(models.Model):
     collector = models.ForeignKey(User, on_delete=models.CASCADE, related_name="albums")
-    edition = models.ForeignKey(
-        Edition, on_delete=models.CASCADE, related_name="albumes"
+    collection = models.ForeignKey(
+        Collection, on_delete=models.CASCADE, related_name="albums"
     )
 
     def __str__(self):
@@ -23,11 +24,11 @@ class Album(models.Model):
 
     class Meta:
         verbose_name_plural = "Albums"
-        unique_together = ("collector", "edition")
+        unique_together = ("collector", "collection")
 
     @property
     def image(self):
-        return self.edition.collection.image
+        return self.collection.image
 
     @property
     def missing_stickers(self):
@@ -46,7 +47,7 @@ class Album(models.Model):
         self.number_slots()
 
     def create_pages(self):
-        pages = self.edition.collection.PAGES
+        pages = self.collection.layout.PAGES
         counter = 1
 
         while counter <= pages:
@@ -59,9 +60,7 @@ class Album(models.Model):
         counter = 1
 
         for each_slot in slots:
-            coordinate = self.edition.collection.coordinates.get(
-                absolute_number=counter
-            )
+            coordinate = self.collection.coordinates.get(absolute_number=counter)
             each_slot.absolute_number = counter
             each_slot.image = coordinate.image
             each_slot.save()
@@ -70,10 +69,12 @@ class Album(models.Model):
     def pack_inbox(self):
         try:
             if Pack.objects.filter(
-                collector=self.collector, box__edition=self.edition, is_open=False
+                collector=self.collector, box__collection=self.collection, is_open=False
             ).exists():
                 return Pack.objects.filter(
-                    collector=self.collector, box__edition=self.edition, is_open=False
+                    collector=self.collector,
+                    box__collection=self.collection,
+                    is_open=False,
                 )
             else:
                 return None
@@ -84,21 +85,24 @@ class Album(models.Model):
         """
         Returns a queryset of stickers that are on the board for the collector of this album.
         """
+
         try:
+
             if Sticker.objects.filter(
                 collector=self.collector,
-                pack__box__edition=self.edition,
+                pack__box__collection=self.collection,
                 coordinate__absolute_number__gte=1,
                 on_the_board=True,
             ).exists():
                 return Sticker.objects.filter(
                     collector=self.collector,
-                    pack__box__edition=self.edition,
+                    pack__box__collection=self.collection,
                     coordinate__absolute_number__gte=1,
                     on_the_board=True,
                 )
             else:
                 return None
+
         except Exception:
             return None
 
@@ -109,7 +113,7 @@ class Album(models.Model):
 
         query = Sticker.objects.filter(
             collector=self.collector,
-            pack__box__edition=self.edition,
+            pack__box__collection=self.collection,
             coordinate__absolute_number=0,
             prize__isnull=True,
             on_the_board=False,
