@@ -573,7 +573,7 @@ class Sticker(models.Model):
         query = Sticker.objects.filter(
             collector=self.collector,
             coordinate=self.coordinate,
-            pack__box__edition=self.edition,
+            pack__box__edition__collection=self.edition.collection,
         ).exclude(id=self.id)
 
         return query.exists()

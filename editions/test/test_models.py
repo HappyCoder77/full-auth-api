@@ -231,14 +231,17 @@ class StickerTestCase(TestCase):
             each_prize.description = "Bingo"
             each_prize.save()
 
-        cls.stickers = Sticker.objects.all().order_by("ordinal")
+        cls.stickers = Sticker.objects.filter(pack__box__edition=cls.edition).order_by(
+            "ordinal"
+        )
         cls.collectible_stickers = cls.stickers.exclude(coordinate__page=99)
-        cls.box = cls.edition.boxes.get(edition=cls.edition)
+        cls.box = Box.objects.filter(edition=cls.edition).first()
         cls.packs = Pack.objects.filter(box__edition=cls.edition)
         # como la edition es pequeña (1 ejemplar) para fines de test, omitimos rarezas inferiores a cero
         cls.coordinates = Coordinate.objects.filter(
             collection=cls.edition.collection,
         )
+
         cls.common_coordinates = cls.coordinates.filter(rarity_factor__gte=1)
 
     def setUp(self):
@@ -257,11 +260,14 @@ class StickerTestCase(TestCase):
     def test_stickers_data(self):
 
         for each_sticker in self.stickers:
+            self.assertFalse(each_sticker.is_repeated)
+            self.assertFalse(each_sticker.on_the_board)
+            self.assertFalse(each_sticker.is_rescued)
+            self.assertIsNone(each_sticker.collector)
             self.assertEqual(each_sticker.box, self.box)
             self.assertEqual(str(each_sticker), str(each_sticker.number))
             self.assertEqual(each_sticker.edition, self.edition)
             self.assertEqual(each_sticker.collection, self.edition.collection)
-            self.assertEqual(each_sticker.edition, self.edition)
             self.assertEqual(
                 each_sticker.number, each_sticker.coordinate.absolute_number
             )
@@ -279,23 +285,13 @@ class StickerTestCase(TestCase):
                 self.get_stickers_by_pack(each_pack.id),
                 self.edition.collection.layout.STICKERS_PER_PACK,
             )
+
         counter = 1
+
         for each_sticker in self.stickers:
             self.assertEqual(each_sticker.ordinal, counter)
             counter += 1
-            self.assertEqual(str(each_sticker), str(each_sticker.number))
-            self.assertEqual(each_sticker.edition, self.edition)
-            self.assertEqual(each_sticker.collection, self.edition.collection)
-            self.assertEqual(
-                each_sticker.number, each_sticker.coordinate.absolute_number
-            )
-            self.assertEqual(each_sticker.page, each_sticker.coordinate.page)
-            self.assertEqual(each_sticker.rarity, each_sticker.coordinate.rarity_factor)
-            self.assertEqual(each_sticker.box, each_sticker.pack.box)
-            self.assertFalse(each_sticker.is_repeated)
-            self.assertFalse(each_sticker.on_the_board)
-            self.assertFalse(each_sticker.is_rescued)
-            self.assertIsNone(each_sticker.collector)
+
             try:
                 each_sticker.slot
                 self.fail(
@@ -334,38 +330,43 @@ class StickerTestCase(TestCase):
             collector = CollectorFactory(user=UserFactory())
             promotion = PromotionFactory(future=True)
             mock_get_current.return_value = promotion
-            collection = CollectionFactory(promotion=promotion, theme__name="Mario")
-            edition = EditionFactory(collection=collection)
-            coordinate = edition.collection.coordinates.filter(rarity_factor=2).first()
-            previous_edition_stickers = self.stickers.filter(
-                coordinate=coordinate
-            ).order_by("id")
+            edition = EditionFactory(collection__theme=self.edition.collection.theme)
 
-            print(
-                f"Edition stickers count: {Sticker.objects.filter(pack__box__edition=edition).count()}"
+            coordinate_previous_collection = self.edition.collection.coordinates.filter(
+                slot_number__in=[3, 4], page__lt=99
+            ).first()
+
+            sticker1 = Sticker.objects.filter(
+                pack__box__edition=self.edition,
+                coordinate=coordinate_previous_collection,
+            ).first()
+
+            sticker2 = (
+                Sticker.objects.filter(
+                    pack__box__edition=self.edition,
+                    coordinate=coordinate_previous_collection,
+                )
+                .exclude(id=sticker1.id)
+                .first()
             )
-            print(
-                f"Coordinate stickers: {Sticker.objects.filter(pack__box__edition=edition, coordinate=coordinate).count()}"
-            )
-            sticker1 = previous_edition_stickers[0]
-            sticker2 = previous_edition_stickers[1]
-            pack1 = sticker1.pack
-            pack1.open(collector.user)
+
+            sticker1.pack.open(collector.user)
+            sticker2.pack.open(collector.user)
             sticker1.refresh_from_db()
-
-            pack2 = sticker2.pack
-            pack2.open(collector.user)
             sticker2.refresh_from_db()
 
             self.assertTrue(sticker2.is_repeated)
 
             # Get a sticker from new edition with same coordinate
+            coordinate2 = edition.collection.coordinates.get(
+                page=coordinate_previous_collection.page,
+                slot_number=coordinate_previous_collection.slot_number,
+            )
             current_sticker = Sticker.objects.filter(
-                pack__box__edition=edition, coordinate=coordinate
+                pack__box__edition=edition, coordinate=coordinate2
             ).first()
 
-            pack3 = current_sticker.pack
-            pack3.open(collector.user)
+            current_sticker.pack.open(collector.user)
             current_sticker.refresh_from_db()
 
             # Should not be repeated since it's from a different edition
@@ -409,8 +410,7 @@ class StickerTestCase(TestCase):
 
         # Test single sticker (not repeated)
         collector = CollectorFactory(user=UserFactory())
-        pack = sticker.pack
-        pack.open(collector.user)
+        sticker.pack.open(collector.user)
         sticker.refresh_from_db()
         self.assertFalse(sticker.check_is_repeated())
 
