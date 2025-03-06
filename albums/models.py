@@ -132,7 +132,7 @@ class Page(models.Model):
     @property
     def prize(self):
         prize = StandardPrize.objects.get(
-            collection=self.album.edition.collection, page=self.number
+            collection=self.album.collection, page=self.number
         )
 
         return prize
@@ -157,14 +157,14 @@ class Page(models.Model):
             raise ValidationError("Esta página ya tiene un premio asignado")
 
         prize = StandardPrize.objects.get(
-            collection=self.album.edition.collection, page=self.number
+            collection=self.album.collection, page=self.number
         )
 
         return PagePrize.objects.create(page=self, prize=prize)
 
     def create_slots(self):
         slot_list = []
-        slots = self.album.edition.collection.SLOTS_PER_PAGE
+        slots = self.album.collection.layout.SLOTS_PER_PAGE
         counter = 1
 
         while counter <= slots:
