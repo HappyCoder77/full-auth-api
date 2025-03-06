@@ -65,9 +65,9 @@ class EditionAdmin(admin.ModelAdmin):
 
 @admin.register(Box)
 class BoxAdmin(admin.ModelAdmin):
-    list_display = ("collection", "collection_id", "id", "ordinal")
+    list_display = ("edition", "edition_id", "id", "ordinal")
     ordering = ("id",)
-    list_filter = ("collection", "ordinal")
+    list_filter = ("edition", "ordinal")
 
     def has_add_permission(self, request):
         return False
@@ -91,7 +91,7 @@ class PackAdmin(admin.ModelAdmin):
         "sale",
     )
     ordering = ("id",)
-    list_filter = ("box", "box__collection", "sale__sale", "collector", "is_open")
+    list_filter = ("box", "box__edition", "sale__sale", "collector", "is_open")
     search_fields = ("box__edition__name",)
 
     def has_add_permission(self, request):

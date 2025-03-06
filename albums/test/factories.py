@@ -1,6 +1,6 @@
 import factory
 
-from editions.test.factories import EditionFactory
+from collection_manager.test.factories import CollectionFactory
 from authentication.test.factories import UserFactory
 from ..models import Album
 
@@ -10,4 +10,4 @@ class AlbumFactory(factory.django.DjangoModelFactory):
         model = Album
 
     collector = factory.SubFactory(UserFactory)
-    edition = factory.SubFactory(EditionFactory)
+    collection = factory.SubFactory(CollectionFactory)

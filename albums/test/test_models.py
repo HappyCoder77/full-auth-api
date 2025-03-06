@@ -7,6 +7,7 @@ from django.urls import reverse
 from authentication.test.factories import UserFactory
 from promotions.test.factories import PromotionFactory
 from editions.models import Sticker
+from editions.test.factories import EditionFactory
 from collection_manager.models import Coordinate, StandardPrize
 from collection_manager.test.factories import OldCollectionFactory
 from users.test.factories import CollectorFactory, DealerFactory
@@ -18,24 +19,19 @@ from .factories import AlbumFactory
 class AlbumTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        promotion = PromotionFactory()
+        PromotionFactory()
+        edition = EditionFactory()
         cls.album = AlbumFactory(
-            collector__email="albumcollector@example.com",
-            edition__promotion=promotion,
-            edition__collection__name="Los Simpsons",
+            collector__email="collector@example.com", collection=edition.collection
         )
-        cls.pages = cls.album.edition.collection.PAGES
-        cls.slots = cls.album.edition.collection.SLOTS_PER_PAGE
+        cls.pages = cls.album.collection.layout.PAGES
+        cls.slots = cls.album.collection.layout.SLOTS_PER_PAGE
         cls.total_slots = cls.slots * cls.pages
 
     def test_album_data(self):
 
-        self.assertEqual(self.album.collector.email, "albumcollector@example.com")
-        self.assertEqual(
-            self.album.edition.collection.name,
-            "Los Simpsons",
-        )
-        self.assertEqual(str(self.album), str(self.album.edition))
+        self.assertEqual(self.album.collector.email, "collector@example.com")
+        self.assertEqual(str(self.album), str(self.album.collection))
         self.assertEqual(self.album.pages.count(), self.pages)
         self.assertEqual(Slot.objects.count(), self.total_slots)
         self.assertEqual(self.album.missing_stickers, 24)
@@ -46,11 +42,15 @@ class AlbumTestCase(TestCase):
     def test_unique_constraint(self):
 
         with self.assertRaises(IntegrityError):
-            AlbumFactory(collector=self.album.collector, edition=self.album.edition)
+            AlbumFactory(
+                collector=self.album.collector, collection=self.album.collection
+            )
 
     def test_prized_stickers(self):
+        prized = Sticker.objects.all()
+        print(prized)
         prized_sticker = Sticker.objects.filter(
-            pack__box__edition=self.album.edition,
+            pack__box__collection=self.album.collection,
             coordinate__absolute_number=0,
             prize__isnull=True,
             on_the_board=False,

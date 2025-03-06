@@ -20,7 +20,7 @@ class Album(models.Model):
     )
 
     def __str__(self):
-        return f"{self.edition}"
+        return f"{self.collection}"
 
     class Meta:
         verbose_name_plural = "Albums"
