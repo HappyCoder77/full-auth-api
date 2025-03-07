@@ -4,9 +4,11 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from albums.models import Page, Pack
 from albums.test.factories import AlbumFactory
-from collection_manager.test.factories import OldCollectionFactory
+from editions.test.factories import EditionFactory
 from collection_manager.models import Coordinate
+from collection_manager.test.factories import CollectionFactory
 from editions.models import Sticker
+from promotions.test.factories import PromotionFactory
 
 from ..models import BaseProfile, RegionalManager, Dealer, Collector
 from authentication.test.factories import UserFactory
@@ -155,15 +157,17 @@ class DealerTestCase(TestCase):
 class CollectorTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        collection = OldCollectionFactory()
+        PromotionFactory()
+        collection = CollectionFactory()
         coordinate = Coordinate.objects.get(rarity_factor=0.02)
         coordinate.rarity_factor = 1
         coordinate.save()
+        edition = EditionFactory(collection=collection)
         cls.user = UserFactory()
         cls.dealer = DealerFactory(user=UserFactory())
         cls.collector = CollectorFactory(user=cls.user, email=cls.user.email)
         cls.album = AlbumFactory(
-            collector=cls.collector.user, edition__collection=collection
+            collector=cls.collector.user, collection=edition.collection
         )
         cls.page = Page.objects.get(number=1)
         cls.packs = Pack.objects.all()

@@ -265,7 +265,10 @@ class StickerTestCase(TestCase):
             self.assertFalse(each_sticker.is_rescued)
             self.assertIsNone(each_sticker.collector)
             self.assertEqual(each_sticker.box, self.box)
-            self.assertEqual(str(each_sticker), str(each_sticker.number))
+            self.assertEqual(
+                str(each_sticker),
+                f"Barajita nº {each_sticker.number}, {self.box.edition.collection}",
+            )
             self.assertEqual(each_sticker.edition, self.edition)
             self.assertEqual(each_sticker.collection, self.edition.collection)
             self.assertEqual(
