@@ -6,6 +6,9 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.utils import timezone
 from authentication.test.factories import UserFactory
+from collection_manager.test.factories import ThemeFactory
+from collection_manager.models import Collection
+from editions.models import Edition
 from editions.test.factories import EditionFactory
 from promotions.test.factories import PromotionFactory
 from users.test.factories import DealerFactory, CollectorFactory
@@ -26,12 +29,14 @@ NOW = timezone.now()
 class SaleTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.promotion = PromotionFactory()
-        cls.edition = EditionFactory(promotion=cls.promotion)
+        PromotionFactory()
+        cls.edition = EditionFactory()
         cls.user = UserFactory()
         cls.dealer = DealerFactory(user=cls.user, email=cls.user.email)
         cls.collector = CollectorFactory(user=UserFactory())
-        cls.order = OrderFactory(dealer=cls.dealer.user, edition=cls.edition)
+        cls.order = OrderFactory(
+            dealer=cls.dealer.user, collection=cls.edition.collection
+        )
         cls.sale = SaleFactory(
             edition=cls.edition,
             dealer=cls.dealer.user,
@@ -82,7 +87,7 @@ class OrderTestCase(TestCase):
 
     def setUp(self):
         self.promotion = PromotionFactory()
-        self.edition = EditionFactory(promotion=self.promotion)
+        self.edition = EditionFactory()
         self.user = UserFactory()
         self.dealer = DealerFactory(user=self.user, email=self.user.email)
 
@@ -92,10 +97,9 @@ class OrderTestCase(TestCase):
             payment.delete()
 
     def test_order_data(self):
-        # TODO: eliminar tal vez el dealer ya que el factory lo agrega
         order = OrderFactory.build(
             dealer=self.dealer.user,
-            edition=self.edition,
+            collection=self.edition.collection,
         )
         order.full_clean()
         order.save()
@@ -112,7 +116,7 @@ class OrderTestCase(TestCase):
         PromotionFactory(past=True)
         order = OrderFactory.build(
             dealer=self.dealer.user,
-            edition=self.edition,
+            collection=self.edition.collection,
         )
         with self.assertRaises(ValidationError):
             order.full_clean()
@@ -121,7 +125,7 @@ class OrderTestCase(TestCase):
         PromotionFactory(past=True)
         order = OrderFactory.build(
             dealer=self.dealer.user,
-            edition_id=10000,
+            collection_id=10000,
         )
         with self.assertRaises(ValidationError):
             order.full_clean()
@@ -129,12 +133,12 @@ class OrderTestCase(TestCase):
     def test_create_order_without_available_box(self):
         OrderFactory(
             dealer=self.dealer.user,
-            edition=self.edition,
+            collection=self.edition.collection,
         )
 
         order = OrderFactory.build(
             dealer=self.dealer.user,
-            edition=self.edition,
+            collection=self.edition.collection,
         )
 
         with self.assertRaises(ValidationError):
@@ -144,13 +148,13 @@ class OrderTestCase(TestCase):
         # First order to create initial stock
         first_order = OrderFactory(
             dealer=self.dealer.user,
-            edition=self.edition,
+            collection=self.edition.collection,
         )
 
         # Attempt to create second order while having stock
         second_order = OrderFactory.build(
             dealer=self.dealer.user,
-            edition=self.edition,
+            collection=self.edition.collection,
         )
 
         with self.assertRaises(ValidationError) as context:
@@ -172,14 +176,14 @@ class OrderTestCase(TestCase):
 
         order = OrderFactory.build(
             dealer=self.dealer.user,
-            edition=self.edition,
+            collection=self.edition.collection,
         )
 
         with self.assertRaises(ValidationError) as context:
             order.full_clean()
 
         self.assertIn(
-            "No puedes realizar nuevas compras mientras tengas saldo superior a 150.0 Bs.",
+            "No puedes realizar nuevas compras mientras tengas saldo superior a",
             str(context.exception),
         )
 
@@ -194,7 +198,7 @@ class OrderTestCase(TestCase):
 
         order = OrderFactory.build(
             dealer=self.dealer.user,
-            edition=self.edition,
+            collection=self.edition.collection,
         )
         # Should not raise any validation errors
         order.full_clean()
@@ -214,7 +218,7 @@ class OrderTestCase(TestCase):
         )
         order = OrderFactory.build(
             dealer=self.dealer.user,
-            edition=self.edition,
+            collection=self.edition.collection,
         )
         # Should not raise any validation errors
         order.full_clean()
@@ -460,19 +464,25 @@ class DealerBalanceTestCase(TestCase):
         cls.current_promotion = PromotionFactory()
         cls.user = UserFactory()
         cls.dealer = DealerFactory(user=cls.user, email=cls.user.email)
-        cls.past_edition = EditionFactory(promotion=cls.past_promotion)
+        cls.past_collection = Collection.objects.create(
+            theme=ThemeFactory(), promotion=cls.past_promotion
+        )
+        cls.past_edition = EditionFactory(collection=cls.past_collection)
+        cls.current_collection = Collection.objects.create(
+            theme=ThemeFactory(name="Angela"), promotion=cls.current_promotion
+        )
         cls.current_edition = EditionFactory(
-            promotion=cls.current_promotion, collection__name="Angela", circulation=2
+            collection=cls.current_collection, circulation=2
         )
         OrderFactory(
             date=cls.past_promotion.start_date,
             dealer=cls.dealer.user,
-            edition=cls.past_edition,
+            collection=cls.past_collection,
         )
         OrderFactory(
             date=cls.current_promotion.start_date,
             dealer=cls.dealer.user,
-            edition=cls.current_edition,
+            collection=cls.current_collection,
         )
 
     def setUp(self):

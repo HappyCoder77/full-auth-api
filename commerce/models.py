@@ -14,6 +14,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from users.models import Collector
+from collection_manager.models import Collection
 from editions.models import Edition, Box, Pack
 from promotions.models import Promotion
 from promotions.utils import promotion_is_running
@@ -107,7 +108,9 @@ class SaleDetail(models.Model):
 class Order(models.Model):
     dealer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="orders")
     date = models.DateField(default=timezone.now)
-    edition = models.ForeignKey(Edition, on_delete=models.CASCADE, null=True)
+    collection = models.ForeignKey(
+        Collection, on_delete=models.CASCADE, related_name="orders"
+    )
     box = models.OneToOneField(Box, on_delete=models.CASCADE, null=True, blank=True)
     pack_cost = models.DecimalField(
         verbose_name="costo unitario del sobre",
@@ -126,20 +129,16 @@ class Order(models.Model):
         return amount
 
     def clean(self):
-        if not promotion_is_running():
+        if not Promotion.objects.is_running():
             raise ValidationError(
                 "No hay ninguna promoción en curso; no se puede realizar esta acción"
             )
-        if not get_current_editions():
-            raise ValidationError(
-                "No hay ninguna edición en curso; no se puede realizar esta acción"
-            )
 
-        if not Edition.objects.filter(pk=self.edition_id).exists():
-            raise ValidationError("No existe ninguna edición con el id suministrado")
+        if not Collection.objects.filter(pk=self.collection_id).exists():
+            raise ValidationError("No existe ninguna colección con el id suministrado")
 
         current_pack_stock = self.dealer.baseprofile.dealer.get_pack_stock(
-            edition_id=self.edition_id
+            collection_id=self.collection_id
         )
 
         dealer_balance = (
@@ -150,10 +149,10 @@ class Order(models.Model):
 
         if (
             dealer_balance
-            and dealer_balance.current_balance > self.edition.promotion.max_debt
+            and dealer_balance.current_balance > self.collection.promotion.max_debt
         ):
             raise ValidationError(
-                f"No puedes realizar nuevas compras mientras tengas saldo superior a {self.edition.promotion.max_debt} Bs."
+                f"No puedes realizar nuevas compras mientras tengas saldo superior a {self.collection.promotion.max_debt} Bs."
             )
 
         if current_pack_stock > 0:
@@ -161,13 +160,15 @@ class Order(models.Model):
                 "No puedes comprar mas sobres mientras tengas inventario disponible"
             )
 
-        box = Box.objects.filter(edition=self.edition, order__isnull=True).first()
+        box = Box.objects.filter(
+            edition__collection=self.collection, order__isnull=True
+        ).first()
 
         if not box:
             raise ValidationError(f"No hay paquetes disponibles para esta edición")
 
         self.box = box
-        self.pack_cost = self.box.edition.promotion.pack_cost
+        self.pack_cost = self.collection.promotion.pack_cost
 
     @transaction.atomic
     def save(self, *args, **kwargs):

@@ -579,7 +579,7 @@ class Sticker(models.Model):
         return query.exists()
 
     def __str__(self):
-        return str(self.coordinate.absolute_number)
+        return f"Barajita nº {self.number}, {self.pack.box.edition.collection}"
 
     @property
     def edition(self):

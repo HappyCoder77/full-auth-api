@@ -372,7 +372,7 @@ class Coordinate(models.Model):
     image = models.ImageField(upload_to="images/coordinates/", null=True, blank=True)
 
     def __str__(self):
-        return str(self.absolute_number)
+        return f"Pagina:{self.page}, Casilla nº: {self.slot_number}, Nº absoluto: {self.absolute_number}, rareza: {self.rarity_factor}"
 
     class Meta:
         verbose_name_plural = "Coordinates"

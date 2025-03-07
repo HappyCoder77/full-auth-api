@@ -4,6 +4,7 @@ from django.utils.translation import gettext_lazy as _
 from albums.models import PagePrize
 from editions.models import Pack, StickerPrize
 from authentication.models import UserAccount
+from promotions.models import Promotion
 from promotions.utils import promotion_is_running, get_current_promotion
 
 GENERO_CHOICES = [("M", "Masculino"), ("F", "Femenino")]
@@ -67,22 +68,15 @@ class Dealer(BaseProfile):
         related_name="created_dealers",
     )
 
-    def get_pack_stock(self, edition_id=None):
-        if not promotion_is_running():
-            return 0
-
-        promotion = get_current_promotion()
+    def get_pack_stock(self, collection_id=None):
 
         query = Pack.objects.filter(
             box__order__dealer=self.user,
-            box__edition__promotion=promotion,
+            box__edition__collection_id=collection_id,
             sale__isnull=True,
         )
 
-        if edition_id:
-            query = query.filter(box__edition_id=edition_id)
-
-        return query.count()
+        return query.count() if query.exists() else 0
 
 
 class Collector(BaseProfile):

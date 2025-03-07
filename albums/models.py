@@ -20,7 +20,7 @@ class Album(models.Model):
     )
 
     def __str__(self):
-        return f"{self.collection}"
+        return f"Álbum {self.collection}"
 
     class Meta:
         verbose_name_plural = "Albums"
@@ -69,11 +69,13 @@ class Album(models.Model):
     def pack_inbox(self):
         try:
             if Pack.objects.filter(
-                collector=self.collector, box__collection=self.collection, is_open=False
+                collector=self.collector,
+                box__edition__collection=self.collection,
+                is_open=False,
             ).exists():
                 return Pack.objects.filter(
                     collector=self.collector,
-                    box__collection=self.collection,
+                    box__edition__collection=self.collection,
                     is_open=False,
                 )
             else:
@@ -90,13 +92,13 @@ class Album(models.Model):
 
             if Sticker.objects.filter(
                 collector=self.collector,
-                pack__box__collection=self.collection,
+                pack__box__edition__collection=self.collection,
                 coordinate__absolute_number__gte=1,
                 on_the_board=True,
             ).exists():
                 return Sticker.objects.filter(
                     collector=self.collector,
-                    pack__box__collection=self.collection,
+                    pack__box__edition__collection=self.collection,
                     coordinate__absolute_number__gte=1,
                     on_the_board=True,
                 )
@@ -113,7 +115,7 @@ class Album(models.Model):
 
         query = Sticker.objects.filter(
             collector=self.collector,
-            pack__box__collection=self.collection,
+            pack__box__edition__collection=self.collection,
             coordinate__absolute_number=0,
             prize__isnull=True,
             on_the_board=False,
@@ -127,7 +129,7 @@ class Page(models.Model):
     number = models.PositiveSmallIntegerField()
 
     def __str__(self):
-        return f"Album {self.album}: página {self.number}"
+        return f"Página {self.number}, {self.album}"
 
     @property
     def prize(self):
@@ -186,6 +188,9 @@ class Slot(models.Model):
     sticker = models.OneToOneField(Sticker, on_delete=models.SET_NULL, null=True)
     absolute_number = models.PositiveSmallIntegerField(default=0)
     image = models.ImageField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Casilla nº {self.number}, {self.page}"
 
     @transaction.atomic
     def place_sticker(self, sticker):

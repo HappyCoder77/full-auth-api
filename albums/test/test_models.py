@@ -9,7 +9,7 @@ from promotions.test.factories import PromotionFactory
 from editions.models import Sticker
 from editions.test.factories import EditionFactory
 from collection_manager.models import Coordinate, StandardPrize
-from collection_manager.test.factories import OldCollectionFactory
+from collection_manager.test.factories import OldCollectionFactory, CollectionFactory
 from users.test.factories import CollectorFactory, DealerFactory
 
 from ..models import Slot, Page, Pack, PagePrize
@@ -31,7 +31,7 @@ class AlbumTestCase(TestCase):
     def test_album_data(self):
 
         self.assertEqual(self.album.collector.email, "collector@example.com")
-        self.assertEqual(str(self.album), str(self.album.collection))
+        self.assertEqual(str(self.album), f"Álbum {self.album.collection}")
         self.assertEqual(self.album.pages.count(), self.pages)
         self.assertEqual(Slot.objects.count(), self.total_slots)
         self.assertEqual(self.album.missing_stickers, 24)
@@ -47,10 +47,8 @@ class AlbumTestCase(TestCase):
             )
 
     def test_prized_stickers(self):
-        prized = Sticker.objects.all()
-        print(prized)
         prized_sticker = Sticker.objects.filter(
-            pack__box__collection=self.album.collection,
+            pack__box__edition__collection=self.album.collection,
             coordinate__absolute_number=0,
             prize__isnull=True,
             on_the_board=False,
@@ -69,14 +67,10 @@ class AlbumTestCase(TestCase):
 class PageTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        promotion = PromotionFactory()
-        cls.album = AlbumFactory(
-            collector__email="albumcollector@example.com",
-            edition__promotion=promotion,
-            edition__collection__name="Los Simpsons",
-        )
-        cls.pages = cls.album.edition.collection.PAGES
-        cls.slots = cls.album.edition.collection.SLOTS_PER_PAGE
+        PromotionFactory()
+        cls.album = AlbumFactory()
+        cls.pages = cls.album.collection.layout.PAGES
+        cls.slots = cls.album.collection.layout.SLOTS_PER_PAGE
 
     def test_pages_data(self):
 
@@ -96,14 +90,10 @@ class PageTestCase(TestCase):
 class SlotTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        promotion = PromotionFactory()
-        cls.album = AlbumFactory(
-            collector__email="albumcollector@example.com",
-            edition__promotion=promotion,
-            edition__collection__name="Los Simpsons",
-        )
-        cls.pages = cls.album.edition.collection.PAGES
-        cls.slots = cls.album.edition.collection.SLOTS_PER_PAGE
+        PromotionFactory()
+        cls.album = AlbumFactory()
+        cls.pages = cls.album.collection.layout.PAGES
+        cls.slots = cls.album.collection.layout.SLOTS_PER_PAGE
         cls.total_slots = cls.slots * cls.pages
 
     def test_album_pages_slots_data(self):
@@ -112,7 +102,7 @@ class SlotTestCase(TestCase):
         for page in self.album.pages.all():
             slot_counter = 1
             for slot in page.slots.all().order_by("number"):
-                coordinate = self.album.edition.collection.coordinates.get(
+                coordinate = self.album.collection.coordinates.get(
                     absolute_number=slot_absolute_counter
                 )
                 self.assertEqual(slot.page, page)
@@ -128,26 +118,25 @@ class SlotTestCase(TestCase):
 class StickStickerTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        promotion = PromotionFactory()
-        cls.album = AlbumFactory(
-            collector__email="albumcollector@example.com",
-            edition__promotion=promotion,
-            edition__collection__name="Los Simpsons",
-        )
+        PromotionFactory()
+        edition = EditionFactory()
+        cls.album = AlbumFactory(collection=edition.collection)
 
         for page in cls.album.pages.all():
-
+            print(page)
             for slot in page.slots.all():
+                print(slot)
                 sticker = Sticker.objects.filter(
                     coordinate__absolute_number=slot.absolute_number
                 ).first()
+                print(sticker)
                 if not sticker is None:
                     slot.sticker = sticker
                     slot.save()
 
         cls.empty_slot = Slot.objects.filter(sticker__isnull=True).first()
         coordinate = Coordinate.objects.create(
-            collection=cls.album.edition.collection,
+            collection=cls.album.collection,
             page=cls.empty_slot.page.number,
             slot_number=cls.empty_slot.number,
             absolute_number=cls.empty_slot.absolute_number,
@@ -168,7 +157,7 @@ class StickStickerTestCase(TestCase):
     def test_place_sticker_already_filled(self):
         slot = Slot.objects.filter(sticker__isnull=False).first()
         coordinate = Coordinate.objects.create(
-            collection=self.album.edition.collection,
+            collection=self.album.collection,
             page=slot.page.number,
             slot_number=slot.number,
             absolute_number=slot.absolute_number,
@@ -189,7 +178,7 @@ class StickStickerTestCase(TestCase):
     def test_place_sticker_wrong_number(self):
         slot = Slot.objects.filter(sticker__isnull=True).first()
         coordinate = Coordinate.objects.create(
-            collection=self.album.edition.collection,
+            collection=self.album.collection,
             page=slot.page.number,
             slot_number=slot.number,
             absolute_number=slot.absolute_number + 1,
@@ -213,26 +202,31 @@ class PagePrizeTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        collection = OldCollectionFactory()
+        PromotionFactory()
+        collection = CollectionFactory()
         coordinate = Coordinate.objects.get(rarity_factor=0.02)
         coordinate.rarity_factor = 1
         coordinate.save()
+        edition = EditionFactory(collection=collection)
         cls.user = UserFactory()
         cls.dealer = DealerFactory(user=UserFactory())
         cls.collector = CollectorFactory(user=UserFactory())
         cls.album = AlbumFactory(
-            collector=cls.collector.user, edition__collection=collection
+            collector=cls.collector.user, collection=edition.collection
         )
         cls.page = Page.objects.get(number=1)
         cls.packs = Pack.objects.all()
+
         for pack in cls.packs:
             pack.open(cls.album.collector)
 
-        stickers = Sticker.objects.filter(
-            on_the_board=True, coordinate__absolute_number__lte=6
-        )
+        stickers = Sticker.objects.filter(coordinate__absolute_number__lte=6)
+
         for slot in cls.page.slots.all():
-            sticker = stickers.get(coordinate__absolute_number=slot.absolute_number)
+            sticker = stickers.filter(
+                coordinate__absolute_number=slot.absolute_number
+            ).first()
+
             slot.place_sticker(sticker)
 
     def setUp(self):

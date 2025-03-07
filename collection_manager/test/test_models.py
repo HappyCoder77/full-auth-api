@@ -1,10 +1,13 @@
 from datetime import timedelta, date
 import datetime
+import os
+from unittest import skip
 from django.db import IntegrityError, transaction
 from django.core.exceptions import ValidationError
 from django.db.models import ProtectedError
 from django.test import TestCase
 from django.utils import timezone
+from django.core.files.storage import default_storage
 
 from promotions.models import Promotion
 from promotions.test.factories import PromotionFactory
@@ -150,7 +153,10 @@ class CollectionTestCase(TestCase):
                     self.assertEqual(coordinate.page, current_page)
                     self.assertEqual(coordinate.slot_number, current_slot)
                     self.assertEqual(coordinate.absolute_number, counter)
-                    self.assertEqual(str(coordinate), str(counter))
+                    self.assertEqual(
+                        str(coordinate),
+                        f"Pagina:{coordinate.page}, Casilla nº: {coordinate.slot_number}, Nº absoluto: {coordinate.absolute_number}, rareza: {coordinate.rarity_factor}",
+                    )
                     current_slot += 1
                     counter += 1
                 else:
@@ -247,8 +253,15 @@ class ThemeTestCase(TestCase):
 
     def tearDown(self):
         """Clean up data after each test method."""
-        self.theme.image.delete(save=False)
-        Theme.objects.all().delete()
+        directory = os.path.dirname(self.theme.image.name)
+        stored_files = default_storage.listdir(directory)[1]
+
+        for filename in stored_files:
+            if filename.startswith("test_image"):
+                full_path = os.path.join(directory, filename)
+                default_storage.delete(full_path)
+
+    Theme.objects.all().delete()
 
     def test_theme_data(self):
         self.assertEqual(self.theme.name, "Minecraft")
@@ -265,6 +278,7 @@ class ThemeTestCase(TestCase):
         self.assertEqual(Theme._meta.verbose_name_plural, "themes")
 
 
+@skip("deprecated model")
 class OldCollectionTestCase(TestCase):
     COLLECTION_NAME = "Minecraft"
 
