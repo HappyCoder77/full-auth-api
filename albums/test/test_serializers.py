@@ -23,18 +23,17 @@ from .factories import AlbumFactory
 class AlbumSerializerTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.promotion = PromotionFactory()
-        cls.edition = EditionFactory(promotion=cls.promotion)
+        PromotionFactory()
+        cls.edition = EditionFactory()
         cls.collector = CollectorFactory(user=UserFactory())
         cls.album = Album.objects.create(
-            collector=cls.collector.user, edition=cls.edition
+            collector=cls.collector.user, collection=cls.edition.collection
         )
 
     def test_serializer_contains_expected_fields(self):
         serializer = AlbumSerializer(instance=self.album)
         expected_fields = {
             "id",
-            "edition",
             "collection",
             "collector",
             "pages",
@@ -51,7 +50,9 @@ class AlbumSerializerTest(APITestCase):
 
     def test_pages_serialization(self):
         serializer = AlbumSerializer(instance=self.album)
-        self.assertEqual(len(serializer.data["pages"]), self.edition.collection.PAGES)
+        self.assertEqual(
+            len(serializer.data["pages"]), self.edition.collection.layout.PAGES
+        )
 
     def test_pack_inbox_serialization(self):
         pack = Pack.objects.first()
@@ -71,12 +72,13 @@ class AlbumSerializerTest(APITestCase):
 
     def test_edition_serialization(self):
         serializer = AlbumSerializer(instance=self.album)
-        self.assertEqual(serializer.data["edition"], self.edition.id)
+        self.assertEqual(serializer.data["collection"], self.edition.collection.id)
 
 
 class SlotSerializerTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
+        PromotionFactory()
         cls.album = AlbumFactory()
         cls.slots = Slot.objects.all().order_by("id")
 
@@ -105,10 +107,11 @@ class SlotSerializerTestCase(TestCase):
 class PagePrizeSerializerTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
+        PromotionFactory()
         cls.album = AlbumFactory()
         page = Page.objects.first()
         prize = StandardPrize.objects.get(
-            collection=cls.album.edition.collection, page=page.number
+            collection=cls.album.collection, page=page.number
         )
         cls.page_prize = PagePrize(page=page, prize=prize)
         PagePrize.objects.bulk_create([cls.page_prize], ignore_conflicts=True)
@@ -141,7 +144,7 @@ class PagePrizeSerializerTestCase(TestCase):
         )
         self.assertEqual(
             serialized_data["prize"]["collection_name"],
-            self.page_prize.prize.collection.name,
+            self.page_prize.prize.collection.theme.name,
         )
         self.assertEqual(serialized_data["prize"]["page"], self.page_prize.prize.page)
         self.assertEqual(
@@ -155,6 +158,7 @@ class PagePrizeSerializerTestCase(TestCase):
 class PageSerializerTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
+        PromotionFactory()
         cls.album = AlbumFactory()
 
     def test_page_serializer_test_data(self):

@@ -9,6 +9,7 @@ from rest_framework.generics import GenericAPIView, RetrieveAPIView, ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status, mixins
+from collection_manager.models import Collection
 from editions.models import Edition, Pack, Sticker
 from editions.utils import get_current_promotion, get_current_editions
 from editions.serializers import (
@@ -92,17 +93,8 @@ class UserAlbumCreateView(mixins.CreateModelMixin, GenericAPIView):
     serializer_class = AlbumSerializer
     permission_classes = [IsAuthenticatedCollector]
 
-    def get_current_promotion(self):
-        now = timezone.now()
-        try:
-            promotion = Promotion.objects.get(start_date__lte=now, end_date__gte=now)
-        except Promotion.DoesNotExist:
-            return None
-
-        return promotion
-
     def post(self, request, *args, **kwargs):
-        promotion = self.get_current_promotion()
+        promotion = Promotion.objects.get_current()
 
         if not promotion:
             return Response(
@@ -112,14 +104,21 @@ class UserAlbumCreateView(mixins.CreateModelMixin, GenericAPIView):
                 status=status.HTTP_200_OK,
             )
 
-        edition_id = request.data.get("edition")
-        if edition_id:
+        collection_id = request.data.get("collection")
+
+        if collection_id:
             try:
-                edition = Edition.objects.get(pk=edition_id)
-            except Edition.DoesNotExist:
-                raise NotFound("No existe ninguna edición con el id suministrado.")
+                collection = Collection.objects.get(pk=collection_id)
+            except Collection.DoesNotExist:
+                raise NotFound("No existe ninguna colección con el id suministrado.")
+        else:
+            return Response(
+                {"detail": "El campo collection es requerido."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         try:
-            album = Album.objects.get(collector=request.user, edition=edition_id)
+            album = Album.objects.get(collector=request.user, collection=collection)
             serializer = self.get_serializer(album)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Album.DoesNotExist:
@@ -139,11 +138,12 @@ class UserAlbumCreateView(mixins.CreateModelMixin, GenericAPIView):
         if (
             isinstance(exc, ValidationError)
             and isinstance(exc.detail, dict)
-            and "edition" in exc.detail
+            and "collection" in exc.detail
         ):
-            if "Este campo es requerido" in str(exc.detail["edition"]):
+            if "Este campo es requerido" in str(exc.detail["collection"]):
                 return Response(
-                    {"detail": "El campo edition es requerido."}, status=exc.status_code
+                    {"detail": "El campo collection es requerido."},
+                    status=exc.status_code,
                 )
 
         status_code = getattr(exc, "status_code", status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -298,6 +298,7 @@ class PagePrizeListAPIView(ListAPIView):
         return query if query.exists() else PagePrize.objects.none()
 
 
+# TODO: Ttal vez esta vista deberia recibir un arg collection_id
 class RescuePoolView(ListAPIView):
     serializer_class = StickerSerializer
     permission_classes = [IsAuthenticatedCollector, HasEnoughTickets]
@@ -305,17 +306,19 @@ class RescuePoolView(ListAPIView):
 
     def get_queryset(self):
         with transaction.atomic():
-            current_promotion = get_current_promotion()
+            current_promotion = Promotion.objects.get_current()
 
             if not current_promotion:
                 raise NotFound(
                     "No hay ninguna promoción en curso, no es posible la consulta."
                 )
 
-            current_editions = get_current_editions()
+            current_collections = Collection.objects.get_current()
 
-            if not current_editions:
-                raise NotFound("No se han creado ediciones para la promoción en curso.")
+            if not current_collections:
+                raise NotFound(
+                    "No se han creado colecciones para la promoción en curso."
+                )
 
             user = self.request.user
             collector_profile = Collector.objects.select_for_update().get(user=user)
@@ -324,11 +327,13 @@ class RescuePoolView(ListAPIView):
 
         base_queryset = (
             Sticker.objects.select_for_update()
-            .filter(is_repeated=True, pack__box__edition__in=current_editions)
+            .filter(
+                is_repeated=True, pack__box__edition__collection__in=current_collections
+            )
             .exclude(collector=user)
             .exclude(
                 coordinate__in=user.stickers.filter(
-                    pack__box__edition__in=current_editions
+                    pack__box__edition__collection__in=current_collections
                 ).values("coordinate")
             )
         )

@@ -3,7 +3,9 @@ from decimal import Decimal
 from datetime import date
 
 from django.core.exceptions import ValidationError
+from django.db.models import Manager
 from django.db import models, transaction
+from promotions.models import Promotion
 from promotions.models import Promotion
 from promotions.utils import get_last_promotion
 
@@ -37,9 +39,18 @@ class Layout(models.Model):
     PRIZE_STICKER_RARITY = Decimal(0.301).quantize(Decimal("0.000"))
 
 
+class CollectionManager(Manager):
+    def get_current(self):
+        promotion = Promotion.objects.get_current()
+        collection = Collection.objects.filter(promotion=promotion)
+
+        return collection if collection.exists() else None
+
+
 class Collection(models.Model):
     """Represents a specific collection within a theme"""
 
+    objects = CollectionManager()
     theme = models.ForeignKey(
         Theme, on_delete=models.PROTECT, related_name="collections"
     )

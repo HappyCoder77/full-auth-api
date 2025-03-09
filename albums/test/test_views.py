@@ -1,11 +1,11 @@
-from django.db import IntegrityError
+from django.db import IntegrityError, models
 from unittest.mock import patch
 from django.urls import reverse
 from rest_framework.test import APIClient, APITestCase
 from rest_framework import status, mixins
 from authentication.test.factories import UserFactory
-from collection_manager.test.factories import OldCollectionFactory
-from collection_manager.models import Coordinate
+from collection_manager.test.factories import CollectionFactory, ThemeFactory
+from collection_manager.models import Coordinate, Collection, Layout
 from editions.models import Pack, Sticker, Edition
 from editions.test.factories import EditionFactory
 from promotions.models import Promotion
@@ -165,8 +165,8 @@ class UserAlbumCreateViewAPITestCase(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
-        cls.promotion = PromotionFactory()
-        cls.edition = EditionFactory(promotion=cls.promotion)
+        PromotionFactory()
+        cls.edition = EditionFactory()
         cls.superuser = UserFactory(is_superuser=True)
         cls.user = UserFactory()
         cls.collector_user = UserFactory()
@@ -177,22 +177,24 @@ class UserAlbumCreateViewAPITestCase(APITestCase):
 
     def test_collector_can_create_album(self):
         self.client.force_authenticate(user=self.collector.user)
-        data = {"edition": self.edition.id}
+        data = {"collection": self.edition.collection.id}
         response = self.client.post(self.url, data=data, format="json")
+
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data, AlbumSerializer(Album.objects.get(pk=1)).data)
 
     def test_collector_can_get_album_if_already_exists(self):
-        AlbumFactory(edition=self.edition, collector=self.collector.user)
+        AlbumFactory(collector=self.collector.user, collection=self.edition.collection)
         self.client.force_authenticate(user=self.collector.user)
-        data = {"edition": self.edition.id}
+        data = {"collection": self.edition.collection.id}
         response = self.client.post(self.url, data=data, format="json")
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, AlbumSerializer(Album.objects.get(pk=1)).data)
 
     def test_superuser_cannot_create_album(self):
         self.client.force_authenticate(user=self.superuser)
-        data = {"edition": self.edition.id}
+        data = {"collection": self.edition.collection.id}
         response = self.client.post(self.url, data=data, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(
@@ -202,7 +204,7 @@ class UserAlbumCreateViewAPITestCase(APITestCase):
 
     def test_basic_user_cannot_create_album(self):
         self.client.force_authenticate(user=self.user)
-        data = {"edition": self.edition.id}
+        data = {"collection": self.edition.collection.id}
         response = self.client.post(self.url, data=data, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(
@@ -212,7 +214,7 @@ class UserAlbumCreateViewAPITestCase(APITestCase):
 
     def test_unauthenticated_user_cannot_create_album(self):
         self.client.logout()
-        data = {"edition": self.edition.id}
+        data = {"collection": self.edition.collection.id}
         response = self.client.post(self.url, data=data, format="json")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertEqual(
@@ -222,55 +224,71 @@ class UserAlbumCreateViewAPITestCase(APITestCase):
     def test_create_album_from_past_promotion(self):
         Promotion.objects.all().delete()
         promotion = PromotionFactory(past=True)
-        edition = EditionFactory(
-            promotion=promotion, collection__name="past collection"
-        )
-        data = {"edition": edition.id}
-        self.client.force_authenticate(user=self.collector.user)
-        response = self.client.post(self.url, data=data, format="json")
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(
-            response.data["detail"],
-            "No hay ninguna promoción en curso, no es posible esta acción.",
-        )
+        with patch("collection_manager.models.Collection.save") as mock_save:
+            collection = Collection.objects.create(
+                promotion=promotion,
+                theme=self.edition.collection.theme,
+                layout=Layout.objects.create(),
+            )
+
+            mock_save.side_effect = lambda *args, **kwargs: models.Model.save(
+                Collection, *args, **kwargs
+            )
+            data = {"collection": collection.id}
+            self.client.force_authenticate(user=self.collector.user)
+            response = self.client.post(self.url, data=data, format="json")
+
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(
+                response.data["detail"],
+                "No hay ninguna promoción en curso, no es posible esta acción.",
+            )
 
     def test_create_album_from_future_promotion(self):
         Promotion.objects.all().delete()
         promotion = PromotionFactory(future=True)
-        edition = EditionFactory(
-            promotion=promotion, collection__name="future collection"
-        )
-        data = {"edition": edition.id}
-        self.client.force_authenticate(user=self.collector.user)
-        response = self.client.post(self.url, data=data, format="json")
+        with patch("collection_manager.models.Collection.save") as mock_save:
+            collection = Collection.objects.create(
+                promotion=promotion,
+                theme=self.edition.collection.theme,
+                layout=Layout.objects.create(),
+            )
+            mock_save.side_effect = lambda *args, **kwargs: models.Model.save(
+                collection, *args, **kwargs
+            )
+            data = {"collection": collection.id}
+            self.client.force_authenticate(user=self.collector.user)
+            response = self.client.post(self.url, data=data, format="json")
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(
-            response.data["detail"],
-            "No hay ninguna promoción en curso, no es posible esta acción.",
-        )
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(
+                response.data["detail"],
+                "No hay ninguna promoción en curso, no es posible esta acción.",
+            )
 
     def test_create_album_with_invalid_id(self):
-        data = {"edition": 1059}
+        data = {"collection": 1059}
         self.client.force_authenticate(user=self.collector.user)
         response = self.client.post(self.url, data=data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(
-            response.data["detail"], "No existe ninguna edición con el id suministrado."
+            response.data["detail"],
+            "No existe ninguna colección con el id suministrado.",
         )
 
     def test_create_album_with_no_id(self):
         data = {}
         self.client.force_authenticate(user=self.collector.user)
         response = self.client.post(self.url, data=data, format="json")
+        print(response.data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data["detail"], "El campo edition es requerido.")
+        self.assertEqual(response.data["detail"], "El campo collection es requerido.")
 
     def test_integrity_error_handling(self):
         self.client.force_authenticate(user=self.collector.user)
-        data = {"edition": self.edition.id}
+        data = {"collection": self.edition.collection.id}
 
         with patch.object(mixins.CreateModelMixin, "create") as mock_create:
             mock_create.side_effect = IntegrityError("Duplicate entry")
@@ -283,7 +301,7 @@ class UserAlbumCreateViewAPITestCase(APITestCase):
 
     def test_handle_generic_exception(self):
         self.client.force_authenticate(user=self.collector.user)
-        data = {"edition": self.edition.id}
+        data = {"collection": self.edition.collection.id}
 
         with patch.object(mixins.CreateModelMixin, "create") as mock_create:
             mock_create.side_effect = ValueError("Some unexpected error")
@@ -299,15 +317,15 @@ class AlbumDetailViewTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
-        cls.promotion = PromotionFactory()
-        cls.edition = EditionFactory(promotion=cls.promotion)
+        PromotionFactory()
+        cls.edition = EditionFactory()
         cls.superuser = UserFactory(is_superuser=True)
         cls.basic_user = UserFactory()
         cls.collector = CollectorFactory(user=UserFactory())
         pack = Pack.objects.first()
         pack.collector = cls.collector.user
         cls.album = Album.objects.create(
-            collector=cls.collector.user, edition=cls.edition
+            collector=cls.collector.user, collection=cls.edition.collection
         )
         cls.url = reverse("album-detail", kwargs={"pk": cls.album.pk})
 
@@ -364,8 +382,8 @@ class OpenPackViewTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
-        cls.promotion = PromotionFactory()
-        cls.edition = EditionFactory(promotion=cls.promotion)
+        PromotionFactory()
+        cls.edition = EditionFactory()
         cls.superuser = UserFactory(is_superuser=True)
         cls.basic_user = UserFactory()
         cls.collector = CollectorFactory(user=UserFactory())
@@ -457,12 +475,14 @@ class PlaceStickerViewTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
-        cls.promotion = PromotionFactory()
-        cls.edition = EditionFactory(promotion=cls.promotion)
+        PromotionFactory()
+        cls.edition = EditionFactory()
         cls.superuser = UserFactory(is_superuser=True)
         cls.basic_user = UserFactory()
         cls.collector = CollectorFactory(user=UserFactory())
-        cls.album = AlbumFactory(collector=cls.collector.user, edition=cls.edition)
+        cls.album = AlbumFactory(
+            collector=cls.collector.user, collection=cls.edition.collection
+        )
 
         cls.sticker = (
             Sticker.objects.filter(coordinate__rarity_factor=2).order_by("id").first()
@@ -529,7 +549,9 @@ class PlaceStickerViewTest(APITestCase):
 
     def test_collector_cannot_place_sticker_on_someone_else_album(self):
         other_collector = CollectorFactory(user=UserFactory())
-        other_album = AlbumFactory(collector=other_collector.user, edition=self.edition)
+        other_album = AlbumFactory(
+            collector=other_collector.user, collection=self.edition.collection
+        )
         other_slot = Slot.objects.filter(page__album=other_album).first()
         data = {"slot_id": other_slot.pk}
         self.client.force_authenticate(user=self.collector.user)
@@ -578,8 +600,8 @@ class DiscoverPrizeViewTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
-        cls.promotion = PromotionFactory()
-        cls.edition = EditionFactory(promotion=cls.promotion)
+        PromotionFactory()
+        cls.edition = EditionFactory()
         cls.collector = CollectorFactory(user=UserFactory())
         cls.basic_user = UserFactory()
         cls.superuser = UserFactory(is_superuser=True)
@@ -675,14 +697,16 @@ class CreatePagePrizeViewTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
-        collection = OldCollectionFactory()
+        PromotionFactory()
+        collection = CollectionFactory()
         coordinate = Coordinate.objects.get(rarity_factor=0.02)
         coordinate.rarity_factor = 1
         coordinate.save()
+        edition = EditionFactory(collection=collection)
         cls.user = UserFactory()
         cls.collector = CollectorFactory(user=UserFactory())
         cls.album = AlbumFactory(
-            collector=cls.collector.user, edition__collection=collection
+            collector=cls.collector.user, collection=edition.collection
         )
         cls.page = Page.objects.get(number=1)
         cls.packs = Pack.objects.all()
@@ -704,8 +728,8 @@ class CreatePagePrizeViewTest(APITestCase):
             "page": self.page.id,
             "prize": {
                 "id": self.page.prize.id,
-                "collection": self.album.edition.collection.id,
-                "collection_name": self.album.edition.collection.name,
+                "collection": self.album.collection.id,
+                "collection_name": self.album.collection.theme.name,
                 "page": self.page.number,
                 "description": self.page.prize.description,
             },
@@ -830,6 +854,7 @@ class RescuePoolViewTest(APITestCase):
         cls.url = reverse("rescue-pool")
 
     def setUp(self):
+        PromotionFactory()
         self.album = AlbumFactory(collector=self.collector.user)
         packs = Pack.objects.all()
 

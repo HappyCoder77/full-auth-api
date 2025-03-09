@@ -47,13 +47,11 @@ class AlbumSerializer(serializers.ModelSerializer):
     stickers_on_the_board = StickerSerializer(many=True, read_only=True)
     prized_stickers = StickerSerializer(many=True, read_only=True)
     image = serializers.SerializerMethodField()
-    collection = CollectionSerializer(source="edition.collection", read_only=True)
 
     class Meta:
         model = Album
         fields = (
             "id",
-            "edition",
             "collection",
             "image",
             "collector",
