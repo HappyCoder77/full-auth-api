@@ -1,4 +1,5 @@
 import io, os
+from unittest.mock import patch
 from PIL import Image
 from datetime import timedelta, date
 from decimal import Decimal
@@ -11,7 +12,7 @@ from albums.test.factories import AlbumFactory
 from promotions.models import Promotion
 from promotions.test.factories import PromotionFactory
 from collection_manager.models import Coordinate
-from collection_manager.test.factories import OldCollectionFactory
+from collection_manager.test.factories import CollectionFactory, ThemeFactory
 from editions.test.factories import EditionFactory
 from editions.models import Sticker, Coordinate, Pack
 from editions.serializers import StickerPrizeSerializer
@@ -30,10 +31,10 @@ class OrderListCreateAPIViewAPITestCase(APITestCase):
     def setUpTestData(cls):
         cls.client = APIClient()
         cls.promotion = PromotionFactory()
-        cls.edition = EditionFactory(promotion=cls.promotion)
-        cls.edition_2 = EditionFactory(
-            promotion=cls.promotion, collection__name="Angela"
-        )
+        cls.edition = EditionFactory()
+        theme = ThemeFactory(name="mario")
+        collection = CollectionFactory(theme=theme)
+        cls.edition_2 = EditionFactory(collection=collection)
         cls.superuser = UserFactory(is_superuser=True)
         cls.user_dealer = UserFactory()
         cls.dealer = DealerFactory(user=cls.user_dealer)
@@ -44,8 +45,8 @@ class OrderListCreateAPIViewAPITestCase(APITestCase):
         Order.objects.all().delete()
 
     def test_dealer_can_get_order_list(self):
-        OrderFactory(dealer=self.dealer.user, edition=self.edition)
-        OrderFactory(dealer=self.dealer.user, edition=self.edition_2)
+        OrderFactory(dealer=self.dealer.user, collection=self.edition.collection)
+        OrderFactory(dealer=self.dealer.user, collection=self.edition_2.collection)
 
         self.client.force_authenticate(user=self.dealer.user)
         response = self.client.get(self.url)
@@ -87,7 +88,7 @@ class OrderListCreateAPIViewAPITestCase(APITestCase):
 
     def test_dealer_can_create_order(self):
         self.client.force_authenticate(user=self.dealer.user)
-        data = {"edition": self.edition.id}
+        data = {"collection": self.edition.collection.id}
 
         response = self.client.post(self.url, data=data, format="json")
 
@@ -126,10 +127,15 @@ class OrderListCreateAPIViewAPITestCase(APITestCase):
 
     def test_create_order_without_active_promotion(self):
         Promotion.objects.all().delete()
-        promotion = PromotionFactory(past=True)
-        edition = EditionFactory(promotion=promotion, collection__name="freefire")
+
+        with patch("promotions.models.Promotion.objects.get_current") as mock_current:
+            promotion = PromotionFactory(past=True)
+            mock_current.return_value = promotion
+            theme = ThemeFactory(name="freefire")
+            collection = CollectionFactory(theme=theme)
+            EditionFactory(collection=collection)
         self.client.force_authenticate(user=self.dealer.user)
-        data = {"edition": edition.id}
+        data = {"collection": collection.id}
 
         response = self.client.post(self.url, data=data, format="json")
 
@@ -141,31 +147,32 @@ class OrderListCreateAPIViewAPITestCase(APITestCase):
 
     def test_create_order_without_edition_id(self):
         self.client.force_authenticate(user=self.dealer.user)
-        data = {}
+        data = {"edition": ""}
 
         response = self.client.post(self.url, data=data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            response.data["detail"], "El campo edition no puede estar vacío"
+            response.data["detail"], "El campo collection no puede estar vacío"
         )
 
     def test_create_order_with_invalid_edition_id(self):
         self.client.force_authenticate(user=self.dealer.user)
-        data = {"edition": 10000}
+        data = {"collection": 10000}
 
         response = self.client.post(self.url, data=data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            response.data["detail"], "No existe ninguna edición con el id suministrado"
+            response.data["detail"],
+            "No existe ninguna colección con el id suministrado",
         )
 
     def test_create_order_with_no_available_box(self):
         dealer = DealerFactory(user=UserFactory())
-        OrderFactory(edition=self.edition, dealer=dealer.user)
+        OrderFactory(collection=self.edition.collection, dealer=dealer.user)
         self.client.force_authenticate(user=self.dealer.user)
-        data = {"edition": self.edition.id}
+        data = {"collection": self.edition.collection.id}
 
         response = self.client.post(self.url, data=data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -189,7 +196,7 @@ class OrderListCreateAPIViewAPITestCase(APITestCase):
         amount = self.promotion.pack_cost * packs
 
         self.client.force_authenticate(user=self.dealer.user)
-        data = {"edition": self.edition.id}
+        data = {"collection": self.edition.collection.id}
 
         response = self.client.post(self.url, data=data, format="json")
 
@@ -1006,7 +1013,8 @@ class SaleCreateViewAPITestCase(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
-        cls.edition = EditionFactory(promotion=PromotionFactory())
+        PromotionFactory()
+        cls.edition = EditionFactory()
         cls.superuser = UserFactory(is_superuser=True)
         cls.basic_user = UserFactory()
         cls.dealer_user = UserFactory()
@@ -1014,7 +1022,7 @@ class SaleCreateViewAPITestCase(APITestCase):
         cls.collector = CollectorFactory(user=UserFactory())
         cls.url = reverse("sale-create")
         cls.sale_data = {
-            "edition": cls.edition.id,
+            "collection": cls.edition.collection.id,
             "collector": cls.collector.user.id,
             "quantity": 1,
         }
@@ -1023,15 +1031,17 @@ class SaleCreateViewAPITestCase(APITestCase):
         self.client.force_authenticate(user=self.dealer.user)
 
     def test_dealer_can_create_sale(self):
-        OrderFactory(dealer=self.dealer.user, edition=self.edition)
+        OrderFactory(dealer=self.dealer.user, collection=self.edition.collection)
         response = self.client.post(self.url, self.sale_data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Sale.objects.count(), 1)
         self.assertEqual(response.data["id"], 1)
         self.assertEqual(response.data["date"], date.today().strftime("%Y-%m-%d"))
-        self.assertEqual(response.data["edition"], self.edition.id)
-        self.assertEqual(response.data["edition_name"], self.edition.collection.name)
+        self.assertEqual(response.data["collection"], self.edition.id)
+        self.assertEqual(
+            response.data["collection_name"], self.edition.collection.theme.name
+        )
         self.assertEqual(response.data["dealer"], self.dealer.user.id)
         self.assertEqual(response.data["dealer_name"], self.dealer.get_full_name)
         self.assertEqual(response.data["collector"], self.collector.user.id)
@@ -1073,14 +1083,15 @@ class SaleCreateViewAPITestCase(APITestCase):
 
     def test_dealer_cannot_create_sale_without_inventory(self):
         response = self.client.post(self.url, self.sale_data, format="json")
+
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            response.data["non_field_errors"][0],
+            str(response.data["non_field_errors"][0]),
             "Inventario insuficiente: quedan 0 packs disponibles",
         )
 
     def test_dealer_cannot_create_sale_with_invalid_quantity(self):
-        OrderFactory(dealer=self.dealer.user, edition=self.edition)
+        OrderFactory(dealer=self.dealer.user, collection=self.edition.collection)
         self.sale_data["quantity"] = 0
         response = self.client.post(self.url, self.sale_data, format="json")
 
@@ -1091,12 +1102,12 @@ class SaleCreateViewAPITestCase(APITestCase):
         )
 
     def test_dealer_cannot_create_sale_with_invalid_edition(self):
-        self.sale_data["edition"] = 99999
+        self.sale_data["collection"] = 99999
         response = self.client.post(self.url, self.sale_data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            response.data["edition"][0],
+            response.data["collection"][0],
             'Clave primaria "99999" inválida - objeto no existe.',
         )
 
@@ -1116,7 +1127,7 @@ class SaleCreateViewAPITestCase(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            response.data["edition"][0],
+            response.data["collection"][0],
             "Este campo es requerido.",
         )
         self.assertEqual(
@@ -1129,13 +1140,13 @@ class SaleCreateViewAPITestCase(APITestCase):
         )
 
     def test_dealer_cannot_create_sale_with_quantity_greater_than_inventory(self):
-        OrderFactory(dealer=self.dealer.user, edition=self.edition)
+        OrderFactory(dealer=self.dealer.user, collection=self.edition.collection)
         self.sale_data["quantity"] = 999
         response = self.client.post(self.url, self.sale_data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            response.data["non_field_errors"][0],
+            str(response.data["non_field_errors"][0]),
             "Inventario insuficiente: quedan 15 packs disponibles",
         )
 
@@ -1144,7 +1155,8 @@ class RequestSurprisePrizeViewAPITestCase(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
-        cls.edition = EditionFactory(promotion=PromotionFactory())
+        PromotionFactory()
+        cls.edition = EditionFactory()
         cls.superuser = UserFactory(is_superuser=True)
         cls.basic_user = UserFactory()
         cls.dealer_user = UserFactory()
@@ -1299,16 +1311,18 @@ class ClaimPagePrizeViewAPITestCase(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
-        collection = OldCollectionFactory()
+        PromotionFactory()
+        collection = CollectionFactory()
         coordinate = Coordinate.objects.get(rarity_factor=0.02)
         coordinate.rarity_factor = 1
         coordinate.save()
+        edition = EditionFactory(collection=collection)
         cls.superuser = UserFactory(is_superuser=True)
         cls.dealer = DealerFactory(user=UserFactory())
         cls.basic_user = UserFactory()
         cls.collector = CollectorFactory(user=UserFactory())
         cls.album = AlbumFactory(
-            collector=cls.collector.user, edition__collection=collection
+            collector=cls.collector.user, collection=edition.collection
         )
         cls.page = Page.objects.get(number=1)
         cls.packs = Pack.objects.all()
@@ -1323,6 +1337,7 @@ class ClaimPagePrizeViewAPITestCase(APITestCase):
         stickers = Sticker.objects.filter(
             on_the_board=True, coordinate__absolute_number__lte=6
         )
+
         for slot in self.page.slots.all():
             sticker = stickers.get(coordinate__absolute_number=slot.absolute_number)
             slot.place_sticker(sticker)

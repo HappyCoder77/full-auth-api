@@ -38,7 +38,7 @@ class SaleTestCase(TestCase):
             dealer=cls.dealer.user, collection=cls.edition.collection
         )
         cls.sale = SaleFactory(
-            edition=cls.edition,
+            collection=cls.edition.collection,
             dealer=cls.dealer.user,
             collector=cls.collector.user,
         )
@@ -46,7 +46,7 @@ class SaleTestCase(TestCase):
 
     def test_sale_data(self):
         self.assertEqual(self.sale.date, date.today())
-        self.assertEqual(self.sale.edition, self.edition)
+        self.assertEqual(self.sale.collection, self.edition.collection)
         self.assertEqual(self.sale.dealer, self.dealer.user)
         self.assertEqual(self.sale.collector, self.collector.user)
         self.assertEqual(self.sale.quantity, 1)
@@ -68,7 +68,7 @@ class SaleTestCase(TestCase):
 
     def test_sale_validation(self):
         sale = Sale(
-            edition=self.edition,
+            collection=self.edition.collection,
             dealer=self.dealer.user,
             collector=self.collector.user,
             quantity=15,
