@@ -891,7 +891,10 @@ class RescuePoolViewTest(APITestCase):
 
     def setUp(self):
         PromotionFactory()
-        self.album = AlbumFactory(collector=self.collector.user)
+        edition = EditionFactory()
+        self.album = AlbumFactory(
+            collector=self.collector.user, collection=edition.collection
+        )
         packs = Pack.objects.all()
 
         for pack in packs:
@@ -940,11 +943,11 @@ class RescuePoolViewTest(APITestCase):
         self.collector.save()
         self.collector.refresh_from_db()
         response = self.client.get(self.url)
-        print(response.data)
+
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(
-            response.data["detail"],
-            "Necesitas 3 tickets para acceder al pool de rescate. Por cada compra de 1 sobre, obtienes un ticket.",
+            str(response.data["detail"]),
+            "Necesitas 3 tickets para acceder al pool de rescate. Por cada sobre comprado, obtienes 1 ticket.",
         )
 
     def test_method_not_allowed(self):
@@ -963,12 +966,12 @@ class RescuePoolViewTest(APITestCase):
             "No hay ninguna promoción en curso, no es posible la consulta.",
         )
 
-    def test_response_without_editions(self):
-        Edition.objects.all().delete()
+    def test_response_without_collections(self):
+        Collection.objects.all().delete()
         response = self.client.get(self.url)
-
+        print("response: ", response.data)
         self.assertEqual(
             response.status_code,
             status.HTTP_404_NOT_FOUND,
-            "No se han creado ediciones para la promoción en curso.",
+            "No se han creado colecciones para la promoción en curso.",
         )
