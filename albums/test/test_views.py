@@ -21,8 +21,8 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
-        cls.promotion = PromotionFactory()
-        cls.edition = EditionFactory(promotion=cls.promotion)
+        PromotionFactory()
+        cls.edition = EditionFactory()
         cls.superuser = UserFactory(is_superuser=True)
         cls.user = UserFactory()
         cls.collector_user = UserFactory()
@@ -31,11 +31,13 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
         )
         cls.list_url = reverse("user-albums-list")
         cls.retrieve_url = reverse(
-            "user-albums-retrieve", kwargs={"edition_id": cls.edition.id}
+            "user-albums-retrieve", kwargs={"collection_id": cls.edition.collection.id}
         )
 
     def setUp(self):
-        self.album = AlbumFactory(collector=self.collector.user, edition=self.edition)
+        self.album = AlbumFactory(
+            collector=self.collector.user, collection=self.edition.collection
+        )
 
     def test_collector_can_get_user_album_list(self):
         self.client.force_authenticate(user=self.collector.user)
@@ -48,7 +50,7 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
             self.assertIn("id", album)
             self.assertIn("pages", album)
             self.assertIn("collector", album)
-            self.assertIn("edition", album)
+            self.assertIn("collection", album)
 
     def test_superuser_cannot_get_user_album_list(self):
         self.client.force_authenticate(user=self.superuser)
@@ -117,35 +119,69 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
 
     def test_get_album_list_from_past_promotion(self):
         Promotion.objects.all().delete()
-        promotion = PromotionFactory(past=True)
-        edition_1 = EditionFactory(
-            promotion=promotion, collection__name="past collection"
-        )
-        edition_2 = EditionFactory(
-            promotion=promotion, collection__name="past collection_2"
-        )
-        user = UserFactory()
-        collector = CollectorFactory(user=user)
-        AlbumFactory(edition=edition_1, collector=collector.user)
-        AlbumFactory(edition=edition_2, collector=collector.user)
-        self.client.force_authenticate(user=collector.user)
-        response = self.client.get(self.list_url)
+        with patch("promotions.models.Promotion.objects.get_current") as mock_current:
+            promotion = PromotionFactory(past=True)
+            mock_current.return_value = promotion
+            theme_1 = ThemeFactory(name="Angela")
+            theme_2 = ThemeFactory(name="Mario")
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(
-            response.data["detail"],
-            "No hay ninguna promoción en curso, no es posible la consulta.",
-        )
+        def custom_save(collection, *args, **kwargs):
+            collection.layout = Layout.objects.create()
+            models.Model.save(collection, *args, **kwargs)
+            collection.create_coordinates()
+            collection.refresh_from_db()
+            collection.shuffle_coordinates()
+            collection.distribute_rarity()
+            collection.create_standard_prizes()
+            collection.create_surprise_prizes()
+
+        with patch("collection_manager.models.Collection.save") as mock_save:
+            collection_1 = Collection(
+                promotion=promotion,
+                theme=theme_1,
+                layout=Layout.objects.create(),
+            )
+
+            mock_save.side_effect = lambda *args, **kwargs: custom_save(
+                collection_1, *args, **kwargs
+            )
+            collection_1.save()
+            EditionFactory(collection=collection_1)
+
+            collection_2 = Collection(
+                promotion=promotion,
+                theme=theme_2,
+            )
+
+            mock_save.side_effect = lambda *args, **kwargs: custom_save(
+                collection_2, *args, **kwargs
+            )
+
+            collection_2.save()
+            EditionFactory(collection=collection_2)
+            user = UserFactory()
+            collector = CollectorFactory(user=user)
+            AlbumFactory(collection=collection_1, collector=collector.user)
+            AlbumFactory(collection=collection_2, collector=collector.user)
+            self.client.force_authenticate(user=collector.user)
+            response = self.client.get(self.list_url)
+
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(
+                response.data["detail"],
+                "No hay ninguna promoción en curso, no es posible la consulta.",
+            )
 
     def test_get_user_album_with_invalid_edition_id(self):
-        retrieve_url = reverse("user-albums-retrieve", kwargs={"edition_id": 10404})
+        retrieve_url = reverse("user-albums-retrieve", kwargs={"collection_id": 10404})
         self.client.force_authenticate(user=self.collector.user)
 
         response = self.client.get(retrieve_url)
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(
-            response.data["detail"], "No existe ninguna edición con el id suministrado"
+            response.data["detail"],
+            "No existe ninguna colección con el id suministrado",
         )
 
     def test_method_not_allowed_list_url(self):

@@ -102,7 +102,6 @@ class Collection(models.Model):
         self.full_clean()
         super(Collection, self).save(*args, **kwargs)
         self.create_coordinates()
-        self.refresh_from_db()
         self.shuffle_coordinates()
         self.distribute_rarity()
         self.create_standard_prizes()

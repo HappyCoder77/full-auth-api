@@ -40,23 +40,23 @@ class UserAlbumListRetrieveView(
 
     serializer_class = AlbumSerializer
     permission_classes = [IsAuthenticatedCollector]
-    lookup_field = "edition_id"
+    lookup_field = "collection_id"
     lookup_url_kwarg = lookup_field
 
-    def get_current_promotion(self):
-        now = timezone.now()
-        try:
-            promotion = Promotion.objects.get(start_date__lte=now, end_date__gte=now)
-        except Promotion.DoesNotExist:
-            return None
+    # def get_current_promotion(self):
+    #     now = timezone.now()
+    #     try:
+    #         promotion = Promotion.objects.get(start_date__lte=now, end_date__gte=now)
+    #     except Promotion.DoesNotExist:
+    #         return None
 
-        return promotion
+    #     return promotion
 
     def get_queryset(self):
         return Album.objects.filter(collector=self.request.user)
 
     def get(self, request, *args, **kwargs):
-        promotion = self.get_current_promotion()
+        promotion = Promotion.objects.get_current()
 
         if not promotion:
             return Response(
@@ -66,15 +66,15 @@ class UserAlbumListRetrieveView(
                 status=status.HTTP_200_OK,
             )
         # TODO: puede acceder a albumes de ediciones posteriores?
-        edition_id = self.kwargs.get("edition_id")
+        collection_id = self.kwargs.get("collection_id")
 
-        if edition_id:
+        if collection_id:
             try:
-                edition = Edition.objects.get(pk=edition_id)
+                Collection.objects.get(pk=collection_id)
 
-            except Edition.DoesNotExist:
+            except Collection.DoesNotExist:
 
-                raise NotFound("No existe ninguna edición con el id suministrado")
+                raise NotFound("No existe ninguna colección con el id suministrado")
 
             return self.retrieve(request, *args, **kwargs)
 

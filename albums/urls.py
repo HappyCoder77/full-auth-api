@@ -15,7 +15,7 @@ from .views import (
 urlpatterns = [
     path("user-albums/", UserAlbumListRetrieveView.as_view(), name="user-albums-list"),
     path(
-        "user-albums/retrieve/<int:edition_id>/",
+        "user-albums/retrieve/<int:collection_id>/",
         UserAlbumListRetrieveView.as_view(),
         name="user-albums-retrieve",
     ),

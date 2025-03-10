@@ -55,7 +55,6 @@ class Album(models.Model):
             counter += 1
 
     def number_slots(self):
-
         slots = Slot.objects.filter(page__album=self).order_by("id")
         counter = 1
 
