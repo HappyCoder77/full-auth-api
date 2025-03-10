@@ -62,15 +62,18 @@ class OrderSerializerTestCase(APITestCase):
 
 class SaleSerializerTestCase(APITestCase):
     def setUp(self):
+        PromotionFactory()
+        self.edition = EditionFactory()
         self.dealer = DealerFactory(user=UserFactory())
         self.collector = CollectorFactory(user=UserFactory())
-        self.edition = EditionFactory(promotion=PromotionFactory())
-        self.order = OrderFactory(dealer=self.dealer.user, edition=self.edition)
+        self.order = OrderFactory(
+            dealer=self.dealer.user, collection=self.edition.collection
+        )
 
     def test_serialization(self):
         sale = Sale.objects.create(
             date=timezone.now().date(),
-            edition=self.edition,
+            collection=self.edition.collection,
             dealer=self.dealer.user,
             collector=self.collector.user,
             quantity=1,
@@ -81,8 +84,10 @@ class SaleSerializerTestCase(APITestCase):
 
         self.assertIn("id", serialized_data)
         self.assertIn("date", serialized_data)
-        self.assertEqual(serialized_data["edition"], self.edition.id)
-        self.assertEqual(serialized_data["edition_name"], self.edition.collection.name)
+        self.assertEqual(serialized_data["collection"], self.edition.collection.id)
+        self.assertEqual(
+            serialized_data["collection_name"], self.edition.collection.theme.name
+        )
         self.assertEqual(serialized_data["dealer"], self.dealer.user.id)
         self.assertEqual(serialized_data["dealer_name"], self.dealer.get_full_name)
         self.assertEqual(serialized_data["collector"], self.collector.user.id)
@@ -93,7 +98,7 @@ class SaleSerializerTestCase(APITestCase):
 
     def test_input_validation(self):
         data = {
-            "edition": self.edition.id,
+            "collection": self.edition.collection.id,
             "collector": self.collector.id,
             "quantity": 1,
         }
@@ -103,14 +108,14 @@ class SaleSerializerTestCase(APITestCase):
         serializer = SaleSerializer(data=data, context={"request": request})
         serializer.is_valid()
         serialized_data = serializer.validated_data
-        self.assertEqual(serialized_data["edition"].id, self.edition.id)
+        self.assertEqual(serialized_data["collection"].id, self.edition.collection.id)
         self.assertEqual(serialized_data["collector"].id, self.collector.id)
         self.assertEqual(serialized_data["quantity"], 1)
 
     def test_insufficient_packs(self):
         Order.objects.all().delete()
         data = {
-            "edition": self.edition.id,
+            "collection": self.edition.collection.id,
             "collector": self.collector.id,
             "quantity": 10,
         }

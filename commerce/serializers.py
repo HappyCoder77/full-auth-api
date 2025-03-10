@@ -1,7 +1,7 @@
 from django.utils import timezone
 from rest_framework import serializers
 from .models import Order, Box, Payment, MobilePayment, DealerBalance, Pack, Sale
-from editions.models import Edition
+from collection_manager.models import Collection
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -115,11 +115,11 @@ class SaleSerializer(serializers.ModelSerializer):
     collector_name = serializers.CharField(
         source="collector.baseprofile.get_full_name", read_only=True
     )
-    edition = serializers.PrimaryKeyRelatedField(
-        queryset=Edition.objects.all(), required=True
+    collection = serializers.PrimaryKeyRelatedField(
+        queryset=Collection.objects.all(), required=True
     )
-    edition_name = serializers.CharField(
-        source="edition.collection.name", read_only=True
+    collection_name = serializers.CharField(
+        source="collection.theme.name", read_only=True
     )
 
     class Meta:
@@ -127,8 +127,8 @@ class SaleSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "date",
-            "edition",
-            "edition_name",
+            "collection",
+            "collection_name",
             "dealer",
             "dealer_name",
             "collector",
@@ -141,7 +141,7 @@ class SaleSerializer(serializers.ModelSerializer):
         available_packs = (
             Pack.objects.filter(
                 sale__isnull=True,
-                box__edition=data["edition"],
+                box__edition__collection=data["collection"],
                 box__order__dealer=dealer,
             )
             .order_by("ordinal")

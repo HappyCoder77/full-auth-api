@@ -33,7 +33,9 @@ class Sale(models.Model):
     """
 
     date = models.DateField(default=date.today)
-    edition = models.ForeignKey(Edition, on_delete=models.CASCADE, related_name="sales")
+    collection = models.ForeignKey(
+        Collection, on_delete=models.PROTECT, related_name="sales"
+    )
     dealer = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="sales", null=True
     )
@@ -47,14 +49,10 @@ class Sale(models.Model):
     def __str__(self):
         return f"{self.id} / {self.date} / {self.collector}"
 
-    @property
-    def collection(self):
-        return self.edition.collection
-
     def get_available_packs(self):
         return Pack.objects.filter(
             sale__isnull=True,
-            box__edition=self.edition,
+            box__edition__collection=self.collection,
             box__order__dealer=self.dealer,
         ).order_by("ordinal")
 
