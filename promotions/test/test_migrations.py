@@ -62,5 +62,5 @@ class TestEndDateMigration(TestCase):
 
             # Verify
             promotion.refresh_from_db()
-            print(promotion.end_date)
+
             self.assertEqual(promotion.end_date, case["expected_end"])

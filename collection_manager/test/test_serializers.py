@@ -1,21 +1,21 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
-from ..models import StandardPrize, OldCollection
+
+
+from promotions.test.factories import PromotionFactory
+from ..models import StandardPrize, Collection
 from ..serializers import StandardPrizeSerializer
+from .factories import CollectionFactory
 
 User = get_user_model()
 
 
 class StandardPrizeSerializerTest(TestCase):
     def setUp(self):
-        self.collection = OldCollection.objects.create(name="Test Collection")
-        self.prize_data = {
-            "collection": self.collection,
-            "page": 1,
-            "description": "Test Prize",
-        }
+        PromotionFactory()
+        self.collection = CollectionFactory()
 
-        self.prize = StandardPrize.objects.create(**self.prize_data)
+        self.prize = StandardPrize.objects.get(page=1)
         self.serializer = StandardPrizeSerializer(instance=self.prize)
 
     def test_contains_expected_fields(self):
@@ -25,7 +25,7 @@ class StandardPrizeSerializerTest(TestCase):
 
     def test_collection_name_field_content(self):
         data = self.serializer.data
-        self.assertEqual(data["collection_name"], "Test Collection")
+        self.assertEqual(data["collection_name"], "Minecraft")
 
     def test_page_field_content(self):
         data = self.serializer.data

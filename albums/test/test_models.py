@@ -123,13 +123,12 @@ class StickStickerTestCase(TestCase):
         cls.album = AlbumFactory(collection=edition.collection)
 
         for page in cls.album.pages.all():
-            print(page)
+
             for slot in page.slots.all():
-                print(slot)
                 sticker = Sticker.objects.filter(
                     coordinate__absolute_number=slot.absolute_number
                 ).first()
-                print(sticker)
+
                 if not sticker is None:
                     slot.sticker = sticker
                     slot.save()

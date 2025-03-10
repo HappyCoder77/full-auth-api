@@ -318,7 +318,7 @@ class UserAlbumCreateViewAPITestCase(APITestCase):
         data = {}
         self.client.force_authenticate(user=self.collector.user)
         response = self.client.post(self.url, data=data, format="json")
-        print(response.data)
+
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data["detail"], "El campo collection es requerido.")
 
@@ -969,7 +969,7 @@ class RescuePoolViewTest(APITestCase):
     def test_response_without_collections(self):
         Collection.objects.all().delete()
         response = self.client.get(self.url)
-        print("response: ", response.data)
+
         self.assertEqual(
             response.status_code,
             status.HTTP_404_NOT_FOUND,
