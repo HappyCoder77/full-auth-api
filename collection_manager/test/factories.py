@@ -4,26 +4,13 @@ from PIL import Image
 from django.core.files.base import ContentFile
 
 from promotions.test.factories import PromotionFactory
-from ..models import OldCollection, Theme, Collection
+from ..models import Theme, Collection
 
 
 class ThemeFactory(factory.django.DjangoModelFactory):
 
     class Meta:
         model = Theme
-
-    name = "Minecraft"
-
-    class Params:
-        with_image = factory.Trait(
-            image=factory.lazy_attribute(lambda x: create_test_image()),
-        )
-
-
-class OldCollectionFactory(factory.django.DjangoModelFactory):
-
-    class Meta:
-        model = OldCollection
 
     name = "Minecraft"
 

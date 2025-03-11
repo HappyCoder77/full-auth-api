@@ -9,7 +9,7 @@ from promotions.test.factories import PromotionFactory
 from editions.models import Sticker
 from editions.test.factories import EditionFactory
 from collection_manager.models import Coordinate, StandardPrize
-from collection_manager.test.factories import OldCollectionFactory, CollectionFactory
+from collection_manager.test.factories import CollectionFactory
 from users.test.factories import CollectorFactory, DealerFactory
 
 from ..models import Slot, Page, Pack, PagePrize

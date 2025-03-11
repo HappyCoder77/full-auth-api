@@ -313,7 +313,7 @@ class RescuePoolView(ListAPIView):
                     "No hay ninguna promoción en curso, no es posible la consulta."
                 )
 
-            current_collections = Collection.objects.get_current()
+            current_collections = Collection.objects.get_current_list()
 
             if not current_collections:
                 raise NotFound(

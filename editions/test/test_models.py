@@ -10,7 +10,6 @@ from django.utils import timezone
 from promotions.test.factories import PromotionFactory
 from collection_manager.models import Coordinate, SurprisePrize
 from collection_manager.test.factories import (
-    OldCollectionFactory,
     ThemeFactory,
     CollectionFactory,
 )
@@ -221,19 +220,20 @@ class StickerTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         PromotionFactory()
-        cls.edition = EditionFactory()
+        collection = CollectionFactory()
 
-        for each_prize in cls.edition.collection.standard_prizes.all():
+        for each_prize in collection.standard_prizes.all():
             each_prize.description = "Bingo"
             each_prize.save()
 
-        for each_prize in cls.edition.collection.surprise_prizes.all():
+        for each_prize in collection.surprise_prizes.all():
             each_prize.description = "Bingo"
             each_prize.save()
 
-        cls.stickers = Sticker.objects.filter(pack__box__edition=cls.edition).order_by(
-            "ordinal"
-        )
+        cls.edition = EditionFactory(collection=collection)
+        cls.stickers = Sticker.objects.filter(
+            pack__box__edition__collection=collection
+        ).order_by("ordinal")
         cls.collectible_stickers = cls.stickers.exclude(coordinate__page=99)
         cls.box = Box.objects.filter(edition=cls.edition).first()
         cls.packs = Pack.objects.filter(box__edition=cls.edition)
@@ -408,7 +408,9 @@ class StickerTestCase(TestCase):
 
     def test_check_is_repeated_edge_cases(self):
         # Test with no collector
-        sticker = self.stickers.first()
+        sticker = self.stickers.filter(
+            pack__is_open=False, coordinate__rarity_factor=1
+        ).first()
         self.assertFalse(sticker.check_is_repeated())
 
         # Test single sticker (not repeated)

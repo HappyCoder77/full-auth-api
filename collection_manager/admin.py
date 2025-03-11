@@ -1,7 +1,6 @@
 from django.contrib import admin
 
 from .models import (
-    OldCollection,
     Coordinate,
     StandardPrize,
     SurprisePrize,
@@ -13,11 +12,6 @@ from .models import (
 @admin.register(Theme)
 class ThemeAdmin(admin.ModelAdmin):
     list_display = ("id", "name", "image")
-
-
-@admin.register(OldCollection)
-class OldCollectionAdmin(admin.ModelAdmin):
-    list_display = ("id", "name")
 
 
 @admin.register(Collection)
