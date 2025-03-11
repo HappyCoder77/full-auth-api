@@ -1,4 +1,3 @@
-from django.utils import timezone
 from django.db import transaction
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError
@@ -10,8 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status, mixins
 from collection_manager.models import Collection
-from editions.models import Edition, Pack, Sticker
-from editions.utils import get_current_promotion, get_current_editions
+from editions.models import Pack, Sticker
 from editions.serializers import (
     PackSerializer,
     StickerPrizeSerializer,

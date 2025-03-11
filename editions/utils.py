@@ -1,9 +1,9 @@
 from .models import Edition
-from promotions.utils import get_current_promotion
+from promotions.models import Promotion
 
 
 def get_current_editions():
-    promotion = get_current_promotion()
+    promotion = Promotion.objects.get_current()
 
     if promotion:
         return Edition.objects.filter(promotion=promotion)

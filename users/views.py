@@ -1,9 +1,5 @@
-from django.utils import timezone
-from django.conf import settings
 from django.http import Http404
 from rest_framework.exceptions import MethodNotAllowed
-from django.core.exceptions import ValidationError as DjangoValidationError
-from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status, viewsets
@@ -12,8 +8,6 @@ from django.shortcuts import get_object_or_404
 
 from collection_manager.models import Collection
 from promotions.models import Promotion
-from promotions.utils import promotion_is_running
-from editions.models import Edition
 
 from .models import RegionalManager, LocalManager, Sponsor, Dealer, Collector
 

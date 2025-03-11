@@ -11,9 +11,7 @@ from rest_framework.generics import (
     ListAPIView,
 )
 from rest_framework.response import Response
-from promotions.utils import (
-    get_last_promotion,
-)
+
 from .models import Order, Payment, MobilePayment, DealerBalance
 from albums.models import PagePrize
 from albums.permissions import IsAuthenticatedCollector
@@ -21,6 +19,7 @@ from albums.serializers import PagePrizeSerializer
 from editions.models import StickerPrize
 from editions.serializers import StickerPrizeSerializer
 from .permissions import IsAuthenticatedDealer
+from promotions.models import Promotion
 from .serializers import (
     OrderSerializer,
     PaymentSerializer,
@@ -80,7 +79,7 @@ class PaymentListAPIView(ListModelMixin, GenericAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        last_promotion = get_last_promotion()
+        last_promotion = Promotion.objects.get_last()
 
         if last_promotion:
             return Payment.objects.filter(

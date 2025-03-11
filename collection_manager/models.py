@@ -1,14 +1,12 @@
 import os
 import random
 from decimal import Decimal
-from datetime import date
 
 from django.core.exceptions import ValidationError
 from django.db.models import Manager
 from django.db import models, transaction
 from promotions.models import Promotion
 from promotions.models import Promotion
-from promotions.utils import get_last_promotion
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 

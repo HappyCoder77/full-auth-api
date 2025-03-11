@@ -2,7 +2,7 @@ from datetime import date, timedelta
 from django.apps import apps
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from promotions.utils import get_current_promotion, get_last_promotion
+from promotions.models import Promotion
 from commerce.models import DealerBalance
 from .models import UserAccount
 
@@ -84,8 +84,8 @@ def create_balance_for_new_dealer(user):
     Returns:
         None
     """
-    last_promotion = get_last_promotion()
-    current_promotion = get_current_promotion()
+    last_promotion = Promotion.objects.get_last()
+    current_promotion = Promotion.objects.get_current()
     start_date = (
         (last_promotion.end_date + timedelta(days=1))
         if last_promotion

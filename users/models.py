@@ -5,7 +5,7 @@ from albums.models import PagePrize
 from editions.models import Pack, StickerPrize
 from authentication.models import UserAccount
 from promotions.models import Promotion
-from promotions.utils import promotion_is_running, get_current_promotion
+
 
 GENERO_CHOICES = [("M", "Masculino"), ("F", "Femenino")]
 

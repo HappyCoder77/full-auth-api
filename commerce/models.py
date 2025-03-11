@@ -17,8 +17,7 @@ from users.models import Collector
 from collection_manager.models import Collection
 from editions.models import Edition, Box, Pack
 from promotions.models import Promotion
-from promotions.utils import promotion_is_running
-from editions.utils import get_current_editions
+
 
 User = get_user_model()
 
