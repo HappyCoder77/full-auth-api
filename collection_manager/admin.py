@@ -11,7 +11,7 @@ from .models import (
 
 @admin.register(Theme)
 class ThemeAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "image")
+    list_display = ("__str__", "id", "name", "image")
 
 
 @admin.register(Collection)

@@ -261,8 +261,6 @@ class ThemeTestCase(TestCase):
                 full_path = os.path.join(directory, filename)
                 default_storage.delete(full_path)
 
-    Theme.objects.all().delete()
-
     def test_theme_data(self):
         self.assertEqual(self.theme.name, "Minecraft")
         self.assertEqual(self.theme.image.name, "images/themes/test_image.png")

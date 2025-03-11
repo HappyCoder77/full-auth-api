@@ -6,8 +6,8 @@ from .models import Edition, Box, Pack, Sticker, StickerPrize
 @admin.register(Edition)
 class EditionAdmin(admin.ModelAdmin):
     list_display = (
-        "id",
         "collection",
+        "id",
         "circulation",
         "distribution_status",
     )
@@ -108,6 +108,7 @@ class StickerAdmin(admin.ModelAdmin):
         "pack",
         "collector",
         "on_the_board",
+        "pack__box__edition",
     )
     ordering = ("id",)
     list_filter = (
@@ -115,6 +116,7 @@ class StickerAdmin(admin.ModelAdmin):
         "coordinate__rarity_factor",
         "on_the_board",
         "collector",
+        "pack__box__edition",
     )
 
     def has_add_permission(self, request):

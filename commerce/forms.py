@@ -10,9 +10,9 @@ class OrderForm(forms.ModelForm):
         fields = "__all__"
         exclude = ("pack_cost",)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):  # pragma: no cover
         super().__init__(*args, **kwargs)
-        current_promotion = Promotion.objects.get_current()
+        current_promotion = Promotion.objects.get_current
         if current_promotion:
             self.fields["edition"].queryset = Edition.objects.filter(
                 promotion=current_promotion

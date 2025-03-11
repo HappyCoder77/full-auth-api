@@ -49,7 +49,7 @@ class EditionTestCase(TestCase):
         self.assertEqual(self.edition.collection.box_cost, 150)
         self.assertEqual(
             str(self.edition),
-            f"{self.edition.collection}",
+            f"{self.edition.collection} ({self.edition.circulation})",
         )
         self.assertEqual(boxes.count(), 37)
         self.assertEqual(packs.count(), 3695)

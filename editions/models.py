@@ -133,7 +133,7 @@ class Edition(models.Model):
         )
 
     def __str__(self):
-        return f"{self.collection}"
+        return f"{self.collection} ({self.circulation})"
 
     def clean(self):
         has_undefined_standard_prize = self.collection.standard_prizes.filter(
