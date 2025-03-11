@@ -11,8 +11,8 @@ from ..models import Pack, Sticker
 class PackSerializerTest(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.promotion = PromotionFactory()
-        cls.edition = EditionFactory(promotion=cls.promotion)
+        PromotionFactory()
+        cls.edition = EditionFactory()
         cls.collector = CollectorFactory(user=UserFactory())
         cls.pack = Pack.objects.first()
 
@@ -56,8 +56,8 @@ class PackSerializerTest(TestCase):
 class StickerPrizeSerializerTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.promotion = PromotionFactory()
-        cls.edition = EditionFactory(promotion=cls.promotion)
+        PromotionFactory()
+        cls.edition = EditionFactory()
         cls.collector = CollectorFactory(user=UserFactory())
 
         # Get a prize sticker and create a prize for it
@@ -117,8 +117,8 @@ class StickerPrizeSerializerTestCase(TestCase):
 class StickerSerializerTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.promotion = PromotionFactory()
-        cls.edition = EditionFactory(promotion=cls.promotion)
+        PromotionFactory()
+        cls.edition = EditionFactory()
         cls.collector = CollectorFactory(user=UserFactory())
         cls.coordinate = Coordinate.objects.first()
         cls.sticker = Sticker.objects.filter(coordinate=cls.coordinate).first()

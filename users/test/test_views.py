@@ -1,3 +1,4 @@
+from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.conf import settings
@@ -5,6 +6,7 @@ from rest_framework.test import APIClient, APITestCase, APIRequestFactory
 from rest_framework import status
 from rest_framework import status
 
+from collection_manager.test.factories import ThemeFactory, CollectionFactory
 from promotions.test.factories import PromotionFactory
 from promotions.models import Promotion
 from editions.test.factories import EditionFactory
@@ -986,25 +988,29 @@ class DealerStockAPIViewAPITestCase(APITestCase):
         dealer_user = UserFactory()
         cls.dealer = DealerFactory(user=dealer_user)
         cls.basic_user = UserFactory()
-        cls.past_promotion = PromotionFactory(past=True)
-        cls.past_edition = EditionFactory(
-            promotion=cls.past_promotion, collection__name="Roblox"
-        )
-        cls.past_edition2 = EditionFactory(
-            promotion=cls.past_promotion, collection__name="Talking Tom"
-        )
+
+        with patch("promotions.models.Promotion.objects.get_current") as mock_current:
+            cls.past_promotion = PromotionFactory(past=True)
+            mock_current.return_value = cls.past_promotion
+            theme = ThemeFactory(name="Roblox")
+            theme_2 = ThemeFactory(name="Mario")
+            collection = CollectionFactory(theme=theme)
+            collection_2 = CollectionFactory(theme=theme_2)
+
+            cls.past_edition = EditionFactory(collection=collection)
+            cls.past_edition2 = EditionFactory(collection=collection_2)
 
     def setUp(self):
         self.promotion = PromotionFactory()
-        self.edition = EditionFactory(promotion=self.promotion)
+        self.edition = EditionFactory()
+
         self.url = reverse(
-            "dealer-edition-stock", kwargs={"edition_id": self.edition.id}
+            "dealer-edition-stock", kwargs={"collection_id": self.edition.collection.id}
         )
 
     def test_dealer_can_get_initial_stock(self):
         self.client.force_authenticate(user=self.dealer.user)
         response = self.client.get(self.url)
-
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["stock"], 0)
 
@@ -1036,7 +1042,7 @@ class DealerStockAPIViewAPITestCase(APITestCase):
         )
 
     def test_get_updated_stock_after_order(self):
-        OrderFactory(dealer=self.dealer.user, edition=self.edition)
+        OrderFactory(dealer=self.dealer.user, collection=self.edition.collection)
         self.client.force_authenticate(user=self.dealer.user)
         response = self.client.get(self.url)
 
@@ -1048,47 +1054,49 @@ class DealerStockAPIViewAPITestCase(APITestCase):
         self.client.force_authenticate(user=self.dealer.user)
         response = self.client.get(self.url)
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["stock"], 0)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data["detail"], "No hay ninguna promoción en curso.")
 
     def test_get_stock_from_past_edition(self):
-        promotion = PromotionFactory(past=True)
-        edition = EditionFactory(promotion=promotion, collection__name="Angela")
-        OrderFactory(dealer=self.dealer.user, edition=edition)
+        with patch("promotions.models.Promotion.objects.get_current") as mock_current:
+            promotion = PromotionFactory(past=True)
+            mock_current.return_value = promotion
+            edition = EditionFactory(collection__theme__name="Angela")
+            OrderFactory(dealer=self.dealer.user, collection=edition.collection)
+
         self.client.force_authenticate(user=self.dealer.user)
-        url = reverse("dealer-edition-stock", kwargs={"edition_id": edition.id})
+        url = reverse(
+            "dealer-edition-stock", kwargs={"collection_id": edition.collection.id}
+        )
         response = self.client.get(url)
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["stock"], 0)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(
+            response.data["detail"],
+            "No hay ninguna colección activa con el id suministrado",
+        )
 
     def test_get_stock_with_expired_promotion(self):
         self.promotion.delete()
         OrderFactory(
-            dealer=self.dealer.user, edition=self.past_edition, skip_validation=True
+            dealer=self.dealer.user,
+            collection=self.past_edition.collection,
+            skip_validation=True,
         )
         OrderFactory(
-            dealer=self.dealer.user, edition=self.past_edition2, skip_validation=True
+            dealer=self.dealer.user,
+            collection=self.past_edition2.collection,
+            skip_validation=True,
         )
         self.client.force_authenticate(user=self.dealer.user)
         response = self.client.get(self.url)
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(Order.objects.all().count(), 2)
-        self.assertEqual(response.data["stock"], 0)
-
-    def test_get_all_editions_stock(self):
-        edition = EditionFactory(
-            promotion=self.promotion, collection__name="Angela", circulation=2
+        self.assertEqual(
+            response.data["detail"],
+            "No hay ninguna promoción en curso.",
         )
-        OrderFactory(dealer=self.dealer.user, edition=self.edition)
-        OrderFactory(dealer=self.dealer.user, edition=edition)
-        url = reverse("dealer-total-stock")
-        self.client.force_authenticate(user=self.dealer.user)
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["stock"], 45)
 
     def test_method_not_allowed(self):
         self.client.force_authenticate(user=self.dealer.user)

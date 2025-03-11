@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase, APIClient
@@ -22,27 +23,41 @@ class EditionViewSetTestCase(APITestCase):
         self.client.force_authenticate(user=self.user)
 
     def test_current_list_with_active_promotion_and_editions(self):
-        promotion = PromotionFactory()
-        EditionFactory(promotion=promotion, collection__name="Collection 1")
-        EditionFactory(promotion=promotion, collection__name="Collection 2")
+        PromotionFactory()
+        EditionFactory(collection__theme__name="Collection 1")
+        EditionFactory(collection__theme__name="Collection 2")
 
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
 
-        for item in response.data:
-            self.assertIn("remaining_time", item["promotion"])
-            self.assertIn(
-                "Esta promoción termina hoy a la medianoche.",
-                item["promotion"]["remaining_time"],
-            )
-            self.assertIn("name", item["collection"])
-            self.assertIn("image", item["collection"])
+        expected_data = [
+            {
+                "id": 1,
+                "collection": {
+                    "promotion": {
+                        "remaining_time": "Esta promoción termina hoy a la medianoche.",
+                        "max_debt": Decimal("150.00"),
+                    },
+                    "theme": {"name": "Collection 1", "image": None},
+                },
+                "circulation": "1",
+            },
+            {
+                "id": 2,
+                "collection": {
+                    "promotion": {
+                        "remaining_time": "Esta promoción termina hoy a la medianoche.",
+                        "max_debt": Decimal("150.00"),
+                    },
+                    "theme": {"name": "Collection 2", "image": None},
+                },
+                "circulation": "1",
+            },
+        ]
 
-        collection_names = [item["collection"]["name"] for item in response.data]
-        self.assertIn("Collection 1", collection_names)
-        self.assertIn("Collection 2", collection_names)
+        self.assertEqual(response.data, expected_data)
 
     def test_current_list_with_active_promotion_and_no_editions(self):
         PromotionFactory()
@@ -61,9 +76,9 @@ class EditionViewSetTestCase(APITestCase):
         self.assertEqual(response.data["detail"], "No hay ninguna promoción en curso")
 
     def test_unauthenticated_user_cannot_get_current_list(self):
-        promotion = PromotionFactory()
-        EditionFactory(promotion=promotion, collection__name="Edition 1")
-        EditionFactory(promotion=promotion, collection__name="Edition 2")
+        PromotionFactory()
+        EditionFactory(collection__theme__name="Edition 1")
+        EditionFactory(collection__theme__name="Edition 2")
         self.client.logout()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -88,9 +103,9 @@ class EditionViewSetTestCase(APITestCase):
         )
 
     def test_unauthenticated_user_cannot_get_list(self):
-        promotion = PromotionFactory()
-        EditionFactory(promotion=promotion, collection__name="Edition 1")
-        EditionFactory(promotion=promotion, collection__name="Edition 2")
+        PromotionFactory()
+        EditionFactory(collection__theme__name="Edition 1")
+        EditionFactory(collection__theme__name="Edition 2")
         self.client.logout()
         response = self.client.get(self.list_url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -102,24 +117,29 @@ class EditionViewSetTestCase(APITestCase):
     def test_superuser_can_retrieve_edition(self):
         superuser = UserFactory(is_superuser=True)
         self.client.force_authenticate(user=superuser)
-        promotion = PromotionFactory()
-        edition = EditionFactory(promotion=promotion, collection__name="Collection 1")
+        PromotionFactory()
+        edition = EditionFactory(collection__theme__name="Collection 1")
         detail_url = reverse("edition-detail", kwargs={"pk": edition.pk})
+        expected_data = {
+            "id": 1,
+            "collection": {
+                "promotion": {
+                    "remaining_time": "Esta promoción termina hoy a la medianoche.",
+                    "max_debt": Decimal("150.00"),
+                },
+                "theme": {"name": "Collection 1", "image": None},
+            },
+            "circulation": "1",
+        }
+
         response = self.client.get(detail_url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("remaining_time", response.data["promotion"])
-        self.assertIn(
-            "Esta promoción termina hoy a la medianoche.",
-            response.data["promotion"]["remaining_time"],
-        )
-        self.assertIn("name", response.data["collection"])
-        self.assertIn("Collection 1", response.data["collection"]["name"])
-        self.assertIn("image", response.data["collection"])
+        self.assertEqual(response.data, expected_data)
 
     def test_user_cannot_retrieve_edition(self):
-        promotion = PromotionFactory()
-        edition = EditionFactory(promotion=promotion, collection__name="Edition 1")
+        PromotionFactory()
+        edition = EditionFactory(collection__theme__name="Edition 1")
         detail_url = reverse("edition-detail", kwargs={"pk": edition.pk})
         response = self.client.get(detail_url)
 
@@ -127,8 +147,8 @@ class EditionViewSetTestCase(APITestCase):
 
     def test_unauthenticated_user_cannot_retrieve_edition(self):
         self.client.logout()
-        promotion = PromotionFactory()
-        edition = EditionFactory(promotion=promotion, collection__name="Edition 1")
+        PromotionFactory()
+        edition = EditionFactory(collection__theme__name="Edition 1")
         detail_url = reverse("edition-detail", kwargs={"pk": edition.pk})
         response = self.client.get(detail_url)
 
@@ -160,11 +180,15 @@ class RescueStickerViewTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
+        PromotionFactory()
+        cls.edition = EditionFactory()
         cls.user = UserFactory()
         cls.collector = CollectorFactory(user=UserFactory())
 
     def setUp(self):
-        self.album = AlbumFactory(collector=self.collector.user)
+        self.album = AlbumFactory(
+            collector=self.collector.user, collection=self.edition.collection
+        )
         packs = Pack.objects.all()
 
         for pack in packs:

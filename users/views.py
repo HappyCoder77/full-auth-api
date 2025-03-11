@@ -10,6 +10,7 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from django.shortcuts import get_object_or_404
 
+from collection_manager.models import Collection
 from promotions.models import Promotion
 from promotions.utils import promotion_is_running
 from editions.models import Edition
@@ -138,14 +139,30 @@ class DealerViewSet(viewsets.ModelViewSet):
 class DealerStockAPIView(APIView):
     permission_classes = [IsAuthenticatedDealer]
 
-    def get(self, request, edition_id=None):
+    def get(self, request, collection_id):
+
+        if not Promotion.objects.is_running():
+            return Response(
+                {"detail": "No hay ninguna promoción en curso."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        collections = Collection.objects.get_current_list()
+
+        if not collections:
+            return Response(
+                {"detail": "No se han creado colecciones para la promoción en curso."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not collections.filter(id=collection_id).exists():
+            return Response(
+                {"detail": "No hay ninguna colección activa con el id suministrado"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
         dealer = Dealer.objects.get(user=request.user)
-
-        if not edition_id:
-            stock = dealer.get_pack_stock()
-            return Response({"stock": stock})
-
-        stock = dealer.get_pack_stock(edition_id)
+        stock = dealer.get_pack_stock(collection_id)
         return Response({"stock": stock})
 
     def handle_exception(self, exc):
@@ -157,49 +174,33 @@ class DealerStockAPIView(APIView):
 class DealerListStockAPIView(APIView):
     permission_classes = [IsAuthenticatedDealer]
 
-    def get_current_promotion(self):
-        now = timezone.now()
-
-        try:
-            return Promotion.objects.get(start_date__lte=now, end_date__gte=now)
-        except Promotion.DoesNotExist:  # pragma: no cover
-            return None
-
-    def get_current_editions(self):
-        promotion = self.get_current_promotion()
-
-        if promotion:
-            return Edition.objects.filter(promotion=promotion)
-
-        return Edition.objects.none()
-
     def get(self, request):
 
-        if not promotion_is_running():
+        if not Promotion.objects.is_running():
             return Response(
                 {"detail": "No hay ninguna promoción en curso."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
         dealer = Dealer.objects.get(user=request.user)
-        editionsStockList = []
-        editions = self.get_current_editions()
+        collectionStockList = []
+        collections = Collection.objects.get_current_list()
 
-        if not editions.exists():
+        if not collections:
             return Response(
-                {"detail": "No se han creado ediciones para la promoción en curso."},
+                {"detail": "No se han creado colecciones para la promoción en curso."},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        for edition in self.get_current_editions():
-            editionsStockList.append(
+        for collection in collections:
+            collectionStockList.append(
                 {
-                    "id": edition.id,
-                    "name": edition.collection.name,
-                    "stock": dealer.get_pack_stock(edition.id),
+                    "id": collection.id,
+                    "name": collection.theme.name,
+                    "stock": dealer.get_pack_stock(collection.id),
                 }
             )
 
-        return Response(editionsStockList)
+        return Response(collectionStockList)
 
     def handle_exception(self, exc):
         status_code = getattr(exc, "status_code", status.HTTP_500_INTERNAL_SERVER_ERROR)

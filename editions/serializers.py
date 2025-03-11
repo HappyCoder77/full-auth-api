@@ -7,12 +7,11 @@ from .models import Edition, Pack, Sticker, StickerPrize
 
 
 class EditionSerializer(ModelSerializer):
-    promotion = PromotionSerializer(read_only=True)
     collection = CollectionSerializer(read_only=True)
 
     class Meta:
         model = Edition
-        fields = ("id", "promotion", "collection")
+        fields = ("id", "collection", "circulation")
 
 
 class StickerPrizeSerializer(ModelSerializer):

@@ -21,7 +21,7 @@ urlpatterns = [
         "dealer/stock/total/", DealerStockAPIView.as_view(), name="dealer-total-stock"
     ),
     path(
-        "dealer/stock/<int:edition_id>/",
+        "dealer/stock/<int:collection_id>/",
         DealerStockAPIView.as_view(),
         name="dealer-edition-stock",
     ),

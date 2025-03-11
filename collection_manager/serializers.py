@@ -1,12 +1,22 @@
-from rest_framework.serializers import ModelSerializer
+from rest_framework.serializers import ModelSerializer, PrimaryKeyRelatedField
 
-from .models import OldCollection, Coordinate, SurprisePrize
+from promotions.serializers import PromotionSerializer
+from .models import Collection, Coordinate, SurprisePrize, Theme
+
+
+class ThemeSerializer(ModelSerializer):
+    class Meta:
+        model = Theme
+        fields = ("name", "image")
 
 
 class CollectionSerializer(ModelSerializer):
+    promotion = PromotionSerializer(read_only=True)
+    theme = ThemeSerializer(read_only=True)
+
     class Meta:
-        model = OldCollection
-        fields = ("name", "image")
+        model = Collection
+        fields = ("promotion", "theme")
 
 
 class CoordinateSerializer(ModelSerializer):

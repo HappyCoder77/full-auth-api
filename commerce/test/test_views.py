@@ -1244,7 +1244,8 @@ class SurprisePrizeListAPIViewTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
-        cls.edition = EditionFactory(promotion=PromotionFactory())
+        PromotionFactory()
+        cls.edition = EditionFactory()
         cls.superuser = UserFactory(is_superuser=True)
         cls.basic_user = UserFactory()
         cls.dealer_user = UserFactory()

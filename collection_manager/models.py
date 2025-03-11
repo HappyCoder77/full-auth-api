@@ -40,11 +40,11 @@ class Layout(models.Model):
 
 
 class CollectionManager(Manager):
-    def get_current(self):
+    def get_current_list(self):
         promotion = Promotion.objects.get_current()
-        collection = Collection.objects.filter(promotion=promotion)
+        collections = Collection.objects.filter(promotion=promotion)
 
-        return collection if collection.exists() else None
+        return collections if collections.exists() else None
 
 
 class Collection(models.Model):

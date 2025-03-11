@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 from rest_framework import status
 from utils.exceptions import DetailedPermissionDenied
 from albums.permissions import IsAuthenticatedCollector
+from collection_manager.models import Collection
 from promotions.models import Promotion
 from .permissions import EditionPermission
 from .serializers import EditionSerializer
@@ -31,7 +32,7 @@ class EditionViewSet(ReadOnlyModelViewSet):
 
     @action(detail=False, methods=["get"])
     def current_list(self, request):
-        promotion = self.get_current_promotion()
+        promotion = Promotion.objects.get_current()
 
         if not promotion:
             return Response(
@@ -39,7 +40,7 @@ class EditionViewSet(ReadOnlyModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        editions = Edition.objects.filter(promotion=promotion)
+        editions = Edition.objects.filter(collection__promotion=promotion)
 
         if not editions.exists():
             return Response(
@@ -51,6 +52,7 @@ class EditionViewSet(ReadOnlyModelViewSet):
             serializer = self.get_serializer(editions, many=True)
             return Response(serializer.data)
         except Exception as e:
+
             return Response(
                 {"detail": "Se produjo un error al obtener las ediciones"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
