@@ -16,7 +16,8 @@ class ThemeAdmin(admin.ModelAdmin):
 
 @admin.register(Collection)
 class CollectionAdmin(admin.ModelAdmin):
-    list_display = ("id", "theme", "promotion")
+    list_display = ("__str__", "id", "theme", "promotion")
+    fields = ("theme",)
 
 
 @admin.register(Coordinate)

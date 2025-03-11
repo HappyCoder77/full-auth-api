@@ -1,3 +1,4 @@
+import os
 import random
 from decimal import Decimal
 from datetime import date
@@ -8,6 +9,8 @@ from django.db import models, transaction
 from promotions.models import Promotion
 from promotions.models import Promotion
 from promotions.utils import get_last_promotion
+from django.db.models.signals import pre_delete
+from django.dispatch import receiver
 
 
 class Theme(models.Model):
@@ -20,6 +23,13 @@ class Theme(models.Model):
     class Meta:
         verbose_name = "theme"
         verbose_name_plural = "themes"
+
+
+@receiver(pre_delete, sender=Theme)
+def delete_theme_image(sender, instance, **kwargs):
+    if instance.image:
+        if os.path.isfile(instance.image.path):
+            os.remove(instance.image.path)
 
 
 class Layout(models.Model):
@@ -98,14 +108,20 @@ class Collection(models.Model):
 
     @transaction.atomic
     def save(self, *args, **kwargs):
-        self.layout = Layout.objects.create()
-        self.full_clean()
-        super(Collection, self).save(*args, **kwargs)
-        self.create_coordinates()
-        self.shuffle_coordinates()
-        self.distribute_rarity()
-        self.create_standard_prizes()
-        self.create_surprise_prizes()
+        is_new = self._state.adding
+
+        if is_new:
+            self.layout = Layout.objects.create()
+            self.full_clean()
+            super(Collection, self).save(*args, **kwargs)
+
+            self.create_coordinates()
+            self.shuffle_coordinates()
+            self.distribute_rarity()
+            self.create_standard_prizes()
+            self.create_surprise_prizes()
+        else:
+            super(Collection, self).save(*args, **kwargs)
 
     def create_coordinates(self):  # función que crea las coordinates de una colección
         coordinates_list = []
