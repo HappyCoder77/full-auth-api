@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Manager
 from django.db import models, transaction
 from promotions.models import Promotion
+from rest_framework.exceptions import NotFound
 from promotions.models import Promotion
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
@@ -50,9 +51,17 @@ class Layout(models.Model):
 class CollectionManager(Manager):
     def get_current_list(self):
         promotion = Promotion.objects.get_current()
+        if not promotion:
+            raise NotFound("No hay ninguna promocion en curso.")
+
         collections = Collection.objects.filter(promotion=promotion)
 
-        return collections if collections.exists() else None
+        if not collections.exists():
+            raise NotFound(
+                "No se ha creado ninguna collección para la promoción en curso."
+            )
+
+        return collections
 
 
 class Collection(models.Model):

@@ -7,7 +7,8 @@ from rest_framework.exceptions import ErrorDetail
 
 from authentication.test.factories import UserFactory
 from users.test.factories import CollectorFactory
-from ..models import Promotion
+from promotions.models import Promotion
+from ..models import Collection
 from .factories import CollectionFactory, PromotionFactory
 
 
@@ -48,13 +49,29 @@ class CurrentCollectionListViewTestCase(APITestCase):
         self.assertEqual(len(response.data), 2)
         self.assertEqual(response.data, expected_data)
 
-    def test_get_current_collections_empty(self):
-        expected_data = []
+    def test_get_current_collections_with_no_promotion(self):
+        expected_data = {
+            "detail": ErrorDetail(
+                string="No hay ninguna promocion en curso.", code="not_found"
+            )
+        }
         Promotion.objects.all().delete()
         response = self.client.get(self.url)
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 0)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.data, expected_data)
+
+    def test_get_current_collections_with_no_collections(self):
+        expected_data = {
+            "detail": ErrorDetail(
+                string="No se ha creado ninguna collección para la promoción en curso.",
+                code="not_found",
+            )
+        }
+        Collection.objects.all().delete()
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(response.data, expected_data)
 
     def test_method_not_allowed(self):
