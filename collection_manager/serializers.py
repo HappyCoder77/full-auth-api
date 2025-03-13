@@ -16,7 +16,7 @@ class CollectionSerializer(ModelSerializer):
 
     class Meta:
         model = Collection
-        fields = ("promotion", "theme")
+        fields = ("id", "promotion", "theme")
 
 
 class CoordinateSerializer(ModelSerializer):

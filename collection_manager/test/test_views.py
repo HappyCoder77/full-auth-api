@@ -29,6 +29,7 @@ class CurrentCollectionListViewTestCase(APITestCase):
     def test_get_current_collections_success(self):
         expected_data = [
             {
+                "id": 1,
                 "promotion": {
                     "remaining_time": "Esta promoción termina hoy a la medianoche.",
                     "max_debt": Decimal("150.00"),
@@ -36,6 +37,7 @@ class CurrentCollectionListViewTestCase(APITestCase):
                 "theme": {"name": "Minecraft", "image": None},
             },
             {
+                "id": 2,
                 "promotion": {
                     "remaining_time": "Esta promoción termina hoy a la medianoche.",
                     "max_debt": Decimal("150.00"),
@@ -43,6 +45,7 @@ class CurrentCollectionListViewTestCase(APITestCase):
                 "theme": {"name": "Mario", "image": None},
             },
         ]
+
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
