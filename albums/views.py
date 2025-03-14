@@ -41,15 +41,6 @@ class UserAlbumListRetrieveView(
     lookup_field = "collection_id"
     lookup_url_kwarg = lookup_field
 
-    # def get_current_promotion(self):
-    #     now = timezone.now()
-    #     try:
-    #         promotion = Promotion.objects.get(start_date__lte=now, end_date__gte=now)
-    #     except Promotion.DoesNotExist:
-    #         return None
-
-    #     return promotion
-
     def get_queryset(self):
         return Album.objects.filter(collector=self.request.user)
 

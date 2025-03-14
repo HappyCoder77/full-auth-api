@@ -62,9 +62,9 @@ class AlbumSerializer(serializers.ModelSerializer):
         )
 
     def get_image(self, obj):
-        if obj.image:
-            try:
-                return obj.image.url
-            except:
-                return None
-        return None
+        try:
+            if obj.collection and obj.collection.theme and obj.collection.theme.image:
+                return obj.collection.theme.image.url
+            return None
+        except:
+            return None
