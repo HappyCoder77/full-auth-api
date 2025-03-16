@@ -1,16 +1,11 @@
-from datetime import timedelta, date
-import datetime
 import os
 import shutil
 from django.test.utils import override_settings
-from django.conf import settings
 import tempfile
-from unittest import skip
 from django.db import IntegrityError, transaction
 from django.core.exceptions import ValidationError
 from django.db.models import ProtectedError
 from django.test import TestCase
-from django.utils import timezone
 from django.core.files.storage import default_storage
 
 from promotions.models import Promotion

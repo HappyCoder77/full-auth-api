@@ -1,6 +1,9 @@
 from decimal import Decimal
 from unittest.mock import patch
 from django.urls import reverse
+from django.test.utils import override_settings
+import tempfile
+import shutil
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from rest_framework.exceptions import ErrorDetail
@@ -11,7 +14,10 @@ from promotions.models import Promotion
 from ..models import Collection
 from .factories import CollectionFactory, PromotionFactory
 
+TEMP_MEDIA_ROOT = tempfile.mkdtemp()
 
+
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class CurrentCollectionListViewTestCase(APITestCase):
     @classmethod
     def setUpTestData(cls):
@@ -21,7 +27,12 @@ class CurrentCollectionListViewTestCase(APITestCase):
         cls.collector = CollectorFactory(user=UserFactory())
         PromotionFactory()
         CollectionFactory()
-        CollectionFactory(theme__name="Mario")
+        CollectionFactory(album_template__name="Mario", album_template__with_image=True)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def setUp(self):
         self.client.force_authenticate(user=self.collector.user)
@@ -34,7 +45,8 @@ class CurrentCollectionListViewTestCase(APITestCase):
                     "remaining_time": "Esta promoción termina hoy a la medianoche.",
                     "max_debt": Decimal("150.00"),
                 },
-                "theme": {"name": "Minecraft", "image": None},
+                "name": "Minecraft",
+                "image": "",
             },
             {
                 "id": 2,
@@ -42,10 +54,10 @@ class CurrentCollectionListViewTestCase(APITestCase):
                     "remaining_time": "Esta promoción termina hoy a la medianoche.",
                     "max_debt": Decimal("150.00"),
                 },
-                "theme": {"name": "Mario", "image": None},
+                "name": "Mario",
+                "image": "images/themes/test_image.png",
             },
         ]
-
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -122,7 +134,7 @@ class CurrentCollectionListViewTestCase(APITestCase):
         with patch("promotions.models.Promotion.objects.get_current") as mock_current:
             promotion = PromotionFactory(past=True)
             mock_current.return_value = promotion
-            CollectionFactory(theme__name="Angela")
+            CollectionFactory(album_template__name="Angela")
 
         response = self.client.get(self.url)
 

@@ -1,4 +1,4 @@
-from rest_framework.serializers import ModelSerializer, PrimaryKeyRelatedField
+from rest_framework.serializers import ModelSerializer, CharField
 
 from promotions.serializers import PromotionSerializer
 from .models import Collection, Coordinate, SurprisePrize, Theme
@@ -12,11 +12,12 @@ class ThemeSerializer(ModelSerializer):
 
 class CollectionSerializer(ModelSerializer):
     promotion = PromotionSerializer(read_only=True)
-    theme = ThemeSerializer(read_only=True)
+    name = CharField(source="album_template.name", read_only=True)
+    image = CharField(source="album_template.image", read_only=True)
 
     class Meta:
         model = Collection
-        fields = ("id", "promotion", "theme")
+        fields = ("id", "promotion", "name", "image")
 
 
 class CoordinateSerializer(ModelSerializer):
