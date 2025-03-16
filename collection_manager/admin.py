@@ -16,7 +16,7 @@ class ThemeAdmin(admin.ModelAdmin):
 
 @admin.register(Collection)
 class CollectionAdmin(admin.ModelAdmin):
-    list_display = ("__str__", "id", "theme", "promotion")
+    list_display = ("__str__", "id", "album_template", "promotion")
     fields = ("theme",)
 
 

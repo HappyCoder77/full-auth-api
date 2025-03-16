@@ -1,6 +1,7 @@
 from datetime import timedelta, date
 import datetime
 import os
+import shutil
 from django.test.utils import override_settings
 from django.conf import settings
 import tempfile
@@ -36,24 +37,8 @@ class AlbumTemplateTestCase(TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        import shutil
-
         shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
         super().tearDownClass()
-
-    # def tearDown(self):
-    #     """Clean up data after each test method."""
-    #     directory = os.path.dirname(self.album_template.image.name)
-    #     stored_files = default_storage.listdir(directory)[1]
-
-    #     for filename in stored_files:
-    #         if filename.startswith("test_image"):
-    #             full_path = os.path.join(directory, filename)
-    #             default_storage.delete(full_path)
-
-    #     for image_path in self.image_paths:
-    #         if default_storage.exists(image_path):
-    #             default_storage.delete(image_path)
 
     def test_album_template_data(self):
         expected_coordinates_count = (
@@ -160,226 +145,103 @@ class AlbumTemplateTestCase(TestCase):
         self.assertFalse(default_storage.exists(image_path))
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class CollectionTestCase(TestCase):
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def setUp(self):
         PromotionFactory()
-        self.collection = CollectionFactory(theme__with_image=True)
+        self.collection = CollectionFactory(
+            album_template__with_image=True, album_template__with_coordinate_images=True
+        )
         self.promotion = Promotion.objects.first()
         self.layout = Layout.objects.first()
 
-    def tearDown(self):
-        """Clean up data after each test method."""
-        self.collection.theme.image.delete(save=False)
-        Collection.objects.all().delete()
-
     def test_str_method(self):
         self.assertEqual(
-            str(self.collection), f"{self.collection.theme} {self.collection.promotion}"
+            str(self.collection),
+            f"{self.collection.album_template} {self.collection.promotion}",
         )
 
-    def test_collection_theme_data(self):
-        self.assertEqual(self.collection.theme.name, "Minecraft")
-        self.assertTrue(self.collection.theme.image.name.startswith("images/themes/"))
-        self.assertTrue(self.collection.theme.image.name.endswith(".png"))
-
-    def test_collection_promotion_data(self):
-        self.assertEqual(self.collection.promotion.start_date, date.today())
-        self.assertEqual(self.collection.promotion.end_date, date.today())
-        self.assertEqual(self.collection.promotion.duration, 1)
-        self.assertEqual(self.collection.promotion.pack_cost, 1.5)
-        self.assertFalse(self.collection.promotion.balances_created)
-        self.assertEqual(str(self.collection.promotion), str(self.promotion))
-
-    def test_collection_layout_data(self):
-        self.assertEqual(self.collection.layout.PAGES, self.layout.PAGES)
-        self.assertEqual(
-            self.collection.layout.SLOTS_PER_PAGE, self.layout.SLOTS_PER_PAGE
-        )
-        self.assertEqual(
-            self.collection.layout.STICKERS_PER_PACK, self.layout.STICKERS_PER_PACK
-        )
-        self.assertEqual(
-            self.collection.layout.PACKS_PER_BOX, self.layout.PACKS_PER_BOX
-        )
-        self.assertEqual(
-            self.collection.layout.PRIZE_STICKER_COORDINATE,
-            self.layout.PRIZE_STICKER_COORDINATE,
-        )
-        self.assertEqual(
-            self.collection.layout.SURPRISE_PRIZE_OPTIONS,
-            self.layout.SURPRISE_PRIZE_OPTIONS,
-        )
-        self.assertEqual(self.collection.layout.RARITY_1, self.layout.RARITY_1)
-        self.assertEqual(self.collection.layout.RARITY_2, self.layout.RARITY_2)
-        self.assertEqual(self.collection.layout.RARITY_3, self.layout.RARITY_3)
-        self.assertEqual(self.collection.layout.RARITY_4, self.layout.RARITY_4)
-        self.assertEqual(self.collection.layout.RARITY_5, self.layout.RARITY_5)
-        self.assertEqual(self.collection.layout.RARITY_6, self.layout.RARITY_6)
-        self.assertEqual(self.collection.layout.RARITY_7, self.layout.RARITY_7)
-        self.assertEqual(
-            self.collection.layout.PRIZE_STICKER_RARITY,
-            self.layout.PRIZE_STICKER_RARITY,
-        )
-
-    def test_rarity_distribution(self):
-        expected_coordinates = self.layout.PAGES * self.layout.SLOTS_PER_PAGE
-        self.assertEqual(
-            self.collection.coordinates.exclude(page=99).count(), expected_coordinates
-        )
-        self.assertEqual(self.collection.coordinates.count(), expected_coordinates + 1)
-        self.assertEqual(
-            self.collection.coordinates.filter(
-                rarity_factor=self.collection.layout.RARITY_2
-            ).count(),
-            8,
-        )
-        self.assertEqual(
-            self.collection.coordinates.filter(
-                rarity_factor=self.collection.layout.RARITY_3
-            ).count(),
-            4,
-        )
-        self.assertEqual(
-            self.collection.coordinates.filter(
-                rarity_factor=self.collection.layout.RARITY_4
-            ).count(),
-            1,
-        )
-        self.assertEqual(
-            self.collection.coordinates.filter(
-                rarity_factor=self.collection.layout.RARITY_5
-            ).count(),
-            1,
-        )
-        self.assertEqual(
-            self.collection.coordinates.filter(
-                rarity_factor=self.collection.layout.RARITY_6
-            ).count(),
-            1,
-        )
-        self.assertEqual(
-            self.collection.coordinates.filter(
-                rarity_factor=self.collection.layout.RARITY_7
-            ).count(),
-            1,
-        )
-        self.assertEqual(
-            self.collection.coordinates.filter(
-                rarity_factor=self.collection.layout.PRIZE_STICKER_RARITY
-            ).count(),
-            1,
-        )
-        self.assertEqual(
-            self.collection.standard_prizes.count(), self.collection.layout.PAGES
-        )
-        self.assertEqual(
-            self.collection.surprise_prizes.count(),
-            self.collection.layout.SURPRISE_PRIZE_OPTIONS,
-        )
-
-    def test_coordinates_data(self):
-
-        counter = 1
-        current_page = 1
-
-        while current_page <= self.collection.layout.PAGES:
-            coordinates = iter(
-                self.collection.coordinates.filter(page=current_page).order_by(
-                    "slot_number"
-                )
-            )
-            current_slot = 1
-
-            while True:
-                coordinate = next(coordinates, "fin_de_archivo")
-
-                if coordinate != "fin_de_archivo":
-                    self.assertEqual(coordinate.page, current_page)
-                    self.assertEqual(coordinate.slot_number, current_slot)
-                    self.assertEqual(coordinate.absolute_number, counter)
-                    self.assertEqual(
-                        str(coordinate),
-                        f"Pagina:{coordinate.page}, Casilla nº: {coordinate.slot_number}, Nº absoluto: {coordinate.absolute_number}, rareza: {coordinate.rarity_factor}",
-                    )
-                    current_slot += 1
-                    counter += 1
-                else:
-                    break
-
-            current_page += 1
-
-    def test_collection_unique_constraint(self):
-        with transaction.atomic():
-            with self.assertRaises(ValidationError):
-                CollectionFactory(
-                    theme=self.collection.theme, promotion=self.collection.promotion
-                )
-
-    def test_collection_relationships(self):
+    def test_collection_data(self):
+        self.assertIsNotNone(self.collection.album_template)
         self.assertIsNotNone(self.collection.promotion)
-        self.assertIsNotNone(self.collection.theme)
-        self.assertIsNotNone(self.collection.layout)
 
-    def test_theme_protection(self):
-        with self.assertRaises(ProtectedError):
-            self.collection.theme.delete()
+    def test_prize_creation(self):
+        """Test that standard and surprise prizes are created correctly."""
 
-    def test_layout_protection(self):
+        expected_standard_prizes = self.collection.album_template.layout.PAGES
+        self.assertEqual(
+            self.collection.standard_prizes.count(), expected_standard_prizes
+        )
+
+        for page in range(1, self.collection.album_template.layout.PAGES + 1):
+            self.assertTrue(self.collection.standard_prizes.filter(page=page).exists())
+
+        expected_surprise_prizes = (
+            self.collection.album_template.layout.SURPRISE_PRIZE_OPTIONS
+        )
+        self.assertEqual(
+            self.collection.surprise_prizes.count(), expected_surprise_prizes
+        )
+
+        for number in range(
+            1, self.collection.album_template.layout.SURPRISE_PRIZE_OPTIONS + 1
+        ):
+            self.assertTrue(
+                self.collection.surprise_prizes.filter(number=number).exists()
+            )
+
+    def test_box_cost_property(self):
+        """Test that box_cost property calculates correctly."""
+        expected_cost = (
+            self.promotion.pack_cost
+            * self.collection.album_template.layout.PACKS_PER_BOX
+        )
+        self.assertEqual(self.collection.box_cost, expected_cost)
+
+    def test_unique_constraint(self):
+        """Test that unique constraint works."""
+        with self.assertRaises(ValidationError):
+            CollectionFactory(
+                album_template=self.collection.album_template,
+            )
+
+    def test_get_random_surprise_prize(self):
+        """Test that get_random_surprise_prize returns a valid surprise prize."""
+        prize = self.collection.get_random_surprise_prize()
+        self.assertIsNotNone(prize)
+        self.assertTrue(
+            prize.number
+            in range(
+                1, self.collection.album_template.layout.SURPRISE_PRIZE_OPTIONS + 1
+            )
+        )
+
+    def test_no_promotion_error(self):
+        """Test that creating a collection without an active promotion raises an error."""
+        # Delete all promotions
+        Promotion.objects.all().delete()
+
+        with self.assertRaises(ValidationError):
+            CollectionFactory(album_template__name="Mario")
+
+    def test_album_template_protection(self):
         with self.assertRaises(ProtectedError):
-            self.collection.layout.delete()
+            self.collection.album_template.delete()
 
     def test_promotion_cascade(self):
         promotion_id = self.collection.promotion.id
         self.collection.promotion.delete()
         self.assertFalse(Collection.objects.filter(promotion_id=promotion_id).exists())
 
-    def test_collection_filtering(self):
-        theme2 = ThemeFactory(name="Angela")
-        CollectionFactory(theme=theme2)
-        self.assertEqual(
-            Collection.objects.filter(theme=self.collection.theme).count(), 1
-        )
-        self.assertEqual(Collection.objects.count(), 2)
-
-    def test_prize_coordinate_data(self):
-        prize_coordinate = self.collection.coordinates.get(page=99)
-
-        self.assertEqual(
-            prize_coordinate.slot_number,
-            self.collection.layout.PRIZE_STICKER_COORDINATE,
-        )
-        self.assertEqual(
-            prize_coordinate.rarity_factor, self.collection.layout.PRIZE_STICKER_RARITY
-        )
-        self.assertEqual(prize_coordinate.ordinal, 0)
-
-    def test_standard_prizes_data(self):
-        for counter in range(1, self.collection.layout.PAGES + 1):
-            standard_prize = self.collection.standard_prizes.get(page=counter)
-            self.assertEqual(standard_prize.collection, self.collection)
-            self.assertEqual(standard_prize.description, "undefined")
-            self.assertEqual(standard_prize.__str__(), "undefined")
-
-    def test_surprise_prizes_data(self):
-        for counter in range(1, self.collection.layout.SURPRISE_PRIZE_OPTIONS + 1):
-            surprise_prize = self.collection.surprise_prizes.get(number=counter)
-            self.assertEqual(surprise_prize.description, "undefined")
-            self.assertEqual(str(surprise_prize), "undefined")
-
-    def test_clean_with_no_promotion(self):
-        Promotion.objects.all().delete()
-
-        collection = CollectionFactory.build(promotion=None)
-        with self.assertRaises(ValidationError) as context:
-            collection.full_clean()
-        self.assertIn("No hay ninguna promoción en curso", str(context.exception))
-
     def test_no_current_promotion(self):
         Promotion.objects.all().delete()
         PromotionFactory(past=True)
-        theme = ThemeFactory(name="barbie")
-        collection = CollectionFactory.build(theme=theme)
+        collection = CollectionFactory.build(album_template__name="Angela")
 
         with self.assertRaises(ValidationError) as context:
             collection.full_clean()

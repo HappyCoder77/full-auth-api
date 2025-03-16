@@ -20,14 +20,6 @@ class ThemeFactory(factory.django.DjangoModelFactory):
         )
 
 
-class CollectionFactory(factory.django.DjangoModelFactory):
-
-    class Meta:
-        model = Collection
-
-    theme = factory.SubFactory(ThemeFactory)
-
-
 class AlbumTemplateFactory(factory.django.DjangoModelFactory):
 
     class Meta:
@@ -63,3 +55,11 @@ def create_test_image(filename="test_image.png"):
     image.save(tmp_file)
     tmp_file.seek(0)
     return ContentFile(tmp_file.read(), filename)
+
+
+class CollectionFactory(factory.django.DjangoModelFactory):
+
+    class Meta:
+        model = Collection
+
+    album_template = factory.SubFactory(AlbumTemplateFactory)
