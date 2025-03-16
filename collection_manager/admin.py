@@ -24,7 +24,7 @@ class CollectionAdmin(admin.ModelAdmin):
 class CoordinateAdmin(admin.ModelAdmin):
     list_display = (
         "id",
-        "collection",
+        "template",
         "page",
         "slot_number",
         "absolute_number",
@@ -34,9 +34,9 @@ class CoordinateAdmin(admin.ModelAdmin):
     )
     ordering = (
         "id",
-        "collection",
+        "template",
     )
-    list_filter = ("page", "slot_number", "rarity_factor", "collection")
+    list_filter = ("page", "slot_number", "rarity_factor", "template")
     search_fields = ("rarity_factor",)
 
     def has_add_permission(self, request):

@@ -40,6 +40,223 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
         )
 
     def test_collector_can_get_user_album_list(self):
+        expected_data = [
+            {
+                "id": 1,
+                "collection": 1,
+                "image": None,
+                "collector": 3,
+                "pages": [
+                    {
+                        "id": 1,
+                        "page_prize": None,
+                        "number": 1,
+                        "slots": [
+                            {
+                                "id": 1,
+                                "number": 1,
+                                "absolute_number": 1,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                            {
+                                "id": 2,
+                                "number": 2,
+                                "absolute_number": 2,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                            {
+                                "id": 3,
+                                "number": 3,
+                                "absolute_number": 3,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                            {
+                                "id": 4,
+                                "number": 4,
+                                "absolute_number": 4,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                            {
+                                "id": 5,
+                                "number": 5,
+                                "absolute_number": 5,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                            {
+                                "id": 6,
+                                "number": 6,
+                                "absolute_number": 6,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                        ],
+                        "is_full": False,
+                        "prize_was_claimed": False,
+                    },
+                    {
+                        "id": 2,
+                        "page_prize": None,
+                        "number": 2,
+                        "slots": [
+                            {
+                                "id": 7,
+                                "number": 1,
+                                "absolute_number": 7,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                            {
+                                "id": 8,
+                                "number": 2,
+                                "absolute_number": 8,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                            {
+                                "id": 9,
+                                "number": 3,
+                                "absolute_number": 9,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                            {
+                                "id": 10,
+                                "number": 4,
+                                "absolute_number": 10,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                            {
+                                "id": 11,
+                                "number": 5,
+                                "absolute_number": 11,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                            {
+                                "id": 12,
+                                "number": 6,
+                                "absolute_number": 12,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                        ],
+                        "is_full": False,
+                        "prize_was_claimed": False,
+                    },
+                    {
+                        "id": 3,
+                        "page_prize": None,
+                        "number": 3,
+                        "slots": [
+                            {
+                                "id": 13,
+                                "number": 1,
+                                "absolute_number": 13,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                            {
+                                "id": 14,
+                                "number": 2,
+                                "absolute_number": 14,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                            {
+                                "id": 15,
+                                "number": 3,
+                                "absolute_number": 15,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                            {
+                                "id": 16,
+                                "number": 4,
+                                "absolute_number": 16,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                            {
+                                "id": 17,
+                                "number": 5,
+                                "absolute_number": 17,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                            {
+                                "id": 18,
+                                "number": 6,
+                                "absolute_number": 18,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                        ],
+                        "is_full": False,
+                        "prize_was_claimed": False,
+                    },
+                    {
+                        "id": 4,
+                        "page_prize": None,
+                        "number": 4,
+                        "slots": [
+                            {
+                                "id": 19,
+                                "number": 1,
+                                "absolute_number": 19,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                            {
+                                "id": 20,
+                                "number": 2,
+                                "absolute_number": 20,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                            {
+                                "id": 21,
+                                "number": 3,
+                                "absolute_number": 21,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                            {
+                                "id": 22,
+                                "number": 4,
+                                "absolute_number": 22,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                            {
+                                "id": 23,
+                                "number": 5,
+                                "absolute_number": 23,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                            {
+                                "id": 24,
+                                "number": 6,
+                                "absolute_number": 24,
+                                "image": None,
+                                "is_empty": True,
+                            },
+                        ],
+                        "is_full": False,
+                        "prize_was_claimed": False,
+                    },
+                ],
+                "pack_inbox": None,
+                "stickers_on_the_board": None,
+                "prized_stickers": [],
+            }
+        ]
         self.client.force_authenticate(user=self.collector.user)
         response = self.client.get(self.list_url)
 
@@ -82,9 +299,224 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
         )
 
     def test_collector_can_get_user_album(self):
+        expected_data = {
+            "id": 1,
+            "collection": 1,
+            "image": None,
+            "collector": 3,
+            "pages": [
+                {
+                    "id": 1,
+                    "page_prize": None,
+                    "number": 1,
+                    "slots": [
+                        {
+                            "id": 1,
+                            "number": 1,
+                            "absolute_number": 1,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 2,
+                            "number": 2,
+                            "absolute_number": 2,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 3,
+                            "number": 3,
+                            "absolute_number": 3,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 4,
+                            "number": 4,
+                            "absolute_number": 4,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 5,
+                            "number": 5,
+                            "absolute_number": 5,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 6,
+                            "number": 6,
+                            "absolute_number": 6,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                    ],
+                    "is_full": False,
+                    "prize_was_claimed": False,
+                },
+                {
+                    "id": 2,
+                    "page_prize": None,
+                    "number": 2,
+                    "slots": [
+                        {
+                            "id": 7,
+                            "number": 1,
+                            "absolute_number": 7,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 8,
+                            "number": 2,
+                            "absolute_number": 8,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 9,
+                            "number": 3,
+                            "absolute_number": 9,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 10,
+                            "number": 4,
+                            "absolute_number": 10,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 11,
+                            "number": 5,
+                            "absolute_number": 11,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 12,
+                            "number": 6,
+                            "absolute_number": 12,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                    ],
+                    "is_full": False,
+                    "prize_was_claimed": False,
+                },
+                {
+                    "id": 3,
+                    "page_prize": None,
+                    "number": 3,
+                    "slots": [
+                        {
+                            "id": 13,
+                            "number": 1,
+                            "absolute_number": 13,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 14,
+                            "number": 2,
+                            "absolute_number": 14,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 15,
+                            "number": 3,
+                            "absolute_number": 15,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 16,
+                            "number": 4,
+                            "absolute_number": 16,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 17,
+                            "number": 5,
+                            "absolute_number": 17,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 18,
+                            "number": 6,
+                            "absolute_number": 18,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                    ],
+                    "is_full": False,
+                    "prize_was_claimed": False,
+                },
+                {
+                    "id": 4,
+                    "page_prize": None,
+                    "number": 4,
+                    "slots": [
+                        {
+                            "id": 19,
+                            "number": 1,
+                            "absolute_number": 19,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 20,
+                            "number": 2,
+                            "absolute_number": 20,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 21,
+                            "number": 3,
+                            "absolute_number": 21,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 22,
+                            "number": 4,
+                            "absolute_number": 22,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 23,
+                            "number": 5,
+                            "absolute_number": 23,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 24,
+                            "number": 6,
+                            "absolute_number": 24,
+                            "image": None,
+                            "is_empty": True,
+                        },
+                    ],
+                    "is_full": False,
+                    "prize_was_claimed": False,
+                },
+            ],
+            "pack_inbox": None,
+            "stickers_on_the_board": None,
+            "prized_stickers": [],
+        }
         self.client.force_authenticate(user=self.collector.user)
         response = self.client.get(self.retrieve_url)
-
+        print(response.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, AlbumSerializer(self.album).data)
 

@@ -48,6 +48,118 @@ class Layout(models.Model):
     PRIZE_STICKER_RARITY = Decimal(0.301).quantize(Decimal("0.000"))
 
 
+class AlbumTemplate(Theme):
+    layout = models.OneToOneField(
+        Layout,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="album",
+    )
+
+    def __str__(self):
+        return f"{self.name}"
+
+    @transaction.atomic
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+
+        if is_new:
+            self.layout = Layout.objects.create()
+            super(AlbumTemplate, self).save(*args, **kwargs)
+            self.create_coordinates()
+            self.shuffle_coordinates()
+            self.distribute_rarity()
+        else:
+            super(AlbumTemplate, self).save(*args, **kwargs)
+
+    def create_coordinates(self):
+        coordinates_list = []
+        counter = 1
+        current_page = 1
+
+        while (
+            current_page <= self.layout.PAGES
+        ):  # bucle que recorre las pages del album
+            current_slot = 1
+
+            while (
+                current_slot <= self.layout.SLOTS_PER_PAGE
+            ):  # bucle que recorre las stickers de cada page,
+                # y crea las coordinates correspondientes
+                coordinate = Coordinate(
+                    template=self,
+                    page=current_page,
+                    slot_number=current_slot,
+                    ordinal=current_slot,
+                    absolute_number=counter,
+                    rarity_factor=0,
+                )
+
+                coordinates_list.append(coordinate)
+                current_slot += 1
+                counter += 1
+
+            current_page += 1
+
+        coordinate = Coordinate(  # creacion de las coordinates de la sticker premiada
+            template=self,
+            page=self.layout.PRIZE_STICKER_COORDINATE,
+            slot_number=self.layout.PRIZE_STICKER_COORDINATE,
+            rarity_factor=float(self.layout.PRIZE_STICKER_RARITY),
+        )
+
+        coordinates_list.append(coordinate)
+        Coordinate.objects.bulk_create(coordinates_list)
+
+    def shuffle_coordinates(self):
+        coordinates_list = []
+        current_page = 1
+
+        while current_page <= self.layout.PAGES:
+            page_coordinates = self.coordinates.filter(page=current_page)
+            slots_count = page_coordinates.count()
+
+            shuffle_list = list(range(1, slots_count + 1))
+            random.shuffle(shuffle_list)
+
+            for idx, coordinate in enumerate(page_coordinates):
+                coordinate.ordinal = shuffle_list[idx]
+                coordinates_list.append(coordinate)
+
+            current_page += 1
+
+        Coordinate.objects.bulk_update(coordinates_list, ["ordinal"])
+
+    def distribute_rarity(self):
+
+        coordinates_list = []
+        # asigno los factores de rarity comun en función del número de sticker
+        for each_coordinate in self.coordinates.all():
+
+            if each_coordinate.ordinal == 1 or each_coordinate.ordinal == 2:
+                each_coordinate.rarity_factor = self.layout.RARITY_1
+            elif each_coordinate.ordinal == 3 or each_coordinate.ordinal == 4:
+                each_coordinate.rarity_factor = self.layout.RARITY_2
+            elif each_coordinate.ordinal == 5:
+                each_coordinate.rarity_factor = self.layout.RARITY_3
+            # asigno los factores de rarity mas elevados a una unica sticker por página
+            elif each_coordinate.ordinal == 6:
+
+                if each_coordinate.page == 1:
+                    each_coordinate.rarity_factor = self.layout.RARITY_4
+                if each_coordinate.page == 2:
+                    each_coordinate.rarity_factor = self.layout.RARITY_5
+                if each_coordinate.page == 3:
+                    each_coordinate.rarity_factor = self.layout.RARITY_6
+                if each_coordinate.page == 4:
+                    each_coordinate.rarity_factor = self.layout.RARITY_7
+
+            coordinates_list.append(each_coordinate)
+
+        Coordinate.objects.bulk_update(coordinates_list, ["rarity_factor"])
+
+
 class CollectionManager(Manager):
     def get_current_list(self):
         promotion = Promotion.objects.get_current()
@@ -239,8 +351,8 @@ class Collection(models.Model):
 
 
 class Coordinate(models.Model):
-    collection = models.ForeignKey(
-        Collection, on_delete=models.CASCADE, related_name="coordinates"
+    template = models.ForeignKey(
+        AlbumTemplate, on_delete=models.CASCADE, related_name="coordinates"
     )
     page = models.BigIntegerField("Página")
     slot_number = models.BigIntegerField("Casilla")
@@ -256,6 +368,13 @@ class Coordinate(models.Model):
 
     class Meta:
         verbose_name_plural = "Coordinates"
+
+
+@receiver(pre_delete, sender=Coordinate)
+def delete_coordinate_image(sender, instance, **kwargs):
+    if instance.image:
+        if os.path.isfile(instance.image.path):
+            os.remove(instance.image.path)
 
 
 class SurprisePrize(models.Model):

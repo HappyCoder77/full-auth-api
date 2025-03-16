@@ -1,6 +1,9 @@
 from datetime import timedelta, date
 import datetime
 import os
+from django.test.utils import override_settings
+from django.conf import settings
+import tempfile
 from unittest import skip
 from django.db import IntegrityError, transaction
 from django.core.exceptions import ValidationError
@@ -12,7 +15,149 @@ from django.core.files.storage import default_storage
 from promotions.models import Promotion
 from promotions.test.factories import PromotionFactory
 from ..models import SurprisePrize, Theme, Collection, Layout
-from .factories import ThemeFactory, CollectionFactory
+from .factories import ThemeFactory, CollectionFactory, AlbumTemplateFactory
+
+TEMP_MEDIA_ROOT = tempfile.mkdtemp()
+
+
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
+class AlbumTemplateTestCase(TestCase):
+    def setUp(self):
+        self.album_template = AlbumTemplateFactory(
+            with_image=True, with_coordinate_images=True
+        )
+        self.image_paths = []
+        if self.album_template.image:
+            self.image_paths.append(self.album_template.image.name)
+
+        for coordinate in self.album_template.coordinates.all():
+            if coordinate.image:
+                self.image_paths.append(coordinate.image.name)
+
+    @classmethod
+    def tearDownClass(cls):
+        import shutil
+
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
+
+    # def tearDown(self):
+    #     """Clean up data after each test method."""
+    #     directory = os.path.dirname(self.album_template.image.name)
+    #     stored_files = default_storage.listdir(directory)[1]
+
+    #     for filename in stored_files:
+    #         if filename.startswith("test_image"):
+    #             full_path = os.path.join(directory, filename)
+    #             default_storage.delete(full_path)
+
+    #     for image_path in self.image_paths:
+    #         if default_storage.exists(image_path):
+    #             default_storage.delete(image_path)
+
+    def test_album_template_data(self):
+        expected_coordinates_count = (
+            self.album_template.layout.PAGES * self.album_template.layout.SLOTS_PER_PAGE
+            + 1
+        )
+        rare_coordinates = self.album_template.coordinates.filter(rarity_factor__lt=1.0)
+
+        self.assertEqual(self.album_template.name, "Minecraft")
+        self.assertEqual(self.album_template.image.name, "images/themes/test_image.png")
+        self.assertEqual(str(self.album_template), "Minecraft")
+        self.assertIsNotNone(self.album_template.layout)
+        self.assertEqual(
+            self.album_template.coordinates.all().count(), expected_coordinates_count
+        )
+        self.assertEqual(rare_coordinates.count(), 5)
+
+    def test_unique_name_constraint(self):
+        with self.assertRaises(IntegrityError):
+            AlbumTemplateFactory()
+
+    def test_rarity_distribution(self):
+
+        for page in range(1, self.album_template.layout.PAGES + 1):
+            page_coordinates = self.album_template.coordinates.filter(page=page)
+            rare_in_page = page_coordinates.filter(ordinal=6)
+
+            self.assertEqual(rare_in_page.count(), 1)
+            rare_coordinate = rare_in_page.first()
+
+            if page == 1:
+                self.assertEqual(
+                    rare_coordinate.rarity_factor, self.album_template.layout.RARITY_4
+                )
+            elif page == 2:
+                self.assertEqual(
+                    rare_coordinate.rarity_factor, self.album_template.layout.RARITY_5
+                )
+            elif page == 3:
+                self.assertEqual(
+                    rare_coordinate.rarity_factor, self.album_template.layout.RARITY_6
+                )
+            elif page == 4:
+                self.assertEqual(
+                    rare_coordinate.rarity_factor, self.album_template.layout.RARITY_7
+                )
+
+    def test_image_deletion_on_template_delete(self):
+        image_path = self.album_template.image.path
+        self.assertTrue(os.path.exists(image_path))
+        self.album_template.delete()
+
+        self.assertFalse(os.path.exists(image_path))
+
+    def test_shuffle_coordinates(self):
+        template = AlbumTemplateFactory(with_image=True, name="Angela")
+        original_ordinals = list(template.coordinates.values_list("ordinal", flat=True))
+        template.shuffle_coordinates()
+        new_ordinals = list(template.coordinates.values_list("ordinal", flat=True))
+
+        # Note: There's a small chance this could fail randomly if the shuffle
+        # happens to produce the same order
+        self.assertNotEqual(original_ordinals, new_ordinals)
+
+    def test_coordinate_images_creation(self):
+        """Test that images are properly created for coordinates."""
+
+        album = AlbumTemplateFactory(
+            name="Mario", with_image=True, with_coordinate_images=True
+        )
+
+        for coordinate in album.coordinates.all():
+            self.assertIsNotNone(coordinate.image)
+            self.assertTrue(coordinate.image.name.startswith("images/coordinates/"))
+            self.assertTrue(default_storage.exists(coordinate.image.name))
+            expected_prefix = f"coordinate_{coordinate.page}_{coordinate.slot_number}"
+            self.assertTrue(
+                os.path.basename(coordinate.image.name).startswith(expected_prefix)
+            )
+
+            with default_storage.open(coordinate.image.name) as f:
+                image_content = f.read()
+                self.assertGreater(len(image_content), 0)
+
+            self.image_paths.append(coordinate.image.name)
+
+    def test_coordinate_image_deletion(self):
+        """Test that coordinate images are deleted when coordinates are deleted."""
+        album = AlbumTemplateFactory(
+            name="barbie", with_image=True, with_coordinate_images=True
+        )
+
+        # Get a coordinate and its image path
+        coordinate = album.coordinates.first()
+        image_path = coordinate.image.name
+
+        # Verify the image exists
+        self.assertTrue(default_storage.exists(image_path))
+
+        # Delete the coordinate
+        coordinate.delete()
+
+        # Verify the image was deleted
+        self.assertFalse(default_storage.exists(image_path))
 
 
 class CollectionTestCase(TestCase):

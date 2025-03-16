@@ -60,6 +60,7 @@ class Album(models.Model):
 
         for each_slot in slots:
             coordinate = self.collection.coordinates.get(absolute_number=counter)
+            print("coordinate: ", coordinate)
             each_slot.absolute_number = counter
             each_slot.image = coordinate.image
             each_slot.save()
