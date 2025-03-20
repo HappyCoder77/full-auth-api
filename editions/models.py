@@ -181,8 +181,10 @@ class Edition(models.Model):
             BATCH_SIZE = 5000
             sticker_list = []
             ordinal = 1
-            prize_rarity = self.collection.layout.PRIZE_STICKER_RARITY
-            coordinates = list(self.collection.coordinates.select_related())
+            prize_rarity = self.collection.album_template.layout.PRIZE_STICKER_RARITY
+            coordinates = list(
+                self.collection.album_template.coordinates.select_related()
+            )
 
             limits = {
                 coord: (coord.rarity_factor * self.circulation).quantize(
@@ -246,9 +248,9 @@ class Edition(models.Model):
     def create_packs(self):  # crea los packs de la edición
         pack_list = []
         stickers = Decimal(Sticker.objects.filter(pack__isnull=True).count())
-        limit = (stickers / self.collection.layout.STICKERS_PER_PACK).quantize(
-            Decimal("1"), rounding=ROUND_CEILING
-        )
+        limit = (
+            stickers / self.collection.album_template.layout.STICKERS_PER_PACK
+        ).quantize(Decimal("1"), rounding=ROUND_CEILING)
 
         counter = 1
 
@@ -297,7 +299,10 @@ class Edition(models.Model):
             prized_sticker_in_pack = False
             stickers_in_pack = 0
 
-            while stickers_in_pack < self.collection.layout.STICKERS_PER_PACK:
+            while (
+                stickers_in_pack
+                < self.collection.album_template.layout.STICKERS_PER_PACK
+            ):
 
                 if not stickers and not skipped_prized_stickers:
                     break
@@ -338,9 +343,9 @@ class Edition(models.Model):
     def create_boxes(self):  # crea los boxes correspondientes a la edition
         box_list = []
         total_packs = Pack.objects.filter(box__isnull=True).count()
-        limit = Decimal(total_packs / self.collection.layout.PACKS_PER_BOX).quantize(
-            Decimal("1"), rounding=ROUND_CEILING
-        )
+        limit = Decimal(
+            total_packs / self.collection.album_template.layout.PACKS_PER_BOX
+        ).quantize(Decimal("1"), rounding=ROUND_CEILING)
         counter = 1
 
         while counter <= limit:
@@ -358,7 +363,9 @@ class Edition(models.Model):
         positions = set()
 
         while len(positions) < 2:
-            pos = random.randrange(1, self.collection.layout.PACKS_PER_BOX)
+            pos = random.randrange(
+                1, self.collection.album_template.layout.PACKS_PER_BOX
+            )
             if not any(abs(pos - p) <= self.MIN_PRIZES_POSITON_GAP for p in positions):
                 positions.add(pos)
         return sorted(positions)
@@ -376,7 +383,8 @@ class Edition(models.Model):
         box_packs = []
         # logging.info(f"Prize positions for box {box.id}: {prize_positions}")
         packs_to_place = min(
-            self.collection.layout.PACKS_PER_BOX, len(standard_packs) + len(prize_packs)
+            self.collection.album_template.layout.PACKS_PER_BOX,
+            len(standard_packs) + len(prize_packs),
         )
         # logging.info(f"Packs to place in box {box.id}: {packs_to_place}")
         # if packs_to_place < 100:
@@ -463,7 +471,7 @@ class Edition(models.Model):
 
         for box in self.boxes.iterator():
             packs_for_this_box = min(
-                self.collection.layout.PACKS_PER_BOX, remaining_packs
+                self.collection.album_template.layout.PACKS_PER_BOX, remaining_packs
             )
             # # logging.info(f"Box {box.id} will receive {packs_for_this_box} packs")
             prize_positions = self._generate_prize_positions()

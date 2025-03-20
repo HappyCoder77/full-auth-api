@@ -25,8 +25,7 @@ class EditionTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         PromotionFactory()
-        theme = ThemeFactory()
-        collection = CollectionFactory(theme=theme)
+        collection = CollectionFactory(album_template__with_coordinate_images=True)
 
         for each_prize in collection.standard_prizes.all():
             each_prize.description = "Bingo"
@@ -59,35 +58,35 @@ class EditionTestCase(TestCase):
         stickers = Sticker.objects.all()
 
         rarity_1_total = Sticker.objects.filter(
-            coordinate__rarity_factor=self.edition.collection.layout.RARITY_1
+            coordinate__rarity_factor=self.edition.collection.album_template.layout.RARITY_1
         ).count()
 
         rarity_2_total = Sticker.objects.filter(
-            coordinate__rarity_factor=self.edition.collection.layout.RARITY_2
+            coordinate__rarity_factor=self.edition.collection.album_template.layout.RARITY_2
         ).count()
 
         rarity_3_total = Sticker.objects.filter(
-            coordinate__rarity_factor=self.edition.collection.layout.RARITY_3
+            coordinate__rarity_factor=self.edition.collection.album_template.layout.RARITY_3
         ).count()
 
         rarity_4_total = Sticker.objects.filter(
-            coordinate__rarity_factor=self.edition.collection.layout.RARITY_4
+            coordinate__rarity_factor=self.edition.collection.album_template.layout.RARITY_4
         ).count()
 
         rarity_5_total = Sticker.objects.filter(
-            coordinate__rarity_factor=self.edition.collection.layout.RARITY_5
+            coordinate__rarity_factor=self.edition.collection.album_template.layout.RARITY_5
         ).count()
 
         rarity_6_total = Sticker.objects.filter(
-            coordinate__rarity_factor=self.edition.collection.layout.RARITY_6
+            coordinate__rarity_factor=self.edition.collection.album_template.layout.RARITY_6
         ).count()
 
         rarity_7_total = Sticker.objects.filter(
-            coordinate__rarity_factor=self.edition.collection.layout.RARITY_7
+            coordinate__rarity_factor=self.edition.collection.album_template.layout.RARITY_7
         ).count()
 
         surprize_prize_total = Sticker.objects.filter(
-            coordinate__rarity_factor=self.edition.collection.layout.PRIZE_STICKER_RARITY
+            coordinate__rarity_factor=self.edition.collection.album_template.layout.PRIZE_STICKER_RARITY
         ).count()
 
         total_stickers = (
@@ -124,8 +123,7 @@ class EditionValidationTestCase(TestCase):
 
     def test_no_validation_raised(self):
         PromotionFactory()
-        theme = ThemeFactory()
-        collection = CollectionFactory(theme=theme)
+        collection = CollectionFactory(album_template__with_coordinate_images=True)
 
         for each_prize in collection.standard_prizes.all():
             each_prize.description = "Bingo"
@@ -146,16 +144,16 @@ class EditionValidationTestCase(TestCase):
 
     def test_no_standard_prizes_defined(self):
         PromotionFactory()
-        theme = ThemeFactory()
-        collection = CollectionFactory(theme=theme)
+        collection = CollectionFactory()
         edition = EditionFactory.build(collection=collection)
 
         with self.assertRaises(ValidationError) as context:
             edition.full_clean()
         error_messages = context.exception.messages
+
         self.assertTrue(
             any(
-                "La colección a la que se hace referencia parece no tener definidos los premios"
+                "La colección a la que se hace referencia tiene 4 premios standard sin definir"
                 in message
                 for message in error_messages
             )
@@ -163,8 +161,7 @@ class EditionValidationTestCase(TestCase):
 
     def test_no_surprise_prizes_defined(self):
         PromotionFactory()
-        theme = ThemeFactory()
-        collection = CollectionFactory(theme=theme)
+        collection = CollectionFactory()
         edition = EditionFactory.build(collection=collection)
 
         for each_prize in collection.standard_prizes.all():
@@ -177,7 +174,8 @@ class EditionValidationTestCase(TestCase):
         error_messages = context.exception.messages
         self.assertTrue(
             any(
-                "sorpresa. Revise e intente de nuevo guardar el registro" in message
+                "La edición a la que se hace referencia tiene 4 premios sorpresa sin definir. Revise e intente de nuevo guardar el registro"
+                in message
                 for message in error_messages
             )
         )
@@ -187,8 +185,7 @@ class PromotionMaxDebtTestCase(TestCase):
     def test_promotion_max_debt(self):
         promotion = PromotionFactory()
         CollectionFactory()
-        theme_2 = ThemeFactory(name="Angela")
-        CollectionFactory(theme=theme_2)
+        CollectionFactory(album_template__name="Angela")
 
         self.assertEqual(promotion.max_debt, 150)
 
@@ -220,26 +217,26 @@ class StickerTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         PromotionFactory()
-        collection = CollectionFactory()
+        cls.collection = CollectionFactory(album_template__with_coordinate_images=True)
 
-        for each_prize in collection.standard_prizes.all():
+        for each_prize in cls.collection.standard_prizes.all():
             each_prize.description = "Bingo"
             each_prize.save()
 
-        for each_prize in collection.surprise_prizes.all():
+        for each_prize in cls.collection.surprise_prizes.all():
             each_prize.description = "Bingo"
             each_prize.save()
 
-        cls.edition = EditionFactory(collection=collection)
+        cls.edition = EditionFactory(collection=cls.collection)
         cls.stickers = Sticker.objects.filter(
-            pack__box__edition__collection=collection
+            pack__box__edition__collection=cls.collection
         ).order_by("ordinal")
         cls.collectible_stickers = cls.stickers.exclude(coordinate__page=99)
         cls.box = Box.objects.filter(edition=cls.edition).first()
         cls.packs = Pack.objects.filter(box__edition=cls.edition)
         # como la edition es pequeña (1 ejemplar) para fines de test, omitimos rarezas inferiores a cero
         cls.coordinates = Coordinate.objects.filter(
-            collection=cls.edition.collection,
+            template=cls.edition.collection.album_template,
         )
 
         cls.common_coordinates = cls.coordinates.filter(rarity_factor__gte=1)
@@ -286,7 +283,7 @@ class StickerTestCase(TestCase):
         for each_pack in self.packs:
             self.assertLessEqual(
                 self.get_stickers_by_pack(each_pack.id),
-                self.edition.collection.layout.STICKERS_PER_PACK,
+                self.edition.collection.album_template.layout.STICKERS_PER_PACK,
             )
 
         counter = 1
@@ -333,11 +330,26 @@ class StickerTestCase(TestCase):
             collector = CollectorFactory(user=UserFactory())
             promotion = PromotionFactory(future=True)
             mock_get_current.return_value = promotion
-            edition = EditionFactory(collection__theme=self.edition.collection.theme)
+            collection = CollectionFactory(
+                album_template=self.collection.album_template,
+                album_template__with_coordinate_images=True,
+            )
 
-            coordinate_previous_collection = self.edition.collection.coordinates.filter(
-                slot_number__in=[3, 4], page__lt=99
-            ).first()
+            for each_prize in collection.standard_prizes.all():
+                each_prize.description = "Bingo"
+                each_prize.save()
+
+            for each_prize in collection.surprise_prizes.all():
+                each_prize.description = "Bingo"
+                each_prize.save()
+
+            edition = EditionFactory(collection=collection)
+
+            coordinate_previous_collection = (
+                self.edition.collection.album_template.coordinates.filter(
+                    slot_number__in=[3, 4], page__lt=99
+                ).first()
+            )
 
             sticker1 = Sticker.objects.filter(
                 pack__box__edition=self.edition,
@@ -361,7 +373,7 @@ class StickerTestCase(TestCase):
             self.assertTrue(sticker2.is_repeated)
 
             # Get a sticker from new edition with same coordinate
-            coordinate2 = edition.collection.coordinates.get(
+            coordinate2 = edition.collection.album_template.coordinates.get(
                 page=coordinate_previous_collection.page,
                 slot_number=coordinate_previous_collection.slot_number,
             )
@@ -455,17 +467,19 @@ class StickerPrizeTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         PromotionFactory()
-        cls.edition = EditionFactory()
-        cls.dealer = DealerFactory(user=UserFactory())
-        cls.collector = CollectorFactory(user=UserFactory())
-        cls.user = UserFactory()
-        for each_prize in cls.edition.collection.standard_prizes.all():
+        cls.collection = CollectionFactory(album_template__with_coordinate_images=True)
+        for each_prize in cls.collection.standard_prizes.all():
             each_prize.description = "Bingo"
             each_prize.save()
 
-        for each_prize in cls.edition.collection.surprise_prizes.all():
+        for each_prize in cls.collection.surprise_prizes.all():
             each_prize.description = "Bingo"
             each_prize.save()
+
+        cls.edition = EditionFactory(collection=cls.collection)
+        cls.dealer = DealerFactory(user=UserFactory())
+        cls.collector = CollectorFactory(user=UserFactory())
+        cls.user = UserFactory()
 
         cls.prized_sticker = Sticker.objects.filter(
             coordinate__absolute_number=0
@@ -523,8 +537,7 @@ class BoxTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         PromotionFactory()
-        theme = ThemeFactory()
-        collection = CollectionFactory(theme=theme)
+        collection = CollectionFactory(album_template__with_coordinate_images=True)
 
         for each_prize in collection.standard_prizes.all():
             each_prize.description = "Bingo"
@@ -553,8 +566,16 @@ class PackTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         PromotionFactory()
-        theme = ThemeFactory()
-        collection = CollectionFactory(theme=theme)
+        collection = CollectionFactory(album_template__with_coordinate_images=True)
+
+        for each_prize in collection.standard_prizes.all():
+            each_prize.description = "Bingo"
+            each_prize.save()
+
+        for each_prize in collection.surprise_prizes.all():
+            each_prize.description = "Bingo"
+            each_prize.save()
+
         cls.edition = EditionFactory(collection=collection)
 
     def test_box_data(self):

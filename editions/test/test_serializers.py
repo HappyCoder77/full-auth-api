@@ -4,7 +4,7 @@ from collection_manager.models import Coordinate, SurprisePrize
 from promotions.test.factories import PromotionFactory
 from users.test.factories import CollectorFactory
 from ..serializers import PackSerializer, StickerPrizeSerializer, StickerSerializer
-from ..test.factories import EditionFactory
+from ..test.factories import EditionFactory, CollectionFactory
 from ..models import Pack, Sticker
 
 
@@ -12,7 +12,19 @@ class PackSerializerTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         PromotionFactory()
-        cls.edition = EditionFactory()
+        collection = CollectionFactory(album_template__with_coordinate_images=True)
+
+        for prize in collection.surprise_prizes.all():
+            prize.description = "Test prize"
+            prize.save()
+
+        for prize in collection.standard_prizes.all():
+            prize.description = "Test prize"
+            prize.save()
+
+        cls.edition = EditionFactory(
+            collection=collection,
+        )
         cls.collector = CollectorFactory(user=UserFactory())
         cls.pack = Pack.objects.first()
 
