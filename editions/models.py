@@ -36,8 +36,6 @@ class Edition(models.Model):
     )
 
     class Meta:
-        verbose_name = "Edition"
-        verbose_name_plural = "Editions"
         indexes = [
             models.Index(fields=["collection"]),
             models.Index(fields=["circulation"]),
@@ -136,28 +134,38 @@ class Edition(models.Model):
         return f"{self.collection} ({self.circulation})"
 
     def clean(self):
-        has_undefined_standard_prize = self.collection.standard_prizes.filter(
-            description="undefined"
-        ).exists()
+        # Check if collection is ready for edition
+        readiness = self.collection.is_ready_for_edition()
 
-        if has_undefined_standard_prize:
-            raise ValidationError(
-                """La colección a la que se hace referencia parece no tener definidos los premios
-                standard. Revise e intente de nuevo guardar el registro"""
-            )
+        if not readiness["ready"]:
+            issues = readiness["issues"]
+            error_messages = []
 
-        has_undefined_surprise_prize = self.collection.surprise_prizes.filter(
-            description="undefined"
-        ).exists()
+            if issues["coordinates_without_images"] > 0:
+                total_coordinates = self.collection.album_template.coordinates.count()
+                error_messages.append(
+                    f"La colección seleccionada tiene {issues['coordinates_without_images']} de {total_coordinates} "
+                    "coordenadas sin imágenes asignadas. Todas las coordenadas deben tener imágenes "
+                    "antes de crear una edición."
+                )
 
-        if has_undefined_surprise_prize:
-            raise ValidationError(
-                """La edición a la que se hace referencia parece no tener definidos los prizes
-                sorpresa. Revise e intente de nuevo guardar el registro"""
-            )
+            if issues["undefined_standard_prizes"] > 0:
+                error_messages.append(
+                    f"La colección a la que se hace referencia tiene {issues['undefined_standard_prizes']} premios "
+                    "standard sin definir. Revise e intente de nuevo guardar el registro"
+                )
+
+            if issues["undefined_surprise_prizes"] > 0:
+                error_messages.append(
+                    f"La edición a la que se hace referencia tiene {issues['undefined_surprise_prizes']} premios "
+                    "sorpresa sin definir. Revise e intente de nuevo guardar el registro"
+                )
+
+            raise ValidationError(error_messages)
 
     @transaction.atomic
     def save(self, *args, **kwargs):
+        self.full_clean()
         super(Edition, self).save(*args, **kwargs)
         self.create_stickers()
         self.shuffle_stickers()

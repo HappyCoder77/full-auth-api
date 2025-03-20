@@ -3,7 +3,7 @@ import random
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
-from django.db.models import Manager
+from django.db.models import Manager, Q
 from django.db import models, transaction
 from promotions.models import Promotion
 from rest_framework.exceptions import NotFound
@@ -217,6 +217,72 @@ class Collection(models.Model):
             )
 
         self.promotion = current_promotion
+
+    def is_ready_for_edition(self):
+        """Check if this collection is ready to create an edition."""
+
+        has_coordinates_without_images = self.album_template.coordinates.filter(
+            Q(image__isnull=True) | Q(image="")
+        ).exists()
+
+        has_undefined_standard_prizes = self.standard_prizes.filter(
+            description="undefined"
+        ).exists()
+
+        has_undefined_surprise_prizes = self.surprise_prizes.filter(
+            description="undefined"
+        ).exists()
+
+        return {
+            "ready": not (
+                has_coordinates_without_images
+                or has_undefined_standard_prizes
+                or has_undefined_surprise_prizes
+            ),
+            "issues": {
+                "coordinates_without_images": (
+                    self.album_template.coordinates.filter(
+                        Q(image__isnull=True) | Q(image="")
+                    ).count()
+                    if has_coordinates_without_images
+                    else 0
+                ),
+                "undefined_standard_prizes": (
+                    self.standard_prizes.filter(description="undefined").count()
+                    if has_undefined_standard_prizes
+                    else 0
+                ),
+                "undefined_surprise_prizes": (
+                    self.surprise_prizes.filter(description="undefined").count()
+                    if has_undefined_surprise_prizes
+                    else 0
+                ),
+            },
+        }
+
+    def get_readiness_summary(self):
+        """Get a human-readable summary of readiness issues."""
+        readiness = self.is_ready_for_edition()
+
+        if readiness["ready"]:
+            return "Esta colección está lista para crear una edición."
+
+        issues = readiness["issues"]
+        summary = ["Esta colección no está lista para crear una edición:"]
+
+        if issues["coordinates_without_images"] > 0:
+            total = self.album_template.coordinates.count()
+            summary.append(
+                f"- Faltan imágenes en {issues['coordinates_without_images']} coordenadas"
+            )
+
+        if issues["undefined_standard_prizes"]:
+            summary.append("- Hay premios estándar sin definir")
+
+        if issues["undefined_surprise_prizes"]:
+            summary.append("- Hay premios sorpresa sin definir")
+
+        return "\n".join(summary)
 
     @transaction.atomic
     def save(self, *args, **kwargs):

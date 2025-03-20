@@ -162,8 +162,63 @@ class CollectionTestCase(TestCase):
         )
 
     def test_collection_data(self):
+        readiness_data = {
+            "ready": False,
+            "issues": {
+                "coordinates_without_images": 0,
+                "undefined_standard_prizes": 4,
+                "undefined_surprise_prizes": 4,
+            },
+        }
+        expected_readiness_summary = "Esta colección no está lista para crear una edición:\n- Hay premios estándar sin definir\n- Hay premios sorpresa sin definir"
+
         self.assertIsNotNone(self.collection.album_template)
         self.assertIsNotNone(self.collection.promotion)
+        self.assertEqual(self.collection.is_ready_for_edition(), readiness_data)
+        self.assertEqual(
+            self.collection.get_readiness_summary(), expected_readiness_summary
+        )
+
+    def test_readiness_after_set_prizes(self):
+        readiness_data = {
+            "ready": True,
+            "issues": {
+                "coordinates_without_images": 0,
+                "undefined_standard_prizes": 0,
+                "undefined_surprise_prizes": 0,
+            },
+        }
+        for prize in self.collection.surprise_prizes.all():
+            prize.description = "Bingo"
+            prize.save()
+
+        for prize in self.collection.standard_prizes.all():
+            prize.description = "Audífonos"
+            prize.save()
+
+        self.assertEqual(self.collection.is_ready_for_edition(), readiness_data)
+        self.assertEqual(
+            self.collection.get_readiness_summary(),
+            "Esta colección está lista para crear una edición.",
+        )
+
+    def test_not_ready_for_edition_collection_data(self):
+        collection = CollectionFactory(album_template__name="Angela")
+        expected_readiness_summary = "Esta colección no está lista para crear una edición:\n- Hay premios estándar sin definir\n- Hay premios sorpresa sin definir"
+
+        readiness_data = {
+            "ready": False,
+            "issues": {
+                "coordinates_without_images": 25,
+                "undefined_standard_prizes": 4,
+                "undefined_surprise_prizes": 4,
+            },
+        }
+
+        self.assertEqual(collection.is_ready_for_edition(), readiness_data)
+        self.assertEqual(
+            self.collection.get_readiness_summary(), expected_readiness_summary
+        )
 
     def test_prize_creation(self):
         """Test that standard and surprise prizes are created correctly."""
