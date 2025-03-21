@@ -16,7 +16,9 @@ class CollectorSerializerTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         PromotionFactory()
-        collection = CollectionFactory()
+        collection = CollectionFactory(
+            album_template__with_coordinate_images=True, with_prizes_defined=True
+        )
         coordinate = Coordinate.objects.get(rarity_factor=0.02)
         coordinate.rarity_factor = 1
         coordinate.save()

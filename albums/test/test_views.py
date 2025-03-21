@@ -1,12 +1,18 @@
+import os
+import shutil
+from django.test.utils import override_settings
+import tempfile
+
+
 from django.db import IntegrityError, models
 from unittest.mock import patch
 from django.urls import reverse
 from rest_framework.test import APIClient, APITestCase
 from rest_framework import status, mixins
 from authentication.test.factories import UserFactory
-from collection_manager.test.factories import CollectionFactory, ThemeFactory
-from collection_manager.models import Coordinate, Collection, Layout
-from editions.models import Pack, Sticker, Edition
+from collection_manager.test.factories import CollectionFactory, AlbumTemplateFactory
+from collection_manager.models import Coordinate, Collection
+from editions.models import Pack, Sticker
 from editions.test.factories import EditionFactory
 from promotions.models import Promotion
 from promotions.test.factories import PromotionFactory
@@ -16,13 +22,19 @@ from ..models import Album, Slot, Page
 from ..serializers import AlbumSerializer
 from .factories import AlbumFactory
 
+TEMP_MEDIA_ROOT = tempfile.mkdtemp()
 
+
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class UserAlbumListRetrieveViewAPITestCase(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
         PromotionFactory()
-        cls.edition = EditionFactory()
+        collection = CollectionFactory(
+            album_template__with_coordinate_images=True, with_prizes_defined=True
+        )
+        cls.edition = EditionFactory(collection=collection)
         cls.superuser = UserFactory(is_superuser=True)
         cls.user = UserFactory()
         cls.collector_user = UserFactory()
@@ -33,6 +45,11 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
         cls.retrieve_url = reverse(
             "user-albums-retrieve", kwargs={"collection_id": cls.edition.collection.id}
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def setUp(self):
         self.album = AlbumFactory(
@@ -56,42 +73,42 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
                                 "id": 1,
                                 "number": 1,
                                 "absolute_number": 1,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_1_1.png",
                                 "is_empty": True,
                             },
                             {
                                 "id": 2,
                                 "number": 2,
                                 "absolute_number": 2,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_1_2.png",
                                 "is_empty": True,
                             },
                             {
                                 "id": 3,
                                 "number": 3,
                                 "absolute_number": 3,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_1_3.png",
                                 "is_empty": True,
                             },
                             {
                                 "id": 4,
                                 "number": 4,
                                 "absolute_number": 4,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_1_4.png",
                                 "is_empty": True,
                             },
                             {
                                 "id": 5,
                                 "number": 5,
                                 "absolute_number": 5,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_1_5.png",
                                 "is_empty": True,
                             },
                             {
                                 "id": 6,
                                 "number": 6,
                                 "absolute_number": 6,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_1_6.png",
                                 "is_empty": True,
                             },
                         ],
@@ -107,42 +124,42 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
                                 "id": 7,
                                 "number": 1,
                                 "absolute_number": 7,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_2_1.png",
                                 "is_empty": True,
                             },
                             {
                                 "id": 8,
                                 "number": 2,
                                 "absolute_number": 8,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_2_2.png",
                                 "is_empty": True,
                             },
                             {
                                 "id": 9,
                                 "number": 3,
                                 "absolute_number": 9,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_2_3.png",
                                 "is_empty": True,
                             },
                             {
                                 "id": 10,
                                 "number": 4,
                                 "absolute_number": 10,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_2_4.png",
                                 "is_empty": True,
                             },
                             {
                                 "id": 11,
                                 "number": 5,
                                 "absolute_number": 11,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_2_5.png",
                                 "is_empty": True,
                             },
                             {
                                 "id": 12,
                                 "number": 6,
                                 "absolute_number": 12,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_2_6.png",
                                 "is_empty": True,
                             },
                         ],
@@ -158,42 +175,42 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
                                 "id": 13,
                                 "number": 1,
                                 "absolute_number": 13,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_3_1.png",
                                 "is_empty": True,
                             },
                             {
                                 "id": 14,
                                 "number": 2,
                                 "absolute_number": 14,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_3_2.png",
                                 "is_empty": True,
                             },
                             {
                                 "id": 15,
                                 "number": 3,
                                 "absolute_number": 15,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_3_3.png",
                                 "is_empty": True,
                             },
                             {
                                 "id": 16,
                                 "number": 4,
                                 "absolute_number": 16,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_3_4.png",
                                 "is_empty": True,
                             },
                             {
                                 "id": 17,
                                 "number": 5,
                                 "absolute_number": 17,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_3_5.png",
                                 "is_empty": True,
                             },
                             {
                                 "id": 18,
                                 "number": 6,
                                 "absolute_number": 18,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_3_6.png",
                                 "is_empty": True,
                             },
                         ],
@@ -209,42 +226,42 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
                                 "id": 19,
                                 "number": 1,
                                 "absolute_number": 19,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_4_1.png",
                                 "is_empty": True,
                             },
                             {
                                 "id": 20,
                                 "number": 2,
                                 "absolute_number": 20,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_4_2.png",
                                 "is_empty": True,
                             },
                             {
                                 "id": 21,
                                 "number": 3,
                                 "absolute_number": 21,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_4_3.png",
                                 "is_empty": True,
                             },
                             {
                                 "id": 22,
                                 "number": 4,
                                 "absolute_number": 22,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_4_4.png",
                                 "is_empty": True,
                             },
                             {
                                 "id": 23,
                                 "number": 5,
                                 "absolute_number": 23,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_4_5.png",
                                 "is_empty": True,
                             },
                             {
                                 "id": 24,
                                 "number": 6,
                                 "absolute_number": 24,
-                                "image": None,
+                                "image": "http://testserver/media/images/coordinates/coordinate_4_6.png",
                                 "is_empty": True,
                             },
                         ],
@@ -257,17 +274,13 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
                 "prized_stickers": [],
             }
         ]
+
         self.client.force_authenticate(user=self.collector.user)
         response = self.client.get(self.list_url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0], AlbumSerializer(self.album).data)
-        for album in response.data:
-            self.assertIn("id", album)
-            self.assertIn("pages", album)
-            self.assertIn("collector", album)
-            self.assertIn("collection", album)
+        self.assertEqual(response.data, expected_data)
 
     def test_superuser_cannot_get_user_album_list(self):
         self.client.force_authenticate(user=self.superuser)
@@ -314,42 +327,42 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
                             "id": 1,
                             "number": 1,
                             "absolute_number": 1,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_1_1.png",
                             "is_empty": True,
                         },
                         {
                             "id": 2,
                             "number": 2,
                             "absolute_number": 2,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_1_2.png",
                             "is_empty": True,
                         },
                         {
                             "id": 3,
                             "number": 3,
                             "absolute_number": 3,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_1_3.png",
                             "is_empty": True,
                         },
                         {
                             "id": 4,
                             "number": 4,
                             "absolute_number": 4,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_1_4.png",
                             "is_empty": True,
                         },
                         {
                             "id": 5,
                             "number": 5,
                             "absolute_number": 5,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_1_5.png",
                             "is_empty": True,
                         },
                         {
                             "id": 6,
                             "number": 6,
                             "absolute_number": 6,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_1_6.png",
                             "is_empty": True,
                         },
                     ],
@@ -365,42 +378,42 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
                             "id": 7,
                             "number": 1,
                             "absolute_number": 7,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_2_1.png",
                             "is_empty": True,
                         },
                         {
                             "id": 8,
                             "number": 2,
                             "absolute_number": 8,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_2_2.png",
                             "is_empty": True,
                         },
                         {
                             "id": 9,
                             "number": 3,
                             "absolute_number": 9,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_2_3.png",
                             "is_empty": True,
                         },
                         {
                             "id": 10,
                             "number": 4,
                             "absolute_number": 10,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_2_4.png",
                             "is_empty": True,
                         },
                         {
                             "id": 11,
                             "number": 5,
                             "absolute_number": 11,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_2_5.png",
                             "is_empty": True,
                         },
                         {
                             "id": 12,
                             "number": 6,
                             "absolute_number": 12,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_2_6.png",
                             "is_empty": True,
                         },
                     ],
@@ -416,42 +429,42 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
                             "id": 13,
                             "number": 1,
                             "absolute_number": 13,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_3_1.png",
                             "is_empty": True,
                         },
                         {
                             "id": 14,
                             "number": 2,
                             "absolute_number": 14,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_3_2.png",
                             "is_empty": True,
                         },
                         {
                             "id": 15,
                             "number": 3,
                             "absolute_number": 15,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_3_3.png",
                             "is_empty": True,
                         },
                         {
                             "id": 16,
                             "number": 4,
                             "absolute_number": 16,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_3_4.png",
                             "is_empty": True,
                         },
                         {
                             "id": 17,
                             "number": 5,
                             "absolute_number": 17,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_3_5.png",
                             "is_empty": True,
                         },
                         {
                             "id": 18,
                             "number": 6,
                             "absolute_number": 18,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_3_6.png",
                             "is_empty": True,
                         },
                     ],
@@ -467,42 +480,42 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
                             "id": 19,
                             "number": 1,
                             "absolute_number": 19,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_4_1.png",
                             "is_empty": True,
                         },
                         {
                             "id": 20,
                             "number": 2,
                             "absolute_number": 20,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_4_2.png",
                             "is_empty": True,
                         },
                         {
                             "id": 21,
                             "number": 3,
                             "absolute_number": 21,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_4_3.png",
                             "is_empty": True,
                         },
                         {
                             "id": 22,
                             "number": 4,
                             "absolute_number": 22,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_4_4.png",
                             "is_empty": True,
                         },
                         {
                             "id": 23,
                             "number": 5,
                             "absolute_number": 23,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_4_5.png",
                             "is_empty": True,
                         },
                         {
                             "id": 24,
                             "number": 6,
                             "absolute_number": 24,
-                            "image": None,
+                            "image": "http://testserver/media/images/coordinates/coordinate_4_6.png",
                             "is_empty": True,
                         },
                     ],
@@ -516,9 +529,9 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
         }
         self.client.force_authenticate(user=self.collector.user)
         response = self.client.get(self.retrieve_url)
-        print(response.data)
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data, AlbumSerializer(self.album).data)
+        self.assertEqual(response.data, expected_data)
 
     def test_superuser_cannot_get_user_album(self):
         self.client.force_authenticate(user=self.superuser)
@@ -551,38 +564,37 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
 
     def test_get_album_list_from_past_promotion(self):
         Promotion.objects.all().delete()
+        template = AlbumTemplateFactory(with_coordinate_images=True, name="Mario")
+        template_2 = AlbumTemplateFactory(with_coordinate_images=True, name="Angela")
         with patch("promotions.models.Promotion.objects.get_current") as mock_current:
             promotion = PromotionFactory(past=True)
             mock_current.return_value = promotion
-            theme_1 = ThemeFactory(name="Angela")
-            theme_2 = ThemeFactory(name="Mario")
 
         def custom_save(collection, *args, **kwargs):
-            collection.layout = Layout.objects.create()
             models.Model.save(collection, *args, **kwargs)
-            collection.create_coordinates()
-            collection.refresh_from_db()
-            collection.shuffle_coordinates()
-            collection.distribute_rarity()
             collection.create_standard_prizes()
             collection.create_surprise_prizes()
 
         with patch("collection_manager.models.Collection.save") as mock_save:
-            collection_1 = Collection(
-                promotion=promotion,
-                theme=theme_1,
-                layout=Layout.objects.create(),
-            )
+            collection_1 = Collection(album_template=template)
 
             mock_save.side_effect = lambda *args, **kwargs: custom_save(
                 collection_1, *args, **kwargs
             )
             collection_1.save()
+
+            for prize in collection_1.surprise_prizes.all():
+                prize.description = "A  surprise prize"
+                prize.save()
+
+            for prize in collection_1.standard_prizes.all():
+                prize.description = "A standard prize"
+                prize.save()
+
             EditionFactory(collection=collection_1)
 
             collection_2 = Collection(
-                promotion=promotion,
-                theme=theme_2,
+                album_template=template_2,
             )
 
             mock_save.side_effect = lambda *args, **kwargs: custom_save(
@@ -590,6 +602,15 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
             )
 
             collection_2.save()
+
+            for prize in collection_2.surprise_prizes.all():
+                prize.description = "A  surprise prize"
+                prize.save()
+
+            for prize in collection_2.standard_prizes.all():
+                prize.description = "A standard prize"
+                prize.save()
+
             EditionFactory(collection=collection_2)
             user = UserFactory()
             collector = CollectorFactory(user=user)
@@ -629,12 +650,16 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class UserAlbumCreateViewAPITestCase(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
         PromotionFactory()
-        cls.edition = EditionFactory()
+        collection = CollectionFactory(
+            album_template__with_coordinate_images=True, with_prizes_defined=True
+        )
+        cls.edition = EditionFactory(collection=collection)
         cls.superuser = UserFactory(is_superuser=True)
         cls.user = UserFactory()
         cls.collector_user = UserFactory()
@@ -642,14 +667,235 @@ class UserAlbumCreateViewAPITestCase(APITestCase):
             user=cls.collector_user, email=cls.collector_user.email
         )
         cls.url = reverse("user-albums-create")
+        cls.expected_data = {
+            "id": 1,
+            "collection": collection.id,
+            "image": None,
+            "collector": cls.collector.user.id,
+            "pages": [
+                {
+                    "id": 1,
+                    "page_prize": None,
+                    "number": 1,
+                    "slots": [
+                        {
+                            "id": 1,
+                            "number": 1,
+                            "absolute_number": 1,
+                            "image": "http://testserver/media/images/coordinates/coordinate_1_1.png",
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 2,
+                            "number": 2,
+                            "absolute_number": 2,
+                            "image": "http://testserver/media/images/coordinates/coordinate_1_2.png",
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 3,
+                            "number": 3,
+                            "absolute_number": 3,
+                            "image": "http://testserver/media/images/coordinates/coordinate_1_3.png",
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 4,
+                            "number": 4,
+                            "absolute_number": 4,
+                            "image": "http://testserver/media/images/coordinates/coordinate_1_4.png",
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 5,
+                            "number": 5,
+                            "absolute_number": 5,
+                            "image": "http://testserver/media/images/coordinates/coordinate_1_5.png",
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 6,
+                            "number": 6,
+                            "absolute_number": 6,
+                            "image": "http://testserver/media/images/coordinates/coordinate_1_6.png",
+                            "is_empty": True,
+                        },
+                    ],
+                    "is_full": False,
+                    "prize_was_claimed": False,
+                },
+                {
+                    "id": 2,
+                    "page_prize": None,
+                    "number": 2,
+                    "slots": [
+                        {
+                            "id": 7,
+                            "number": 1,
+                            "absolute_number": 7,
+                            "image": "http://testserver/media/images/coordinates/coordinate_2_1.png",
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 8,
+                            "number": 2,
+                            "absolute_number": 8,
+                            "image": "http://testserver/media/images/coordinates/coordinate_2_2.png",
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 9,
+                            "number": 3,
+                            "absolute_number": 9,
+                            "image": "http://testserver/media/images/coordinates/coordinate_2_3.png",
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 10,
+                            "number": 4,
+                            "absolute_number": 10,
+                            "image": "http://testserver/media/images/coordinates/coordinate_2_4.png",
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 11,
+                            "number": 5,
+                            "absolute_number": 11,
+                            "image": "http://testserver/media/images/coordinates/coordinate_2_5.png",
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 12,
+                            "number": 6,
+                            "absolute_number": 12,
+                            "image": "http://testserver/media/images/coordinates/coordinate_2_6.png",
+                            "is_empty": True,
+                        },
+                    ],
+                    "is_full": False,
+                    "prize_was_claimed": False,
+                },
+                {
+                    "id": 3,
+                    "page_prize": None,
+                    "number": 3,
+                    "slots": [
+                        {
+                            "id": 13,
+                            "number": 1,
+                            "absolute_number": 13,
+                            "image": "http://testserver/media/images/coordinates/coordinate_3_1.png",
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 14,
+                            "number": 2,
+                            "absolute_number": 14,
+                            "image": "http://testserver/media/images/coordinates/coordinate_3_2.png",
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 15,
+                            "number": 3,
+                            "absolute_number": 15,
+                            "image": "http://testserver/media/images/coordinates/coordinate_3_3.png",
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 16,
+                            "number": 4,
+                            "absolute_number": 16,
+                            "image": "http://testserver/media/images/coordinates/coordinate_3_4.png",
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 17,
+                            "number": 5,
+                            "absolute_number": 17,
+                            "image": "http://testserver/media/images/coordinates/coordinate_3_5.png",
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 18,
+                            "number": 6,
+                            "absolute_number": 18,
+                            "image": "http://testserver/media/images/coordinates/coordinate_3_6.png",
+                            "is_empty": True,
+                        },
+                    ],
+                    "is_full": False,
+                    "prize_was_claimed": False,
+                },
+                {
+                    "id": 4,
+                    "page_prize": None,
+                    "number": 4,
+                    "slots": [
+                        {
+                            "id": 19,
+                            "number": 1,
+                            "absolute_number": 19,
+                            "image": "http://testserver/media/images/coordinates/coordinate_4_1.png",
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 20,
+                            "number": 2,
+                            "absolute_number": 20,
+                            "image": "http://testserver/media/images/coordinates/coordinate_4_2.png",
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 21,
+                            "number": 3,
+                            "absolute_number": 21,
+                            "image": "http://testserver/media/images/coordinates/coordinate_4_3.png",
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 22,
+                            "number": 4,
+                            "absolute_number": 22,
+                            "image": "http://testserver/media/images/coordinates/coordinate_4_4.png",
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 23,
+                            "number": 5,
+                            "absolute_number": 23,
+                            "image": "http://testserver/media/images/coordinates/coordinate_4_5.png",
+                            "is_empty": True,
+                        },
+                        {
+                            "id": 24,
+                            "number": 6,
+                            "absolute_number": 24,
+                            "image": "http://testserver/media/images/coordinates/coordinate_4_6.png",
+                            "is_empty": True,
+                        },
+                    ],
+                    "is_full": False,
+                    "prize_was_claimed": False,
+                },
+            ],
+            "pack_inbox": None,
+            "stickers_on_the_board": None,
+            "prized_stickers": [],
+        }
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def test_collector_can_create_album(self):
+
         self.client.force_authenticate(user=self.collector.user)
         data = {"collection": self.edition.collection.id}
         response = self.client.post(self.url, data=data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data, AlbumSerializer(Album.objects.get(pk=1)).data)
+        self.assertEqual(response.data, self.expected_data)
 
     def test_collector_can_get_album_if_already_exists(self):
         AlbumFactory(collector=self.collector.user, collection=self.edition.collection)
@@ -658,7 +904,7 @@ class UserAlbumCreateViewAPITestCase(APITestCase):
         response = self.client.post(self.url, data=data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data, AlbumSerializer(Album.objects.get(pk=1)).data)
+        self.assertEqual(response.data, self.expected_data)
 
     def test_superuser_cannot_create_album(self):
         self.client.force_authenticate(user=self.superuser)
@@ -696,8 +942,6 @@ class UserAlbumCreateViewAPITestCase(APITestCase):
         with patch("collection_manager.models.Collection.save") as mock_save:
             collection = Collection.objects.create(
                 promotion=promotion,
-                theme=self.edition.collection.theme,
-                layout=Layout.objects.create(),
             )
 
             mock_save.side_effect = lambda *args, **kwargs: models.Model.save(
@@ -719,8 +963,6 @@ class UserAlbumCreateViewAPITestCase(APITestCase):
         with patch("collection_manager.models.Collection.save") as mock_save:
             collection = Collection.objects.create(
                 promotion=promotion,
-                theme=self.edition.collection.theme,
-                layout=Layout.objects.create(),
             )
             mock_save.side_effect = lambda *args, **kwargs: models.Model.save(
                 collection, *args, **kwargs
@@ -786,14 +1028,12 @@ class AlbumDetailViewTest(APITestCase):
     def setUpTestData(cls):
         cls.client = APIClient()
         PromotionFactory()
-        cls.edition = EditionFactory()
+        collection = CollectionFactory()
         cls.superuser = UserFactory(is_superuser=True)
         cls.basic_user = UserFactory()
         cls.collector = CollectorFactory(user=UserFactory())
-        pack = Pack.objects.first()
-        pack.collector = cls.collector.user
         cls.album = Album.objects.create(
-            collector=cls.collector.user, collection=cls.edition.collection
+            collector=cls.collector.user, collection=collection
         )
         cls.url = reverse("album-detail", kwargs={"pk": cls.album.pk})
 
@@ -846,12 +1086,16 @@ class AlbumDetailViewTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class OpenPackViewTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
         PromotionFactory()
-        cls.edition = EditionFactory()
+        collection = CollectionFactory(
+            album_template__with_coordinate_images=True, with_prizes_defined=True
+        )
+        cls.edition = EditionFactory(collection=collection)
         cls.superuser = UserFactory(is_superuser=True)
         cls.basic_user = UserFactory()
         cls.collector = CollectorFactory(user=UserFactory())
@@ -859,6 +1103,11 @@ class OpenPackViewTest(APITestCase):
         cls.pack.collector = cls.collector.user
         cls.pack.save()
         cls.url = reverse("open-pack", kwargs={"pk": cls.pack.pk})
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def setUp(self):
         self.client.force_authenticate(user=self.collector.user)
@@ -939,18 +1188,20 @@ class OpenPackViewTest(APITestCase):
         self.assertEqual(response.data["detail"], 'Método "GET" no permitido.')
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class PlaceStickerViewTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
         PromotionFactory()
-        cls.edition = EditionFactory()
+        collection = CollectionFactory(
+            album_template__with_coordinate_images=True, with_prizes_defined=True
+        )
+        cls.edition = EditionFactory(collection=collection)
         cls.superuser = UserFactory(is_superuser=True)
         cls.basic_user = UserFactory()
         cls.collector = CollectorFactory(user=UserFactory())
-        cls.album = AlbumFactory(
-            collector=cls.collector.user, collection=cls.edition.collection
-        )
+        cls.album = AlbumFactory(collector=cls.collector.user, collection=collection)
 
         cls.sticker = (
             Sticker.objects.filter(coordinate__rarity_factor=2).order_by("id").first()
@@ -961,6 +1212,11 @@ class PlaceStickerViewTest(APITestCase):
         cls.slot = Slot.objects.filter(absolute_number=cls.sticker.number).first()
         cls.url = reverse("place-sticker", kwargs={"sticker_id": cls.sticker.pk})
         cls.data = {"slot_id": cls.slot.pk}
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def setUp(self):
 
@@ -1064,12 +1320,16 @@ class PlaceStickerViewTest(APITestCase):
         self.assertIn("ya está llena", str(response.data["error"]))
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class DiscoverPrizeViewTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
         PromotionFactory()
-        cls.edition = EditionFactory()
+        collection = CollectionFactory(
+            album_template__with_coordinate_images=True, with_prizes_defined=True
+        )
+        cls.edition = EditionFactory(collection=collection)
         cls.collector = CollectorFactory(user=UserFactory())
         cls.basic_user = UserFactory()
         cls.superuser = UserFactory(is_superuser=True)
@@ -1081,6 +1341,11 @@ class DiscoverPrizeViewTest(APITestCase):
         cls.url = reverse(
             "discover-prize", kwargs={"sticker_id": cls.prized_sticker.pk}
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def setUp(self):
         self.client.force_authenticate(user=self.collector.user)
@@ -1161,12 +1426,15 @@ class DiscoverPrizeViewTest(APITestCase):
         self.assertEqual(response.data["detail"], 'Método "GET" no permitido.')
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class CreatePagePrizeViewTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
         PromotionFactory()
-        collection = CollectionFactory()
+        collection = CollectionFactory(
+            album_template__with_coordinate_images=True, with_prizes_defined=True
+        )
         coordinate = Coordinate.objects.get(rarity_factor=0.02)
         coordinate.rarity_factor = 1
         coordinate.save()
@@ -1179,6 +1447,11 @@ class CreatePagePrizeViewTest(APITestCase):
         cls.page = Page.objects.get(number=1)
         cls.packs = Pack.objects.all()
         cls.url = reverse("create-page-prize", kwargs={"page_id": cls.page.id})
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def test_page_prize_succesful_creation(self):
         for pack in self.packs:
@@ -1197,7 +1470,7 @@ class CreatePagePrizeViewTest(APITestCase):
             "prize": {
                 "id": self.page.prize.id,
                 "collection": self.album.collection.id,
-                "collection_name": self.album.collection.theme.name,
+                "collection_name": self.album.collection.album_template.name,
                 "page": self.page.number,
                 "description": self.page.prize.description,
             },
@@ -1313,6 +1586,7 @@ class CreatePagePrizeViewTest(APITestCase):
         self.assertEqual(response.data["detail"], 'Método "GET" no permitido.')
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class RescuePoolViewTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
@@ -1321,12 +1595,18 @@ class RescuePoolViewTest(APITestCase):
         cls.collector = CollectorFactory(user=UserFactory())
         cls.url = reverse("rescue-pool")
 
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
+
     def setUp(self):
         PromotionFactory()
-        edition = EditionFactory()
-        self.album = AlbumFactory(
-            collector=self.collector.user, collection=edition.collection
+        collection = CollectionFactory(
+            album_template__with_coordinate_images=True, with_prizes_defined=True
         )
+        EditionFactory(collection=collection)
+        self.album = AlbumFactory(collector=self.collector.user, collection=collection)
         packs = Pack.objects.all()
 
         for pack in packs:

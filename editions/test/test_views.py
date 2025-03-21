@@ -1,3 +1,8 @@
+import os
+import shutil
+from django.test.utils import override_settings
+import tempfile
+
 from decimal import Decimal
 from django.urls import reverse
 from rest_framework import status
@@ -5,12 +10,17 @@ from rest_framework.test import APITestCase, APIClient
 from albums.models import Pack
 from albums.test.factories import AlbumFactory
 from authentication.test.factories import UserFactory
+from collection_manager.test.factories import CollectionFactory
+from promotions.models import Promotion
 from promotions.test.factories import PromotionFactory
 from users.test.factories import CollectorFactory
-from ..models import Sticker
+from ..models import Sticker, Edition
 from .factories import EditionFactory
 
+TEMP_MEDIA_ROOT = tempfile.mkdtemp()
 
+
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class EditionViewSetTestCase(APITestCase):
     @classmethod
     def setUpTestData(cls):
@@ -19,19 +29,26 @@ class EditionViewSetTestCase(APITestCase):
         cls.list_url = reverse("edition-list")
         cls.user = UserFactory()
 
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
+
     def setUp(self):
+        PromotionFactory()
+        EditionFactory(
+            collection__album_template__name="Edition 1",
+            collection__album_template__with_coordinate_images=True,
+            collection__with_prizes_defined=True,
+        )
+        EditionFactory(
+            collection__album_template__name="Edition 2",
+            collection__album_template__with_coordinate_images=True,
+            collection__with_prizes_defined=True,
+        )
         self.client.force_authenticate(user=self.user)
 
     def test_current_list_with_active_promotion_and_editions(self):
-        PromotionFactory()
-        EditionFactory(collection__theme__name="Collection 1")
-        EditionFactory(collection__theme__name="Collection 2")
-
-        response = self.client.get(self.url)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 2)
-
         expected_data = [
             {
                 "id": 1,
@@ -41,7 +58,8 @@ class EditionViewSetTestCase(APITestCase):
                         "remaining_time": "Esta promoción termina hoy a la medianoche.",
                         "max_debt": Decimal("150.00"),
                     },
-                    "theme": {"name": "Collection 1", "image": None},
+                    "name": "Edition 1",
+                    "image": "",
                 },
                 "circulation": "1",
             },
@@ -53,41 +71,47 @@ class EditionViewSetTestCase(APITestCase):
                         "remaining_time": "Esta promoción termina hoy a la medianoche.",
                         "max_debt": Decimal("150.00"),
                     },
-                    "theme": {"name": "Collection 2", "image": None},
+                    "name": "Edition 2",
+                    "image": "",
                 },
                 "circulation": "1",
             },
         ]
 
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
         self.assertEqual(response.data, expected_data)
 
     def test_current_list_with_active_promotion_and_no_editions(self):
-        PromotionFactory()
+        expected_data = {
+            "detail": "No hay ediciones activas para la promoción en curso"
+        }
+        Edition.objects.all().delete()
         response = self.client.get(self.url)
+
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertIn("detail", response.data)
-        self.assertEqual(
-            response.data["detail"],
-            "No hay ediciones activas para la promoción en curso",
-        )
+        self.assertEqual(response.data, expected_data)
 
     def test_current_list_no_active_promotion(self):
+        expected_data = {"detail": "No hay ninguna promoción en curso"}
+        Promotion.objects.all().delete()
         response = self.client.get(self.url)
+
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertIn("detail", response.data)
-        self.assertEqual(response.data["detail"], "No hay ninguna promoción en curso")
+        self.assertEqual(response.data, expected_data)
 
     def test_unauthenticated_user_cannot_get_current_list(self):
-        PromotionFactory()
-        EditionFactory(collection__theme__name="Edition 1")
-        EditionFactory(collection__theme__name="Edition 2")
+        expected_data = {"detail": "Debe estar autenticado para realizar esta acción"}
         self.client.logout()
         response = self.client.get(self.url)
+
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertIn("detail", response.data)
-        self.assertEqual(
-            response.data["detail"], "Debe estar autenticado para realizar esta acción"
-        )
+        self.assertEqual(response.data, expected_data)
 
     def test_get_list(self):
         superuser = UserFactory(is_superuser=True)
@@ -96,32 +120,25 @@ class EditionViewSetTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_only_superusers_can_get_list(self):
+        expected_data = {
+            "detail": "Sólo los  superusuarios pueden realizar esta acción"
+        }
         response = self.client.get(self.list_url)
+
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertIn("detail", response.data)
-        self.assertEqual(
-            response.data["detail"],
-            "Sólo los  superusuarios pueden realizar esta acción",
-        )
+        self.assertEqual(response.data, expected_data)
 
     def test_unauthenticated_user_cannot_get_list(self):
-        PromotionFactory()
-        EditionFactory(collection__theme__name="Edition 1")
-        EditionFactory(collection__theme__name="Edition 2")
+        expected_data = {"detail": "Debe estar autenticado para realizar esta acción"}
         self.client.logout()
         response = self.client.get(self.list_url)
+
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertIn("detail", response.data)
-        self.assertEqual(
-            response.data["detail"], "Debe estar autenticado para realizar esta acción"
-        )
+        self.assertEqual(response.data, expected_data)
 
     def test_superuser_can_retrieve_edition(self):
-        superuser = UserFactory(is_superuser=True)
-        self.client.force_authenticate(user=superuser)
-        PromotionFactory()
-        edition = EditionFactory(collection__theme__name="Collection 1")
-        detail_url = reverse("edition-detail", kwargs={"pk": edition.pk})
         expected_data = {
             "id": 1,
             "collection": {
@@ -130,63 +147,88 @@ class EditionViewSetTestCase(APITestCase):
                     "remaining_time": "Esta promoción termina hoy a la medianoche.",
                     "max_debt": Decimal("150.00"),
                 },
-                "theme": {"name": "Collection 1", "image": None},
+                "name": "Edition 1",
+                "image": "",
             },
             "circulation": "1",
         }
 
+        superuser = UserFactory(is_superuser=True)
+        self.client.force_authenticate(user=superuser)
+        detail_url = reverse("edition-detail", kwargs={"pk": 1})
         response = self.client.get(detail_url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, expected_data)
 
-    def test_user_cannot_retrieve_edition(self):
-        PromotionFactory()
-        edition = EditionFactory(collection__theme__name="Edition 1")
-        detail_url = reverse("edition-detail", kwargs={"pk": edition.pk})
+    def test_authenticated_user_can_retrieve_edition(self):
+        expected_data = {
+            "id": 1,
+            "collection": {
+                "id": 1,
+                "promotion": {
+                    "remaining_time": "Esta promoción termina hoy a la medianoche.",
+                    "max_debt": Decimal("150.00"),
+                },
+                "name": "Edition 1",
+                "image": "",
+            },
+            "circulation": "1",
+        }
+        detail_url = reverse("edition-detail", kwargs={"pk": 1})
         response = self.client.get(detail_url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, expected_data)
 
     def test_unauthenticated_user_cannot_retrieve_edition(self):
+        expected_data = {"detail": "Debe estar autenticado para realizar esta acción"}
         self.client.logout()
-        PromotionFactory()
-        edition = EditionFactory(collection__theme__name="Edition 1")
-        detail_url = reverse("edition-detail", kwargs={"pk": edition.pk})
+        detail_url = reverse("edition-detail", kwargs={"pk": 1})
         response = self.client.get(detail_url)
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertEqual(
-            response.data["detail"], "Debe estar autenticado para realizar esta acción"
-        )
+        self.assertEqual(response.data, expected_data)
 
     def test_http_404_exception(self):
+        expected_data = {"detail": "No encontrado."}
         superuser = UserFactory(is_superuser=True)
         self.client.force_authenticate(user=superuser)
         detail_url = reverse("edition-detail", kwargs={"pk": 9007})
         response = self.client.get(detail_url)
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertEqual(response.data["detail"], "No encontrado.")
+        self.assertEqual(response.data, expected_data)
 
     def test_method_not_allowed_exception(self):
+        expected_data = {"detail": "Método no permitido."}
         superuser = UserFactory(is_superuser=True)
         self.client.force_authenticate(user=superuser)
         detail_url = reverse("edition-detail", kwargs={"pk": 9007})
         response = self.client.put(detail_url)
 
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-        self.assertEqual(response.data["detail"], "Método no permitido.")
+        self.assertEqual(response.data, expected_data)
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class RescueStickerViewTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
         PromotionFactory()
-        cls.edition = EditionFactory()
+        collection = CollectionFactory(
+            album_template__with_coordinate_images=True,
+            with_prizes_defined=True,
+        )
+        cls.edition = EditionFactory(collection=collection)
         cls.user = UserFactory()
         cls.collector = CollectorFactory(user=UserFactory())
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def setUp(self):
         self.album = AlbumFactory(

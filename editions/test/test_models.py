@@ -1,3 +1,8 @@
+import os
+import shutil
+from django.test.utils import override_settings
+import tempfile
+
 import datetime
 
 from unittest import skip
@@ -18,8 +23,11 @@ from users.test.factories import CollectorFactory, DealerFactory
 from ..models import Box, Pack, Sticker, StickerPrize
 from .factories import EditionFactory
 
+TEMP_MEDIA_ROOT = tempfile.mkdtemp()
+
 
 # @skip("saltar")
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class EditionTestCase(TestCase):
 
     @classmethod
@@ -39,6 +47,11 @@ class EditionTestCase(TestCase):
 
         cls.edition.clean()
         cls.edition.save()
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def test_edition_data(self):
         boxes = Box.objects.filter(edition=self.edition).order_by("pk")
@@ -119,7 +132,12 @@ class EditionTestCase(TestCase):
             )
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class EditionValidationTestCase(TestCase):
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def test_no_validation_raised(self):
         PromotionFactory()
@@ -212,6 +230,7 @@ class AnalisisEditionTestCase(TestCase):  # pragma: no cover
         print("circulation: ", self.edition.circulation)
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class StickerTestCase(TestCase):
 
     @classmethod
@@ -240,6 +259,11 @@ class StickerTestCase(TestCase):
         )
 
         cls.common_coordinates = cls.coordinates.filter(rarity_factor__gte=1)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def setUp(self):
         self.sticker = Sticker.objects.filter(coordinate__absolute_number__gt=0).first()
@@ -463,6 +487,7 @@ class StickerTestCase(TestCase):
             self.sticker.rescue(collector.user)
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class StickerPrizeTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -487,6 +512,11 @@ class StickerPrizeTestCase(TestCase):
         cls.pack = cls.prized_sticker.pack
         cls.pack.open(cls.collector.user)
         cls.prized_sticker.refresh_from_db()
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def setUp(self):
         self.prized_sticker.discover_prize()
@@ -533,6 +563,7 @@ class StickerPrizeTestCase(TestCase):
             self.sticker_prize.claim(self.user)
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class BoxTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -553,6 +584,11 @@ class BoxTestCase(TestCase):
         cls.edition.save()
         cls.box = cls.edition.boxes.get(edition=cls.edition)
 
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
+
     def test_box_data(self):
         self.assertEqual(self.box.edition, self.edition)
         self.assertEqual(self.box.ordinal, 1)
@@ -562,6 +598,7 @@ class BoxTestCase(TestCase):
         )
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class PackTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -577,6 +614,11 @@ class PackTestCase(TestCase):
             each_prize.save()
 
         cls.edition = EditionFactory(collection=collection)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def test_box_data(self):
         for box in self.edition.boxes.all():

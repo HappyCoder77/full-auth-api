@@ -1,3 +1,8 @@
+import os
+import shutil
+from django.test.utils import override_settings
+import tempfile
+
 from datetime import date
 from django.db import IntegrityError
 from django.core.exceptions import ValidationError
@@ -12,21 +17,32 @@ from collection_manager.models import Coordinate, StandardPrize
 from collection_manager.test.factories import CollectionFactory
 from users.test.factories import CollectorFactory, DealerFactory
 
-from ..models import Slot, Page, Pack, PagePrize
+from ..models import Slot, Page, Pack
 from .factories import AlbumFactory
 
+TEMP_MEDIA_ROOT = tempfile.mkdtemp()
 
+
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class AlbumTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         PromotionFactory()
-        edition = EditionFactory()
-        cls.album = AlbumFactory(
-            collector__email="collector@example.com", collection=edition.collection
+        collection = CollectionFactory(
+            album_template__with_coordinate_images=True, with_prizes_defined=True
         )
-        cls.pages = cls.album.collection.layout.PAGES
-        cls.slots = cls.album.collection.layout.SLOTS_PER_PAGE
+        EditionFactory(collection=collection)
+        cls.album = AlbumFactory(
+            collector__email="collector@example.com", collection=collection
+        )
+        cls.pages = cls.album.collection.album_template.layout.PAGES
+        cls.slots = cls.album.collection.album_template.layout.SLOTS_PER_PAGE
         cls.total_slots = cls.slots * cls.pages
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def test_album_data(self):
 
@@ -64,13 +80,19 @@ class AlbumTestCase(TestCase):
         self.assertEqual(prized_sticker.collector, self.album.collector)
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class PageTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         PromotionFactory()
         cls.album = AlbumFactory()
-        cls.pages = cls.album.collection.layout.PAGES
-        cls.slots = cls.album.collection.layout.SLOTS_PER_PAGE
+        cls.pages = cls.album.collection.album_template.layout.PAGES
+        cls.slots = cls.album.collection.album_template.layout.SLOTS_PER_PAGE
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def test_pages_data(self):
 
@@ -92,8 +114,8 @@ class SlotTestCase(TestCase):
     def setUpTestData(cls):
         PromotionFactory()
         cls.album = AlbumFactory()
-        cls.pages = cls.album.collection.layout.PAGES
-        cls.slots = cls.album.collection.layout.SLOTS_PER_PAGE
+        cls.pages = cls.album.collection.album_template.layout.PAGES
+        cls.slots = cls.album.collection.album_template.layout.SLOTS_PER_PAGE
         cls.total_slots = cls.slots * cls.pages
 
     def test_album_pages_slots_data(self):
@@ -102,7 +124,7 @@ class SlotTestCase(TestCase):
         for page in self.album.pages.all():
             slot_counter = 1
             for slot in page.slots.all().order_by("number"):
-                coordinate = self.album.collection.coordinates.get(
+                coordinate = self.album.collection.album_template.coordinates.get(
                     absolute_number=slot_absolute_counter
                 )
                 self.assertEqual(slot.page, page)
@@ -115,11 +137,15 @@ class SlotTestCase(TestCase):
             page_counter += 1
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class StickStickerTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         PromotionFactory()
-        edition = EditionFactory()
+        collection = CollectionFactory(
+            album_template__with_coordinate_images=True, with_prizes_defined=True
+        )
+        edition = EditionFactory(collection=collection)
         cls.album = AlbumFactory(collection=edition.collection)
 
         for page in cls.album.pages.all():
@@ -135,7 +161,7 @@ class StickStickerTestCase(TestCase):
 
         cls.empty_slot = Slot.objects.filter(sticker__isnull=True).first()
         coordinate = Coordinate.objects.create(
-            collection=cls.album.collection,
+            template=cls.album.collection.album_template,
             page=cls.empty_slot.page.number,
             slot_number=cls.empty_slot.number,
             absolute_number=cls.empty_slot.absolute_number,
@@ -148,6 +174,11 @@ class StickStickerTestCase(TestCase):
 
         cls.empty_slot.place_sticker(sticker)
 
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
+
     def test_place_sticker_method(self):
         self.assertEqual(self.album.missing_stickers, 3)
         self.assertEqual(self.album.collected_stickers, 21)
@@ -156,7 +187,7 @@ class StickStickerTestCase(TestCase):
     def test_place_sticker_already_filled(self):
         slot = Slot.objects.filter(sticker__isnull=False).first()
         coordinate = Coordinate.objects.create(
-            collection=self.album.collection,
+            template=self.album.collection.album_template,
             page=slot.page.number,
             slot_number=slot.number,
             absolute_number=slot.absolute_number,
@@ -177,7 +208,7 @@ class StickStickerTestCase(TestCase):
     def test_place_sticker_wrong_number(self):
         slot = Slot.objects.filter(sticker__isnull=True).first()
         coordinate = Coordinate.objects.create(
-            collection=self.album.collection,
+            template=self.album.collection.album_template,
             page=slot.page.number,
             slot_number=slot.number,
             absolute_number=slot.absolute_number + 1,
@@ -197,12 +228,15 @@ class StickStickerTestCase(TestCase):
         )
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class PagePrizeTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
         PromotionFactory()
-        collection = CollectionFactory()
+        collection = CollectionFactory(
+            album_template__with_coordinate_images=True, with_prizes_defined=True
+        )
         coordinate = Coordinate.objects.get(rarity_factor=0.02)
         coordinate.rarity_factor = 1
         coordinate.save()
@@ -227,6 +261,11 @@ class PagePrizeTestCase(TestCase):
             ).first()
 
             slot.place_sticker(sticker)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def setUp(self):
         self.prize = StandardPrize.objects.get(page=self.page.number)

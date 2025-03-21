@@ -1,3 +1,9 @@
+import os
+import shutil
+from django.test.utils import override_settings
+import tempfile
+
+
 from datetime import date
 from rest_framework.test import APITestCase
 from django.test import TestCase
@@ -7,6 +13,7 @@ from authentication.test.factories import UserFactory
 from editions.models import Pack
 from editions.test.factories import EditionFactory
 from collection_manager.models import StandardPrize
+from collection_manager.test.factories import CollectionFactory
 from promotions.test.factories import PromotionFactory
 from users.test.factories import CollectorFactory
 
@@ -19,16 +26,27 @@ from ..serializers import (
 from ..models import Album, Slot, Page, PagePrize
 from .factories import AlbumFactory
 
+TEMP_MEDIA_ROOT = tempfile.mkdtemp()
 
+
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class AlbumSerializerTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
         PromotionFactory()
-        cls.edition = EditionFactory()
+        collection = CollectionFactory(
+            album_template__with_coordinate_images=True, with_prizes_defined=True
+        )
+        EditionFactory(collection=collection)
         cls.collector = CollectorFactory(user=UserFactory())
         cls.album = Album.objects.create(
-            collector=cls.collector.user, collection=cls.edition.collection
+            collector=cls.collector.user, collection=collection
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def test_serializer_contains_expected_fields(self):
         serializer = AlbumSerializer(instance=self.album)
@@ -51,7 +69,8 @@ class AlbumSerializerTest(APITestCase):
     def test_pages_serialization(self):
         serializer = AlbumSerializer(instance=self.album)
         self.assertEqual(
-            len(serializer.data["pages"]), self.edition.collection.layout.PAGES
+            len(serializer.data["pages"]),
+            self.album.collection.album_template.layout.PAGES,
         )
 
     def test_pack_inbox_serialization(self):
@@ -72,7 +91,7 @@ class AlbumSerializerTest(APITestCase):
 
     def test_edition_serialization(self):
         serializer = AlbumSerializer(instance=self.album)
-        self.assertEqual(serializer.data["collection"], self.edition.collection.id)
+        self.assertEqual(serializer.data["collection"], self.album.collection.id)
 
 
 class SlotSerializerTestCase(TestCase):
@@ -144,7 +163,7 @@ class PagePrizeSerializerTestCase(TestCase):
         )
         self.assertEqual(
             serialized_data["prize"]["collection_name"],
-            self.page_prize.prize.collection.theme.name,
+            self.page_prize.prize.collection.album_template.name,
         )
         self.assertEqual(serialized_data["prize"]["page"], self.page_prize.prize.page)
         self.assertEqual(

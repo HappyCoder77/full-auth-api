@@ -63,3 +63,18 @@ class CollectionFactory(factory.django.DjangoModelFactory):
         model = Collection
 
     album_template = factory.SubFactory(AlbumTemplateFactory)
+
+    @factory.post_generation
+    def with_prizes_defined(self, create, extracted, **kwargs):
+        if not create or not extracted:
+            return
+
+        self.refresh_from_db()
+        # Add prizes to the collection
+        for prize in self.surprise_prizes.all():
+            prize.description = "A  surprise prize"
+            prize.save()
+
+        for prize in self.standard_prizes.all():
+            prize.description = "A standard prize"
+            prize.save()

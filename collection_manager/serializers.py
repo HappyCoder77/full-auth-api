@@ -38,7 +38,7 @@ from .models import StandardPrize
 
 class StandardPrizeSerializer(serializers.ModelSerializer):
     collection_name = serializers.CharField(
-        source="collection.theme.name", read_only=True
+        source="collection.album_template.name", read_only=True
     )
 
     class Meta:

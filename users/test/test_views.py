@@ -992,20 +992,31 @@ class DealerStockAPIViewAPITestCase(APITestCase):
         with patch("promotions.models.Promotion.objects.get_current") as mock_current:
             cls.past_promotion = PromotionFactory(past=True)
             mock_current.return_value = cls.past_promotion
-            theme = ThemeFactory(name="Roblox")
-            theme_2 = ThemeFactory(name="Mario")
-            collection = CollectionFactory(theme=theme)
-            collection_2 = CollectionFactory(theme=theme_2)
+            collection = CollectionFactory(
+                album_template__name="theme_1",
+                album_template__with_coordinate_images=True,
+                with_prizes_defined=True,
+            )
+            collection_2 = CollectionFactory(
+                album_template__name="theme_2",
+                album_template__with_coordinate_images=True,
+                with_prizes_defined=True,
+            )
 
             cls.past_edition = EditionFactory(collection=collection)
             cls.past_edition2 = EditionFactory(collection=collection_2)
 
     def setUp(self):
         self.promotion = PromotionFactory()
-        self.edition = EditionFactory()
+        collection = CollectionFactory(
+            album_template__name="mario",
+            album_template__with_coordinate_images=True,
+            with_prizes_defined=True,
+        )
+        self.edition = EditionFactory(collection=collection)
 
         self.url = reverse(
-            "dealer-edition-stock", kwargs={"collection_id": self.edition.collection.id}
+            "dealer-edition-stock", kwargs={"collection_id": collection.id}
         )
 
     def test_dealer_can_get_initial_stock(self):
@@ -1061,7 +1072,12 @@ class DealerStockAPIViewAPITestCase(APITestCase):
         with patch("promotions.models.Promotion.objects.get_current") as mock_current:
             promotion = PromotionFactory(past=True)
             mock_current.return_value = promotion
-            edition = EditionFactory(collection__theme__name="Angela")
+            collection = CollectionFactory(
+                album_template__name="Angela",
+                album_template__with_coordinate_images=True,
+                with_prizes_defined=True,
+            )
+            edition = EditionFactory(collection=collection)
             OrderFactory(dealer=self.dealer.user, collection=edition.collection)
 
         self.client.force_authenticate(user=self.dealer.user)

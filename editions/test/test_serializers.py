@@ -1,3 +1,7 @@
+import os
+import shutil
+from django.test.utils import override_settings
+import tempfile
 from django.test import TestCase
 from authentication.test.factories import UserFactory
 from collection_manager.models import Coordinate, SurprisePrize
@@ -7,7 +11,10 @@ from ..serializers import PackSerializer, StickerPrizeSerializer, StickerSeriali
 from ..test.factories import EditionFactory, CollectionFactory
 from ..models import Pack, Sticker
 
+TEMP_MEDIA_ROOT = tempfile.mkdtemp()
 
+
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class PackSerializerTest(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -27,6 +34,11 @@ class PackSerializerTest(TestCase):
         )
         cls.collector = CollectorFactory(user=UserFactory())
         cls.pack = Pack.objects.first()
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def test_pack_serialization(self):
         serializer = PackSerializer(instance=self.pack)
@@ -56,7 +68,7 @@ class PackSerializerTest(TestCase):
             self.assertIn("image", coordinate_data)
             self.assertIsInstance(coordinate_data["id"], int)
             self.assertIsInstance(coordinate_data["absolute_number"], int)
-            self.assertIsNone(coordinate_data["image"])
+            self.assertIsNotNone(coordinate_data["image"])
 
     def test_serializer_expected_fields(self):
         serializer = PackSerializer(instance=self.pack)
@@ -65,11 +77,21 @@ class PackSerializerTest(TestCase):
         self.assertEqual(set(serializer.data.keys()), expected_fields)
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class StickerPrizeSerializerTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         PromotionFactory()
-        cls.edition = EditionFactory()
+        collection = CollectionFactory(album_template__with_coordinate_images=True)
+        for prize in collection.surprise_prizes.all():
+            prize.description = "Test prize"
+            prize.save()
+
+        for prize in collection.standard_prizes.all():
+            prize.description = "Test prize"
+            prize.save()
+
+        cls.edition = EditionFactory(collection=collection)
         cls.collector = CollectorFactory(user=UserFactory())
 
         # Get a prize sticker and create a prize for it
@@ -82,6 +104,11 @@ class StickerPrizeSerializerTestCase(TestCase):
         cls.surprise_prize = SurprisePrize.objects.filter(
             description=cls.sticker_prize.prize.description
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def test_sticker_prize_serializer(self):
         serializer = StickerPrizeSerializer(instance=self.sticker_prize)
@@ -126,42 +153,51 @@ class StickerPrizeSerializerTestCase(TestCase):
         self.assertIsNone(serializer.data["prize"])
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class StickerSerializerTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         PromotionFactory()
-        cls.edition = EditionFactory()
+        collection = CollectionFactory(album_template__with_coordinate_images=True)
+        for prize in collection.surprise_prizes.all():
+            prize.description = "Test prize"
+            prize.save()
+
+        for prize in collection.standard_prizes.all():
+            prize.description = "Test prize"
+            prize.save()
+
+        cls.edition = EditionFactory(collection=collection)
         cls.collector = CollectorFactory(user=UserFactory())
-        cls.coordinate = Coordinate.objects.first()
+        cls.coordinate = (
+            Coordinate.objects.filter(rarity_factor__gte=1)
+            .order_by("absolute_number")
+            .first()
+        )
         cls.sticker = Sticker.objects.filter(coordinate=cls.coordinate).first()
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def test_sticker_serializer_data(self):
         serializer = StickerSerializer(instance=self.sticker)
         data = serializer.data
-
-        self.assertEqual(
-            set(data.keys()),
-            {
-                "id",
-                "ordinal",
-                "number",
-                "on_the_board",
-                "is_repeated",
-                "is_rescued",
-                "coordinate",
-                "prize",
-                "has_prize_discovered",
+        expected_serializer_data = {
+            "id": self.sticker.id,
+            "ordinal": self.sticker.ordinal,
+            "number": self.sticker.number,
+            "on_the_board": self.sticker.on_the_board,
+            "is_repeated": self.sticker.is_repeated,
+            "is_rescued": self.sticker.is_rescued,
+            "coordinate": {
+                "id": self.coordinate.id,
+                "absolute_number": self.coordinate.absolute_number,
+                "image": self.coordinate.image.url,
             },
-        )
-        self.assertEqual(data["id"], self.sticker.id)
-        self.assertEqual(data["ordinal"], self.sticker.ordinal)
-        self.assertEqual(data["number"], self.sticker.number)
-        self.assertEqual(data["on_the_board"], self.sticker.on_the_board)
-        self.assertEqual(data["is_repeated"], self.sticker.is_repeated)
-        self.assertEqual(data["is_rescued"], self.sticker.is_repeated)
-        self.assertEqual(data["coordinate"]["id"], self.coordinate.id)
-        self.assertEqual(
-            data["coordinate"]["absolute_number"], self.coordinate.absolute_number
-        )
-        self.assertIsNone(data["coordinate"]["image"], self.coordinate.image)
-        self.assertIsNone(data["prize"])
+            "prize": None,
+            "has_prize_discovered": hasattr(self.sticker, "prize"),
+        }
+
+        self.assertEqual(data, expected_serializer_data)

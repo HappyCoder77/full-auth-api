@@ -47,7 +47,7 @@ class Album(models.Model):
         self.number_slots()
 
     def create_pages(self):
-        pages = self.collection.layout.PAGES
+        pages = self.collection.album_template.layout.PAGES
         counter = 1
 
         while counter <= pages:
@@ -59,7 +59,9 @@ class Album(models.Model):
         counter = 1
 
         for each_slot in slots:
-            coordinate = self.collection.coordinates.get(absolute_number=counter)
+            coordinate = self.collection.album_template.coordinates.get(
+                absolute_number=counter
+            )
             each_slot.absolute_number = counter
             each_slot.image = coordinate.image
             each_slot.save()
@@ -165,7 +167,7 @@ class Page(models.Model):
 
     def create_slots(self):
         slot_list = []
-        slots = self.album.collection.layout.SLOTS_PER_PAGE
+        slots = self.album.collection.album_template.layout.SLOTS_PER_PAGE
         counter = 1
 
         while counter <= slots:
