@@ -1,3 +1,9 @@
+import os
+import shutil
+from django.test.utils import override_settings
+import tempfile
+
+
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from albums.models import Page, Pack
@@ -11,7 +17,10 @@ from promotions.test.factories import PromotionFactory
 from .factories import CollectorFactory, DealerFactory
 from ..serializers import CollectorSerializer
 
+TEMP_MEDIA_ROOT = tempfile.mkdtemp()
 
+
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class CollectorSerializerTest(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -40,6 +49,11 @@ class CollectorSerializerTest(TestCase):
         for slot in cls.page.slots.all():
             sticker = stickers.get(coordinate__absolute_number=slot.absolute_number)
             slot.place_sticker(sticker)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def test_serializer_contains_expected_fields(self):
         serializer = CollectorSerializer(instance=self.collector)

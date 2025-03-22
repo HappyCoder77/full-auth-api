@@ -119,7 +119,7 @@ class SaleSerializer(serializers.ModelSerializer):
         queryset=Collection.objects.all(), required=True
     )
     collection_name = serializers.CharField(
-        source="collection.theme.name", read_only=True
+        source="collection.album_template.name", read_only=True
     )
 
     class Meta:

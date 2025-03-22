@@ -1,12 +1,17 @@
 import os
+import shutil
+from django.test.utils import override_settings
+import tempfile
+
 from decimal import Decimal
 from datetime import datetime, timedelta, date
+from unittest.mock import patch
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.utils import timezone
 from authentication.test.factories import UserFactory
-from collection_manager.test.factories import ThemeFactory
+from collection_manager.test.factories import CollectionFactory
 from collection_manager.models import Collection
 from editions.models import Edition
 from editions.test.factories import EditionFactory
@@ -22,15 +27,20 @@ from .factories import (
     DealerBalanceFactory,
 )
 
+TEMP_MEDIA_ROOT = tempfile.mkdtemp()
 
 NOW = timezone.now()
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class SaleTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         PromotionFactory()
-        cls.edition = EditionFactory()
+        collection = CollectionFactory(
+            album_template__with_coordinate_images=True, with_prizes_defined=True
+        )
+        cls.edition = EditionFactory(collection=collection)
         cls.user = UserFactory()
         cls.dealer = DealerFactory(user=cls.user, email=cls.user.email)
         cls.collector = CollectorFactory(user=UserFactory())
@@ -43,6 +53,11 @@ class SaleTestCase(TestCase):
             collector=cls.collector.user,
         )
         cls.collector.refresh_from_db()
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def test_sale_data(self):
         self.assertEqual(self.sale.date, date.today())
@@ -83,13 +98,22 @@ class SaleTestCase(TestCase):
         )
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class OrderTestCase(TestCase):
 
     def setUp(self):
         self.promotion = PromotionFactory()
-        self.edition = EditionFactory()
+        collection = CollectionFactory(
+            album_template__with_coordinate_images=True, with_prizes_defined=True
+        )
+        self.edition = EditionFactory(collection=collection)
         self.user = UserFactory()
         self.dealer = DealerFactory(user=self.user, email=self.user.email)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def tearDown(self):
         for payment in Payment.objects.all():
@@ -457,23 +481,31 @@ class MobilePaymentModelTest(TestCase):
         self.assertEqual(mobile_payment.payment_type, "mobile")
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class DealerBalanceTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.past_promotion = PromotionFactory(past=True)
+
+        with patch("promotions.models.Promotion.objects.get_current") as mock:
+            mock.return_value = cls.past_promotion
+            cls.past_collection = CollectionFactory(
+                album_template__with_coordinate_images=True, with_prizes_defined=True
+            )
+            cls.past_edition = EditionFactory(collection=cls.past_collection)
+
         cls.current_promotion = PromotionFactory()
-        cls.user = UserFactory()
-        cls.dealer = DealerFactory(user=cls.user, email=cls.user.email)
-        cls.past_collection = Collection.objects.create(
-            theme=ThemeFactory(), promotion=cls.past_promotion
-        )
-        cls.past_edition = EditionFactory(collection=cls.past_collection)
-        cls.current_collection = Collection.objects.create(
-            theme=ThemeFactory(name="Angela"), promotion=cls.current_promotion
+        cls.current_collection = CollectionFactory(
+            album_template=cls.past_collection.album_template,
+            album_template__with_coordinate_images=True,
+            with_prizes_defined=True,
         )
         cls.current_edition = EditionFactory(
             collection=cls.current_collection, circulation=2
         )
+        cls.user = UserFactory()
+        cls.dealer = DealerFactory(user=cls.user, email=cls.user.email)
+
         OrderFactory(
             date=cls.past_promotion.start_date,
             dealer=cls.dealer.user,
@@ -500,14 +532,10 @@ class DealerBalanceTestCase(TestCase):
             initial_balance=self.past_dealer_balance.current_balance,
         )
 
-    def tearDown(self):
-        """Limpia los archivos de prueba después de cada test"""
-        for payment in Payment.objects.all():
-            if payment.capture and os.path.exists(payment.capture.path):
-                try:
-                    os.remove(payment.capture.path)
-                except FileNotFoundError:
-                    pass
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def test_dealer_balance_data(self):
 

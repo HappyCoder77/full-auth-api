@@ -1,3 +1,8 @@
+import os
+import shutil
+from django.test.utils import override_settings
+import tempfile
+
 from rest_framework import serializers
 from rest_framework.test import APITestCase, APIRequestFactory
 from promotions.test.factories import PromotionFactory
@@ -5,25 +10,37 @@ from rest_framework.exceptions import ValidationError
 from editions.test.factories import EditionFactory
 from authentication.test.factories import UserFactory
 from users.test.factories import DealerFactory, CollectorFactory
+from collection_manager.test.factories import CollectionFactory
 from commerce.test.factories import OrderFactory
 from commerce.models import Order, Box, Pack, Edition, Sale
 from commerce.serializers import OrderSerializer, SaleSerializer
 from django.utils import timezone
 
+TEMP_MEDIA_ROOT = tempfile.mkdtemp()
+
 
 # TODO: Add tests for the rest of the serializers
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class OrderSerializerTestCase(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.promotion = PromotionFactory()
+        collection = CollectionFactory(
+            album_template__with_coordinate_images=True, with_prizes_defined=True
+        )
+        cls.edition = EditionFactory(collection=collection)
         cls.user_dealer = UserFactory()
         cls.dealer = DealerFactory(user=cls.user_dealer)
 
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
+
     def test_order_serialization(self):
-        edition = EditionFactory()
         order = Order.objects.create(
             dealer=self.dealer.user,
-            collection=edition.collection,
+            collection=self.edition.collection,
         )
 
         serializer = OrderSerializer(order)
@@ -38,18 +55,17 @@ class OrderSerializerTestCase(APITestCase):
         self.assertEqual(data["amount"], str(order.amount))
 
     def test_order_deserialization(self):
-        edition = EditionFactory()
         data = {
-            "collection": edition.collection.id,
+            "collection": self.edition.collection.id,
         }
         serializer = OrderSerializer(data=data)
         self.assertTrue(serializer.is_valid())
         order = serializer.save(dealer=self.dealer.user)
 
         self.assertEqual(order.dealer, self.dealer.user)
-        self.assertEqual(order.collection, edition.collection)
-        self.assertEqual(order.box, edition.boxes.first())
-        self.assertEqual(order.pack_cost, edition.collection.promotion.pack_cost)
+        self.assertEqual(order.collection, self.edition.collection)
+        self.assertEqual(order.box, self.edition.boxes.first())
+        self.assertEqual(order.pack_cost, self.edition.collection.promotion.pack_cost)
 
     def test_order_validation(self):
         data = {
@@ -60,15 +76,24 @@ class OrderSerializerTestCase(APITestCase):
         self.assertIn("collection", serializer.errors)
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class SaleSerializerTestCase(APITestCase):
     def setUp(self):
         PromotionFactory()
-        self.edition = EditionFactory()
+        collection = CollectionFactory(
+            album_template__with_coordinate_images=True, with_prizes_defined=True
+        )
+        self.edition = EditionFactory(collection=collection)
         self.dealer = DealerFactory(user=UserFactory())
         self.collector = CollectorFactory(user=UserFactory())
         self.order = OrderFactory(
             dealer=self.dealer.user, collection=self.edition.collection
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def test_serialization(self):
         sale = Sale.objects.create(
@@ -86,7 +111,8 @@ class SaleSerializerTestCase(APITestCase):
         self.assertIn("date", serialized_data)
         self.assertEqual(serialized_data["collection"], self.edition.collection.id)
         self.assertEqual(
-            serialized_data["collection_name"], self.edition.collection.theme.name
+            serialized_data["collection_name"],
+            self.edition.collection.album_template.name,
         )
         self.assertEqual(serialized_data["dealer"], self.dealer.user.id)
         self.assertEqual(serialized_data["dealer_name"], self.dealer.get_full_name)

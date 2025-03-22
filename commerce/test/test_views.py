@@ -1,4 +1,8 @@
 import io, os
+import shutil
+from django.test.utils import override_settings
+import tempfile
+
 from unittest.mock import patch
 from PIL import Image
 from datetime import timedelta, date
@@ -25,21 +29,36 @@ from rest_framework import status
 from ..serializers import OrderSerializer, PaymentSerializer
 from ..models import Payment, MobilePayment, DealerBalance, Order, Sale
 
+TEMP_MEDIA_ROOT = tempfile.mkdtemp()
 
+
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class OrderListCreateAPIViewAPITestCase(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
         cls.promotion = PromotionFactory()
-        cls.edition = EditionFactory()
+        collection = CollectionFactory(
+            album_template__with_coordinate_images=True, with_prizes_defined=True
+        )
+        cls.edition = EditionFactory(collection=collection)
         theme = ThemeFactory(name="mario")
-        collection = CollectionFactory(theme=theme)
-        cls.edition_2 = EditionFactory(collection=collection)
+        collection_2 = CollectionFactory(
+            album_template__with_coordinate_images=True,
+            with_prizes_defined=True,
+            album_template__name="Angela",
+        )
+        cls.edition_2 = EditionFactory(collection=collection_2)
         cls.superuser = UserFactory(is_superuser=True)
         cls.user_dealer = UserFactory()
         cls.dealer = DealerFactory(user=cls.user_dealer)
         cls.basic_user = UserFactory()
         cls.url = reverse("order-list-create")
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def tearDown(self):
         Order.objects.all().delete()
@@ -127,13 +146,17 @@ class OrderListCreateAPIViewAPITestCase(APITestCase):
 
     def test_create_order_without_active_promotion(self):
         Promotion.objects.all().delete()
+        promotion = PromotionFactory(past=True)
 
         with patch("promotions.models.Promotion.objects.get_current") as mock_current:
-            promotion = PromotionFactory(past=True)
             mock_current.return_value = promotion
-            theme = ThemeFactory(name="freefire")
-            collection = CollectionFactory(theme=theme)
+            collection = CollectionFactory(
+                album_template__with_coordinate_images=True,
+                with_prizes_defined=True,
+                album_template__name="FreeFire",
+            )
             EditionFactory(collection=collection)
+
         self.client.force_authenticate(user=self.dealer.user)
         data = {"collection": collection.id}
 
@@ -1009,12 +1032,16 @@ class DealerBalanceViewTestCase(APITestCase):
         )
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class SaleCreateViewAPITestCase(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
         PromotionFactory()
-        cls.edition = EditionFactory()
+        collection = CollectionFactory(
+            album_template__with_coordinate_images=True, with_prizes_defined=True
+        )
+        cls.edition = EditionFactory(collection=collection)
         cls.superuser = UserFactory(is_superuser=True)
         cls.basic_user = UserFactory()
         cls.dealer_user = UserFactory()
@@ -1026,6 +1053,11 @@ class SaleCreateViewAPITestCase(APITestCase):
             "collector": cls.collector.user.id,
             "quantity": 1,
         }
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def setUp(self):
         self.client.force_authenticate(user=self.dealer.user)
@@ -1040,7 +1072,8 @@ class SaleCreateViewAPITestCase(APITestCase):
         self.assertEqual(response.data["date"], date.today().strftime("%Y-%m-%d"))
         self.assertEqual(response.data["collection"], self.edition.id)
         self.assertEqual(
-            response.data["collection_name"], self.edition.collection.theme.name
+            response.data["collection_name"],
+            self.edition.collection.album_template.name,
         )
         self.assertEqual(response.data["dealer"], self.dealer.user.id)
         self.assertEqual(response.data["dealer_name"], self.dealer.get_full_name)
@@ -1151,12 +1184,16 @@ class SaleCreateViewAPITestCase(APITestCase):
         )
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class RequestSurprisePrizeViewAPITestCase(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
         PromotionFactory()
-        cls.edition = EditionFactory()
+        collection = CollectionFactory(
+            album_template__with_coordinate_images=True, with_prizes_defined=True
+        )
+        cls.edition = EditionFactory(collection=collection)
         cls.superuser = UserFactory(is_superuser=True)
         cls.basic_user = UserFactory()
         cls.dealer_user = UserFactory()
@@ -1172,6 +1209,11 @@ class RequestSurprisePrizeViewAPITestCase(APITestCase):
         cls.url = reverse(
             "request-surprise-prize", kwargs={"stickerprize_id": cls.stickerprize.id}
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def setUp(self):
         self.client.force_authenticate(user=self.dealer.user)
@@ -1240,12 +1282,16 @@ class RequestSurprisePrizeViewAPITestCase(APITestCase):
         self.assertEqual(response2.status_code, status.HTTP_400_BAD_REQUEST)
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class SurprisePrizeListAPIViewTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
         PromotionFactory()
-        cls.edition = EditionFactory()
+        collection = CollectionFactory(
+            album_template__with_coordinate_images=True, with_prizes_defined=True
+        )
+        cls.edition = EditionFactory(collection=collection)
         cls.superuser = UserFactory(is_superuser=True)
         cls.basic_user = UserFactory()
         cls.dealer_user = UserFactory()
@@ -1259,6 +1305,11 @@ class SurprisePrizeListAPIViewTest(APITestCase):
         cls.stickerprize = cls.prized_sticker.discover_prize()
 
         cls.url = reverse("surprise-prize-list")
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def setUp(self):
         self.client.force_authenticate(user=self.collector.user)
@@ -1308,12 +1359,15 @@ class SurprisePrizeListAPIViewTest(APITestCase):
         self.assertEqual(str(response.data["detail"]), 'Método "POST" no permitido.')
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class ClaimPagePrizeViewAPITestCase(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.client = APIClient()
         PromotionFactory()
-        collection = CollectionFactory()
+        collection = CollectionFactory(
+            album_template__with_coordinate_images=True, with_prizes_defined=True
+        )
         coordinate = Coordinate.objects.get(rarity_factor=0.02)
         coordinate.rarity_factor = 1
         coordinate.save()
@@ -1330,6 +1384,11 @@ class ClaimPagePrizeViewAPITestCase(APITestCase):
         cls.create_page_prize_url = reverse(
             "create-page-prize", kwargs={"page_id": cls.page.id}
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def setUp(self):
         for pack in self.packs:

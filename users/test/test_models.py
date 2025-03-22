@@ -1,3 +1,9 @@
+import os
+import shutil
+from django.test.utils import override_settings
+import tempfile
+
+
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import TestCase
@@ -24,6 +30,7 @@ USER_MIDDLE_NAME = "Joseph"
 USER_LAST_NAME = "Smith"
 USER_SECOND_LAST_NAME = "Brown"
 USER_BIRTHDATE = "1990-01-01"
+TEMP_MEDIA_ROOT = tempfile.mkdtemp()
 
 
 class BaseProfileTest(TestCase):
@@ -154,6 +161,7 @@ class DealerTestCase(TestCase):
         self.assertEqual(self.dealer.user, self.user)
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class CollectorTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -184,6 +192,11 @@ class CollectorTestCase(TestCase):
         for slot in cls.page.slots.all():
             sticker = stickers.get(coordinate__absolute_number=slot.absolute_number)
             slot.place_sticker(sticker)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def test_collector_default_data(self):
         self.assertEqual(Collector.objects.all().count(), 1)

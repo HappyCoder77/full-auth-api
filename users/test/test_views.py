@@ -1,3 +1,8 @@
+import os
+import shutil
+from django.test.utils import override_settings
+import tempfile
+
 from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.urls import reverse
@@ -24,7 +29,7 @@ from ..views import CollectorViewSet
 from commerce.test.factories import OrderFactory
 from commerce.models import Order
 
-
+TEMP_MEDIA_ROOT = tempfile.mkdtemp()
 User = get_user_model()
 
 
@@ -981,6 +986,7 @@ class CollectorViewSetTestCase(APITestCase):
         self.assertEqual(response.data, {"detail": "Se produjo un error inesperado."})
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class DealerStockAPIViewAPITestCase(APITestCase):
     @classmethod
     def setUpTestData(cls):
@@ -1005,6 +1011,11 @@ class DealerStockAPIViewAPITestCase(APITestCase):
 
             cls.past_edition = EditionFactory(collection=collection)
             cls.past_edition2 = EditionFactory(collection=collection_2)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def setUp(self):
         self.promotion = PromotionFactory()
