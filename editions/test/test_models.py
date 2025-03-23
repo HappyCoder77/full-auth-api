@@ -15,7 +15,7 @@ from django.utils import timezone
 from promotions.test.factories import PromotionFactory
 from collection_manager.models import Coordinate, SurprisePrize
 from collection_manager.test.factories import (
-    ThemeFactory,
+    AlbumTemplateFactory,
     CollectionFactory,
 )
 from authentication.test.factories import UserFactory
@@ -236,15 +236,9 @@ class StickerTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         PromotionFactory()
-        cls.collection = CollectionFactory(album_template__with_coordinate_images=True)
-
-        for each_prize in cls.collection.standard_prizes.all():
-            each_prize.description = "Bingo"
-            each_prize.save()
-
-        for each_prize in cls.collection.surprise_prizes.all():
-            each_prize.description = "Bingo"
-            each_prize.save()
+        cls.collection = CollectionFactory(
+            album_template__with_coordinate_images=True, with_prizes_defined=True
+        )
 
         cls.edition = EditionFactory(collection=cls.collection)
         cls.stickers = Sticker.objects.filter(
@@ -253,7 +247,6 @@ class StickerTestCase(TestCase):
         cls.collectible_stickers = cls.stickers.exclude(coordinate__page=99)
         cls.box = Box.objects.filter(edition=cls.edition).first()
         cls.packs = Pack.objects.filter(box__edition=cls.edition)
-        # como la edition es pequeña (1 ejemplar) para fines de test, omitimos rarezas inferiores a cero
         cls.coordinates = Coordinate.objects.filter(
             template=cls.edition.collection.album_template,
         )
@@ -348,46 +341,45 @@ class StickerTestCase(TestCase):
         self.assertTrue(sticker2.is_repeated)
 
     def test_sticker_from_diferent_promotions_are_not_repeated(self):
+        promotion = PromotionFactory(future=True)
+        collector = CollectorFactory(user=UserFactory())
+
         with patch(
             "promotions.models.Promotion.objects.get_current"
         ) as mock_get_current:
-            collector = CollectorFactory(user=UserFactory())
-            promotion = PromotionFactory(future=True)
             mock_get_current.return_value = promotion
             collection = CollectionFactory(
                 album_template=self.collection.album_template,
-                album_template__with_coordinate_images=True,
+                with_prizes_defined=True,
             )
-
-            for each_prize in collection.standard_prizes.all():
-                each_prize.description = "Bingo"
-                each_prize.save()
-
-            for each_prize in collection.surprise_prizes.all():
-                each_prize.description = "Bingo"
-                each_prize.save()
 
             edition = EditionFactory(collection=collection)
 
-            coordinate_previous_collection = (
-                self.edition.collection.album_template.coordinates.filter(
-                    slot_number__in=[3, 4], page__lt=99
-                ).first()
-            )
-
-            sticker1 = Sticker.objects.filter(
-                pack__box__edition=self.edition,
-                coordinate=coordinate_previous_collection,
+            previous_coordinate = self.collection.album_template.coordinates.filter(
+                rarity_factor__gte=2
             ).first()
 
-            sticker2 = (
+            self.assertIsNotNone(
+                previous_coordinate,
+                "No coordinate with rarity_factor >= 2 found",
+            )
+
+            # Get all stickers for previous coordinate
+            past_promotion_stickers = list(
                 Sticker.objects.filter(
                     pack__box__edition=self.edition,
-                    coordinate=coordinate_previous_collection,
+                    coordinate=previous_coordinate,
                 )
-                .exclude(id=sticker1.id)
-                .first()
             )
+            # Ensure we have at least 2 stickers
+            self.assertGreaterEqual(
+                len(past_promotion_stickers),
+                2,
+                f"Expected at least 2 stickers for coordinate {previous_coordinate}, but found {len(past_promotion_stickers)}",
+            )
+
+            sticker1 = past_promotion_stickers[0]
+            sticker2 = past_promotion_stickers[1]
 
             sticker1.pack.open(collector.user)
             sticker2.pack.open(collector.user)
@@ -397,19 +389,25 @@ class StickerTestCase(TestCase):
             self.assertTrue(sticker2.is_repeated)
 
             # Get a sticker from new edition with same coordinate
-            coordinate2 = edition.collection.album_template.coordinates.get(
-                page=coordinate_previous_collection.page,
-                slot_number=coordinate_previous_collection.slot_number,
+            current_coordinate = edition.collection.album_template.coordinates.get(
+                page=previous_coordinate.page,
+                slot_number=previous_coordinate.slot_number,
             )
-            current_sticker = Sticker.objects.filter(
-                pack__box__edition=edition, coordinate=coordinate2
+
+            current_promotion_sticker = Sticker.objects.filter(
+                pack__box__edition=edition, coordinate=current_coordinate
             ).first()
 
-            current_sticker.pack.open(collector.user)
-            current_sticker.refresh_from_db()
+            # Ensure we found a sticker in the new edition
+            self.assertIsNotNone(
+                current_promotion_sticker,
+                f"No sticker found in new edition for coordinate page={previous_coordinate.page}, slot={previous_coordinate.slot_number}",
+            )
+            current_promotion_sticker.pack.open(collector.user)
+            current_promotion_sticker.refresh_from_db()
 
-            # Should not be repeated since it's from a different edition
-            self.assertFalse(current_sticker.is_repeated)
+            # Should not be repeated since it's from a different promotion
+            self.assertFalse(current_promotion_sticker.is_repeated)
 
             # Test uncollected sticker
             uncollected_sticker = self.stickers.filter(
