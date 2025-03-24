@@ -134,7 +134,18 @@ class Edition(models.Model):
         return f"{self.collection} ({self.circulation})"
 
     def clean(self):
-        # Check if collection is ready for edition
+        promotion = Promotion.objects.get_current()
+
+        if not promotion:
+            raise ValidationError(
+                "No hay ninguna promoción activa en este momento; debe haber una promoción activa para crear una edición"
+            )
+
+        if self.collection.promotion != promotion:
+            raise ValidationError(
+                "La colección seleccionada no pertenece a la promoción actual; solo se pueden crear ediciones de colecciones de la promoción actual"
+            )
+
         readiness = self.collection.is_ready_for_edition()
 
         if not readiness["ready"]:
@@ -144,7 +155,7 @@ class Edition(models.Model):
             if issues["coordinates_without_images"] > 0:
                 total_coordinates = self.collection.album_template.coordinates.count()
                 error_messages.append(
-                    f"La colección seleccionada tiene {issues['coordinates_without_images']} de {total_coordinates} "
+                    f"La plantilla seleccionada tiene {issues['coordinates_without_images']} de {total_coordinates} "
                     "coordenadas sin imágenes asignadas. Todas las coordenadas deben tener imágenes "
                     "antes de crear una edición."
                 )
@@ -157,7 +168,7 @@ class Edition(models.Model):
 
             if issues["undefined_surprise_prizes"] > 0:
                 error_messages.append(
-                    f"La edición a la que se hace referencia tiene {issues['undefined_surprise_prizes']} premios "
+                    f"La colección a la que se hace referencia tiene {issues['undefined_surprise_prizes']} premios "
                     "sorpresa sin definir. Revise e intente de nuevo guardar el registro"
                 )
 

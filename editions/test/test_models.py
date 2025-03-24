@@ -160,6 +160,34 @@ class EditionValidationTestCase(TestCase):
                 "clean() raised ValidationError unexpectedly!",
             )
 
+    def test_coordinates_without_images(self):
+        """Test validation when coordinates don't have images"""
+        PromotionFactory()
+
+        collection = CollectionFactory(with_prizes_defined=True)
+
+        with self.assertRaises(ValidationError) as context:
+            EditionFactory(collection=collection)
+
+        error_messages = context.exception.messages
+        self.assertTrue(
+            any(
+                "coordenadas sin imágenes asignadas" in message
+                for message in error_messages
+            )
+        )
+
+    def test_multiple_validation_errors(self):
+        """Test that multiple validation errors are reported together"""
+        PromotionFactory()
+
+        with self.assertRaises(ValidationError) as context:
+            EditionFactory()
+
+        error_messages = context.exception.messages
+
+        self.assertGreaterEqual(len(error_messages), 3)
+
     def test_no_standard_prizes_defined(self):
         PromotionFactory()
         collection = CollectionFactory()
@@ -193,6 +221,59 @@ class EditionValidationTestCase(TestCase):
         self.assertTrue(
             any(
                 "La edición a la que se hace referencia tiene 4 premios sorpresa sin definir. Revise e intente de nuevo guardar el registro"
+                in message
+                for message in error_messages
+            )
+        )
+
+    def test_no_active_promotion(self):
+        """Test validation when there's no active promotion"""
+        # Create a promotion but set dates to make it inactive
+        promotion = PromotionFactory(
+            past=True,
+        )
+        with patch(
+            "promotions.models.Promotion.objects.get_current"
+        ) as mock_get_current:
+            mock_get_current.return_value = promotion
+            collection = CollectionFactory()
+
+        with self.assertRaises(ValidationError) as context:
+            EditionFactory(collection=collection)
+
+        error_messages = context.exception.messages
+
+        self.assertTrue(
+            any(
+                "No hay ninguna promoción activa en este momento; debe haber una promoción activa para crear una edición"
+                in message
+                for message in error_messages
+            )
+        )
+
+    def test_collection_not_in_current_promotion(self):
+        """Test validation when collection doesn't belong to current promotion"""
+        PromotionFactory()
+
+        future_promotion = PromotionFactory(
+            future=True,
+        )
+        with patch(
+            "promotions.models.Promotion.objects.get_current"
+        ) as mock_get_current:
+            mock_get_current.return_value = future_promotion
+            collection = CollectionFactory()
+
+        # Try to create edition with collection from different promotion
+        edition = EditionFactory.build(collection=collection)
+
+        with self.assertRaises(ValidationError) as context:
+            edition.clean()
+
+        error_messages = context.exception.messages
+        self.assertTrue(
+            any(
+                "La colección seleccionada no pertenece a la promoción actual; solo se pueden crear ediciones de colecciones de la promoción actual"
                 in message
                 for message in error_messages
             )

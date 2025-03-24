@@ -6,6 +6,7 @@ from .models import (
     SurprisePrize,
     Collection,
     Theme,
+    AlbumTemplate,
 )
 
 
@@ -14,10 +15,16 @@ class ThemeAdmin(admin.ModelAdmin):
     list_display = ("__str__", "id", "name", "image")
 
 
+@admin.register(AlbumTemplate)
+class AlbumTemplateAdmin(admin.ModelAdmin):
+    list_display = ("__str__", "id", "name", "image")
+    fields = ("name", "image")
+
+
 @admin.register(Collection)
 class CollectionAdmin(admin.ModelAdmin):
     list_display = ("__str__", "id", "album_template", "promotion")
-    fields = ("theme",)
+    fields = ("album_template",)
 
 
 @admin.register(Coordinate)

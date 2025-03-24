@@ -217,6 +217,17 @@ class Collection(models.Model):
             )
 
         self.promotion = current_promotion
+        # Check if a collection with this album_template and the current promotion already exists
+        # Only check when creating a new collection (not when updating)
+        if not self.pk:  # This checks if it's a new object
+            if Collection.objects.filter(
+                album_template=self.album_template, promotion=current_promotion
+            ).exists():
+                raise ValidationError(
+                    {
+                        "album_template": "Ya existe una colección con esta plantilla para la promoción actual."
+                    }
+                )
 
     def is_ready_for_edition(self):
         """Check if this collection is ready to create an edition."""
