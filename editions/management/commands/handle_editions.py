@@ -74,37 +74,52 @@ class Command(BaseCommand):
                     for field, errors in e.message_dict.items():
                         for error in errors:
                             self.stdout.write(self.style.ERROR(f"- {field}: {error}"))
+
                 else:
                     # General errors
                     for error in e.messages:
                         self.stdout.write(self.style.ERROR(f"- {error}"))
 
-                readiness = collection.is_ready_for_edition()
+                self.stdout.write(
+                    self.style.ERROR(
+                        "\nEdition creation failed due to validation errors."
+                    )
+                )
 
-                if not readiness["ready"]:
-                    issues = readiness["issues"]
+                return
 
-                    if issues["coordinates_without_images"] > 0:
-                        total = collection.album_template.coordinates.count()
-                        self.stdout.write(
-                            self.style.WARNING(
-                                f"\nAlbum template has {issues['coordinates_without_images']} of {total} coordinates without images."
-                            )
+            readiness = collection.is_ready_for_edition()
+
+            if not readiness["ready"]:
+                issues = readiness["issues"]
+
+                if issues["coordinates_without_images"] > 0:
+                    total = collection.album_template.coordinates.count()
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"\nAlbum template has {issues['coordinates_without_images']} of {total} coordinates without images."
                         )
+                    )
 
-                    if issues["undefined_standard_prizes"] > 0:
-                        self.stdout.write(
-                            self.style.WARNING(
-                                f"\nCollection has {issues['undefined_standard_prizes']} undefined standard prizes."
-                            )
+                if issues["undefined_standard_prizes"] > 0:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"\nCollection has {issues['undefined_standard_prizes']} undefined standard prizes."
                         )
+                    )
 
-                    if issues["undefined_surprise_prizes"] > 0:
-                        self.stdout.write(
-                            self.style.WARNING(
-                                f"\nCollection has {issues['undefined_surprise_prizes']} undefined surprise prizes."
-                            )
+                if issues["undefined_surprise_prizes"] > 0:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"\nCollection has {issues['undefined_surprise_prizes']} undefined surprise prizes."
                         )
+                    )
+
+                self.stdout.write(
+                    self.style.ERROR(
+                        "\nEdition creation failed due to collection readiness issues."
+                    )
+                )
 
                 return
 
@@ -138,7 +153,7 @@ class Command(BaseCommand):
                     self.style.SUCCESS(
                         f"\nEdition created successfully:"
                         f"\nID: {edition.id}"
-                        f"\nCollection: {edition.collection.theme.name}"
+                        f"\nCollection: {edition.collection.album_template.name}"
                         f"\nCirculation: {edition.circulation}"
                         f"\nTotal objects: {total_objects}"
                     )
@@ -175,7 +190,7 @@ class Command(BaseCommand):
 
             self.stdout.write(f"\nEdition to delete:")
             self.stdout.write(f"ID: {edition.id}")
-            self.stdout.write(f"Collection: {edition.collection.theme.name}")
+            self.stdout.write(f"Collection: {edition.collection.album_template.name}")
             self.stdout.write(f"Promotion: {edition.collection.promotion}")
             self.stdout.write(f"Circulation: {edition.circulation}")
             self.stdout.write("\nRelated objects to be deleted:")

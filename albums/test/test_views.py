@@ -566,17 +566,18 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
         Promotion.objects.all().delete()
         template = AlbumTemplateFactory(with_coordinate_images=True, name="Mario")
         template_2 = AlbumTemplateFactory(with_coordinate_images=True, name="Angela")
-        with patch("promotions.models.Promotion.objects.get_current") as mock_current:
-            promotion = PromotionFactory(past=True)
-            mock_current.return_value = promotion
+        promotion = PromotionFactory(past=True)
 
         def custom_save(collection, *args, **kwargs):
             models.Model.save(collection, *args, **kwargs)
             collection.create_standard_prizes()
             collection.create_surprise_prizes()
 
-        with patch("collection_manager.models.Collection.save") as mock_save:
-            collection_1 = Collection(album_template=template)
+        with patch("promotions.models.Promotion.objects.get_current") as mock_current:
+            mock_current.return_value = promotion
+
+            with patch("collection_manager.models.Collection.save") as mock_save:
+                collection_1 = Collection(album_template=template)
 
             mock_save.side_effect = lambda *args, **kwargs: custom_save(
                 collection_1, *args, **kwargs
@@ -616,14 +617,15 @@ class UserAlbumListRetrieveViewAPITestCase(APITestCase):
             collector = CollectorFactory(user=user)
             AlbumFactory(collection=collection_1, collector=collector.user)
             AlbumFactory(collection=collection_2, collector=collector.user)
-            self.client.force_authenticate(user=collector.user)
-            response = self.client.get(self.list_url)
 
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
-            self.assertEqual(
-                response.data["detail"],
-                "No hay ninguna promoción en curso, no es posible la consulta.",
-            )
+        self.client.force_authenticate(user=collector.user)
+        response = self.client.get(self.list_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data["detail"],
+            "No hay ninguna promoción en curso, no es posible la consulta.",
+        )
 
     def test_get_user_album_with_invalid_edition_id(self):
         retrieve_url = reverse("user-albums-retrieve", kwargs={"collection_id": 10404})

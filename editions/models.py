@@ -143,7 +143,7 @@ class Edition(models.Model):
 
         if self.collection.promotion != promotion:
             raise ValidationError(
-                "La colección seleccionada no pertenece a la promoción actual; solo se pueden crear ediciones de colecciones de la promoción actual"
+                "La colección seleccionada no pertenece a la promoción actual; solo se pueden crear ediciones de colecciones pertenecientes a la promoción actual"
             )
 
         readiness = self.collection.is_ready_for_edition()

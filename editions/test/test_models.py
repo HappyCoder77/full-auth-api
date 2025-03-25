@@ -207,7 +207,9 @@ class EditionValidationTestCase(TestCase):
 
     def test_no_surprise_prizes_defined(self):
         PromotionFactory()
-        collection = CollectionFactory()
+        collection = CollectionFactory(
+            album_template__with_image=True, album_template__with_coordinate_images=True
+        )
         edition = EditionFactory.build(collection=collection)
 
         for each_prize in collection.standard_prizes.all():
@@ -218,9 +220,10 @@ class EditionValidationTestCase(TestCase):
             edition.full_clean()
 
         error_messages = context.exception.messages
+
         self.assertTrue(
             any(
-                "La edición a la que se hace referencia tiene 4 premios sorpresa sin definir. Revise e intente de nuevo guardar el registro"
+                "La colección a la que se hace referencia tiene 4 premios sorpresa sin definir. Revise e intente de nuevo guardar el registro"
                 in message
                 for message in error_messages
             )
@@ -264,16 +267,17 @@ class EditionValidationTestCase(TestCase):
             mock_get_current.return_value = future_promotion
             collection = CollectionFactory()
 
-        # Try to create edition with collection from different promotion
-        edition = EditionFactory.build(collection=collection)
+            # Try to create edition with collection from different promotion
+            edition = EditionFactory.build(collection=collection)
 
         with self.assertRaises(ValidationError) as context:
             edition.clean()
 
         error_messages = context.exception.messages
+
         self.assertTrue(
             any(
-                "La colección seleccionada no pertenece a la promoción actual; solo se pueden crear ediciones de colecciones de la promoción actual"
+                "La colección seleccionada no pertenece a la promoción actual; solo se pueden crear ediciones de colecciones pertenecientes a la promoción actual"
                 in message
                 for message in error_messages
             )
