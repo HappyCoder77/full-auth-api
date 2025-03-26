@@ -1,3 +1,8 @@
+import os
+import shutil
+from django.test.utils import override_settings
+import tempfile
+
 from io import StringIO
 from unittest.mock import patch, MagicMock
 from decimal import Decimal
@@ -12,7 +17,10 @@ from .factories import EditionFactory
 from collection_manager.test.factories import CollectionFactory
 from promotions.test.factories import PromotionFactory
 
+TEMP_MEDIA_ROOT = tempfile.mkdtemp()
 
+
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class HandleEditionsCommandTest(TestCase):
     def setUp(self):
         self.out = StringIO()
@@ -20,6 +28,11 @@ class HandleEditionsCommandTest(TestCase):
         self.collection = CollectionFactory(
             album_template__with_coordinate_images=True, with_prizes_defined=True
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
 
     def test_create_edition_success(self):
         """Test successful edition creation"""

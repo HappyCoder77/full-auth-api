@@ -189,7 +189,7 @@ class DealerListStockAPIView(APIView):
             collectionStockList.append(
                 {
                     "id": collection.id,
-                    "name": collection.theme.name,
+                    "name": collection.album_template.name,
                     "stock": dealer.get_pack_stock(collection.id),
                 }
             )
