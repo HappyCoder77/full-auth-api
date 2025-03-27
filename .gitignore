@@ -143,6 +143,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+full_auth_api_env/
 
 # Spyder project settings
 .spyderproject
