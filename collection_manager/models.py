@@ -24,13 +24,6 @@ class Theme(models.Model):
         verbose_name_plural = "themes"
 
 
-@receiver(pre_delete, sender=Theme)
-def delete_theme_image(sender, instance, **kwargs):
-    if instance.image:
-        if os.path.isfile(instance.image.path):
-            os.remove(instance.image.path)
-
-
 class Layout(models.Model):
     PAGES = 4
     SLOTS_PER_PAGE = 6
@@ -158,6 +151,13 @@ class AlbumTemplate(Theme):
             coordinates_list.append(each_coordinate)
 
         Coordinate.objects.bulk_update(coordinates_list, ["rarity_factor"])
+
+
+@receiver(pre_delete, sender=AlbumTemplate)
+def delete_theme_image(sender, instance, **kwargs):
+    if instance.image:
+        if os.path.isfile(instance.image.path):
+            os.remove(instance.image.path)
 
 
 class CollectionManager(Manager):
