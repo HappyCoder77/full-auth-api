@@ -25,6 +25,10 @@ class CoordinateSerializer(ModelSerializer):
         model = Coordinate
         fields = ("id", "absolute_number", "image")
 
+    def get_image(self, obj):
+        if obj.image:
+            return obj.image.url
+
 
 class SurprisePrizeSerializer(ModelSerializer):
     class Meta:
