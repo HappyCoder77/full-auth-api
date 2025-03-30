@@ -1,4 +1,7 @@
+import time
+import random
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import (
     UserAttributeSimilarityValidator,
     MinimumLengthValidator,
@@ -16,6 +19,8 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
     TokenVerifyView,
 )
+
+User = get_user_model()
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -105,3 +110,62 @@ def password_help(request):
 
     help_texts = [validator.get_help_text() for validator in validators]
     return Response(help_texts)
+
+
+class CheckEmailActivationView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        start_time = time.time()
+        email = request.data.get("email")
+
+        if not email:
+            # Add a small random delay for consistency
+            time.sleep(random.uniform(0.1, 0.3))
+            return Response({"error": "Email is required"}, status=400)
+
+        # For security, ALWAYS return the same structure
+        # regardless of whether the email exists or not
+        response_data = {
+            "status": "success",
+            "message": "If this account exists and is not activated, please check your email for activation instructions.",
+        }
+
+        # Internally, we'll check if the user exists and is not active
+        # but we won't reveal this information directly in the response
+        try:
+            user = User.objects.get(email=email)
+            # Store this information in the session instead of returning it
+            # This way the frontend can use it without exposing it in the API
+            if not user.is_active:
+                request.session["pending_activation_email"] = email
+                request.session.save()
+        except User.DoesNotExist:
+            # Do nothing special, return the same generic response
+            pass
+
+        # Ensure consistent response time to prevent timing attacks
+        elapsed = time.time() - start_time
+        if elapsed < 0.2:  # Ensure minimum response time of 200ms
+            time.sleep(0.2 - elapsed + random.uniform(0, 0.1))
+
+        return Response(response_data)
+
+
+# Add this additional endpoint to check the session
+class CheckSessionActivationView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        pending_activation_email = request.session.get("pending_activation_email")
+
+        # Clear the session after reading it (one-time use)
+        if pending_activation_email:
+            del request.session["pending_activation_email"]
+            request.session.save()
+
+            return Response(
+                {"pendingActivation": True, "email": pending_activation_email}
+            )
+
+        return Response({"pendingActivation": False})

@@ -5,6 +5,8 @@ from .views import (
     CustomTokenVerifyView,
     LogoutView,
     password_help,
+    CheckEmailActivationView,
+    CheckSessionActivationView,
 )
 
 urlpatterns = [
@@ -14,4 +16,14 @@ urlpatterns = [
     path("jwt/refresh/", CustomTokenRefreshView.as_view(), name="jwt_refresh"),
     path("jwt/verify/", CustomTokenVerifyView.as_view(), name="jwt_verify"),
     path("logout/", LogoutView.as_view(), name="logout"),
+    path(
+        "check-email-activation/",
+        CheckEmailActivationView.as_view(),
+        name="check_email_activation",
+    ),
+    path(
+        "check-session-activation/",
+        CheckSessionActivationView.as_view(),
+        name="check_session_activation",
+    ),
 ]
