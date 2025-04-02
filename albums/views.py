@@ -294,44 +294,43 @@ class RescuePoolView(ListAPIView):
     http_method_names = ["get"]
 
     def get_queryset(self):
+        current_promotion = Promotion.objects.get_current()
+
+        if not current_promotion:
+            raise NotFound(
+                "No hay ninguna promoción en curso, no es posible la consulta."
+            )
+        current_collections = Collection.objects.get_current_list()
+
+        if not current_collections:
+            raise NotFound("No se han creado colecciones para la promoción en curso.")
+
+        user = self.request.user
+
         with transaction.atomic():
-            current_promotion = Promotion.objects.get_current()
-
-            if not current_promotion:
-                raise NotFound(
-                    "No hay ninguna promoción en curso, no es posible la consulta."
-                )
-
-            current_collections = Collection.objects.get_current_list()
-
-            if not current_collections:
-                raise NotFound(
-                    "No se han creado colecciones para la promoción en curso."
-                )
-
-            user = self.request.user
             collector_profile = Collector.objects.select_for_update().get(user=user)
             collector_profile.rescue_tickets -= 3
             collector_profile.save()
 
-        base_queryset = (
-            Sticker.objects.select_for_update()
-            .filter(
-                is_repeated=True, pack__box__edition__collection__in=current_collections
+            base_queryset = (
+                Sticker.objects.select_for_update()
+                .filter(
+                    is_repeated=True,
+                    pack__box__edition__collection__in=current_collections,
+                )
+                .exclude(collector=user)
+                .exclude(
+                    coordinate__in=user.stickers.filter(
+                        pack__box__edition__collection__in=current_collections
+                    ).values("coordinate")
+                )
             )
-            .exclude(collector=user)
-            .exclude(
-                coordinate__in=user.stickers.filter(
-                    pack__box__edition__collection__in=current_collections
-                ).values("coordinate")
+
+            ids_queryset = (
+                base_queryset.values("coordinate")
+                .annotate(min_id=Min("id"))
+                .values("min_id")
             )
-        )
+            queryset = Sticker.objects.filter(id__in=ids_queryset)
 
-        ids_queryset = (
-            base_queryset.values("coordinate")
-            .annotate(min_id=Min("id"))
-            .values("min_id")
-        )
-        queryset = Sticker.objects.filter(id__in=ids_queryset)
-
-        return queryset if queryset.exists() else Sticker.objects.none()
+            return queryset if queryset.exists() else Sticker.objects.none()
