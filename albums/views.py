@@ -307,30 +307,48 @@ class RescuePoolView(ListAPIView):
 
         user = self.request.user
 
+        user_coordinates = set(
+            user.stickers.filter(
+                pack__box__edition__collection__in=current_collections
+            ).values_list("coordinate", flat=True)
+        )
+
         with transaction.atomic():
             collector_profile = Collector.objects.select_for_update().get(user=user)
             collector_profile.rescue_tickets -= 3
             collector_profile.save()
 
-            base_queryset = (
-                Sticker.objects.select_for_update()
-                .filter(
+            available_stickers = []
+
+            distinct_coordinates = (
+                Sticker.objects.filter(
                     is_repeated=True,
                     pack__box__edition__collection__in=current_collections,
                 )
                 .exclude(collector=user)
-                .exclude(
-                    coordinate__in=user.stickers.filter(
-                        pack__box__edition__collection__in=current_collections
-                    ).values("coordinate")
-                )
+                .values_list("coordinate", flat=True)
+                .distinct()
             )
 
-            ids_queryset = (
-                base_queryset.values("coordinate")
-                .annotate(min_id=Min("id"))
-                .values("min_id")
-            )
-            queryset = Sticker.objects.filter(id__in=ids_queryset)
+            for coordinate in distinct_coordinates:
+                if coordinate in user_coordinates:
+                    continue  # Skip if user already has this coordinate
+
+                # Get the first sticker with this coordinate
+                sticker = (
+                    Sticker.objects.select_for_update()
+                    .filter(
+                        coordinate=coordinate,
+                        is_repeated=True,
+                        pack__box__edition__collection__in=current_collections,
+                    )
+                    .exclude(collector=user)
+                    .first()
+                )
+
+                if sticker:
+                    available_stickers.append(sticker.id)
+
+            queryset = Sticker.objects.filter(id__in=available_stickers)
 
             return queryset if queryset.exists() else Sticker.objects.none()
