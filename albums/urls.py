@@ -45,7 +45,7 @@ urlpatterns = [
         name="create-page-prize",
     ),
     path(
-        "stickers/rescue-pool/",
+        "stickers/rescue-pool/<int:collection_id>/",
         RescuePoolView.as_view(),
         name="rescue-pool",
     ),

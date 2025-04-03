@@ -294,23 +294,33 @@ class RescuePoolView(ListAPIView):
     http_method_names = ["get"]
 
     def get_queryset(self):
+        collection_id = self.kwargs.get("collection_id")
+
+        if not collection_id:
+            raise ValidationError("Se requiere un ID de colección.")
+
         current_promotion = Promotion.objects.get_current()
 
         if not current_promotion:
             raise NotFound(
                 "No hay ninguna promoción en curso, no es posible la consulta."
             )
-        current_collections = Collection.objects.get_current_list()
 
-        if not current_collections:
-            raise NotFound("No se han creado colecciones para la promoción en curso.")
+        try:
+            collection = Collection.objects.get(
+                id=collection_id, promotion_id=current_promotion.id
+            )
+        except Collection.DoesNotExist:
+            raise NotFound(
+                "La colección especificada no existe o no pertenece a la promoción actual."
+            )
 
         user = self.request.user
 
         user_coordinates = set(
-            user.stickers.filter(
-                pack__box__edition__collection__in=current_collections
-            ).values_list("coordinate", flat=True)
+            user.stickers.filter(pack__box__edition__collection=collection).values_list(
+                "coordinate", flat=True
+            )
         )
 
         with transaction.atomic():
@@ -323,7 +333,7 @@ class RescuePoolView(ListAPIView):
             distinct_coordinates = (
                 Sticker.objects.filter(
                     is_repeated=True,
-                    pack__box__edition__collection__in=current_collections,
+                    pack__box__edition__collection=collection,
                 )
                 .exclude(collector=user)
                 .values_list("coordinate", flat=True)
@@ -340,7 +350,7 @@ class RescuePoolView(ListAPIView):
                     .filter(
                         coordinate=coordinate,
                         is_repeated=True,
-                        pack__box__edition__collection__in=current_collections,
+                        pack__box__edition__collection=collection,
                     )
                     .exclude(collector=user)
                     .first()

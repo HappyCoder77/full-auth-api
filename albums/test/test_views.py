@@ -3,7 +3,8 @@ import shutil
 from django.test.utils import override_settings
 import tempfile
 
-
+from rest_framework.test import APIRequestFactory, force_authenticate
+from albums.views import RescuePoolView
 from django.db import IntegrityError, models
 from unittest.mock import patch
 from django.urls import reverse
@@ -1595,7 +1596,6 @@ class RescuePoolViewTest(APITestCase):
         cls.client = APIClient()
         cls.user = UserFactory()
         cls.collector = CollectorFactory(user=UserFactory())
-        cls.url = reverse("rescue-pool")
 
     @classmethod
     def tearDownClass(cls):
@@ -1603,12 +1603,13 @@ class RescuePoolViewTest(APITestCase):
         super().tearDownClass()
 
     def setUp(self):
-        PromotionFactory()
-        collection = CollectionFactory(
+        self.promotion = PromotionFactory()
+        self.collection = collection = CollectionFactory(
             album_template__with_coordinate_images=True, with_prizes_defined=True
         )
         EditionFactory(collection=collection)
         self.album = AlbumFactory(collector=self.collector.user, collection=collection)
+        self.url = reverse("rescue-pool", kwargs={"collection_id": collection.id})
         packs = Pack.objects.all()
 
         for pack in packs:
@@ -1680,12 +1681,45 @@ class RescuePoolViewTest(APITestCase):
             "No hay ninguna promoción en curso, no es posible la consulta.",
         )
 
-    def test_response_without_collections(self):
-        Collection.objects.all().delete()
-        response = self.client.get(self.url)
-
+    def test_invalid_collection_id(self):
+        # Test with a non-existent collection ID
+        invalid_url = reverse("rescue-pool", kwargs={"collection_id": 9999})
+        response = self.client.get(invalid_url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(
-            response.status_code,
-            status.HTTP_404_NOT_FOUND,
-            "No se han creado colecciones para la promoción en curso.",
+            response.data["detail"],
+            "La colección especificada no existe o no pertenece a la promoción actual.",
         )
+
+    def test_collection_from_different_promotion(self):
+        other_promotion = PromotionFactory(past=True)
+
+        with patch("promotions.models.Promotion.objects.get_current") as mock:
+            mock.return_value = other_promotion
+            other_collection = CollectionFactory(album_template__name="Angela")
+
+        self.collector.rescue_tickets = 3
+        self.collector.save()
+        self.collector.refresh_from_db()
+        other_url = reverse(
+            "rescue-pool", kwargs={"collection_id": other_collection.id}
+        )
+
+        response = self.client.get(other_url)
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(
+            response.data["detail"],
+            "La colección especificada no existe o no pertenece a la promoción actual.",
+        )
+
+    def test_no_collection_id_provided(self):
+        factory = APIRequestFactory()
+        request = factory.get("/api/stickers/rescue-pool/")
+        view = RescuePoolView.as_view()
+
+        force_authenticate(request, user=self.collector.user)
+        response = view(request, **{})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data[0], "Se requiere un ID de colección.")
