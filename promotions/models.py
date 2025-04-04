@@ -14,23 +14,27 @@ User = get_user_model()
 
 class PromotionManager(Manager):
     def is_running(self):
-        now = timezone.now().date()
-        return Promotion.objects.filter(start_date__lte=now, end_date__gte=now).exists()
+        today = timezone.localtime(timezone.now()).date()
+        return Promotion.objects.filter(
+            start_date__lte=today, end_date__gte=today
+        ).exists()
 
     def get_current(self):
-        now = timezone.now().date()
+        today = timezone.localtime(timezone.now()).date()
 
         try:
-            return Promotion.objects.get(start_date__lte=now, end_date__gte=now)
+            return Promotion.objects.get(start_date__lte=today, end_date__gte=today)
         except Promotion.DoesNotExist:  # pragma: no cover
             return None
 
     def get_last(self):
-        now = timezone.now().date()
+        today = timezone.localtime(timezone.now()).date()
 
         try:
             return (
-                Promotion.objects.filter(end_date__lt=now).order_by("-end_date").first()
+                Promotion.objects.filter(end_date__lt=today)
+                .order_by("-end_date")
+                .first()
             )
         except Promotion.DoesNotExist:
             return None
@@ -101,7 +105,7 @@ class Promotion(models.Model):
 
     @property
     def remaining_time(self):
-        today = timezone.now().date()
+        today = timezone.localtime(timezone.now()).date()
 
         if self.end_date < today:
             return "Esta promoción ha terminado."
