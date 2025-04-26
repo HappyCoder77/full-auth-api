@@ -87,6 +87,16 @@ class MobilePaymentSerializer(PaymentSerializer):
 
 
 class DealerBalanceSerializer(serializers.ModelSerializer):
+    payments_total = serializers.DecimalField(
+        max_digits=10, decimal_places=2, read_only=True
+    )
+    orders_total = serializers.DecimalField(
+        max_digits=10, decimal_places=2, read_only=True
+    )
+    current_balance = serializers.DecimalField(
+        max_digits=10, decimal_places=2, read_only=True
+    )
+
     class Meta:
         model = DealerBalance
         fields = [

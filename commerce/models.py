@@ -162,7 +162,7 @@ class Order(models.Model):
         ).first()
 
         if not box:
-            raise ValidationError(f"No hay paquetes disponibles para esta edición")
+            raise ValidationError(f"No hay paquetes disponibles para esta colección")
 
         self.box = box
         self.pack_cost = self.collection.promotion.pack_cost

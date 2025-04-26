@@ -200,7 +200,7 @@ class OrderListCreateAPIViewAPITestCase(APITestCase):
         response = self.client.post(self.url, data=data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            response.data["detail"], "No hay paquetes disponibles para esta edición"
+            response.data["detail"], "No hay paquetes disponibles para esta colección"
         )
 
     def test_create_order_with_invalid_data_format(self):

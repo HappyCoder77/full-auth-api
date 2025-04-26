@@ -30,11 +30,11 @@ class CollectionAdmin(admin.ModelAdmin):
 @admin.register(Coordinate)
 class CoordinateAdmin(admin.ModelAdmin):
     list_display = (
+        "absolute_number",
         "id",
         "template",
         "page",
         "slot_number",
-        "absolute_number",
         "ordinal",
         "rarity_factor",
         "image",
