@@ -35,7 +35,9 @@ class AlbumSerializerTest(APITestCase):
     def setUpTestData(cls):
         PromotionFactory()
         collection = CollectionFactory(
-            album_template__with_coordinate_images=True, with_prizes_defined=True
+            album_template__with_coordinate_images=True,
+            album_template__with_image=True,
+            with_prizes_defined=True,
         )
         EditionFactory(collection=collection)
         cls.collector = CollectorFactory(user=UserFactory())
@@ -50,6 +52,7 @@ class AlbumSerializerTest(APITestCase):
 
     def test_serializer_contains_expected_fields(self):
         serializer = AlbumSerializer(instance=self.album)
+        print(serializer.data)
         expected_fields = {
             "id",
             "collection",

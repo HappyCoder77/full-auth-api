@@ -28,7 +28,7 @@ class Album(models.Model):
 
     @property
     def image(self):
-        return self.collection.theme.image
+        return self.collection.album_template.image
 
     @property
     def missing_stickers(self):

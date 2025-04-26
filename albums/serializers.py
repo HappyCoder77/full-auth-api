@@ -63,8 +63,15 @@ class AlbumSerializer(serializers.ModelSerializer):
 
     def get_image(self, obj):
         try:
-            if obj.collection and obj.collection.theme and obj.collection.theme.image:
-                return obj.collection.theme.image.url
+            # First check if the album template exists and has an image
+            if (
+                hasattr(obj.collection, "album_template")
+                and obj.collection.album_template
+                and hasattr(obj.collection.album_template, "image")
+                and obj.collection.album_template.image
+            ):
+                return obj.collection.album_template.image.url
             return None
-        except:
+        except Exception as e:
+            print(f"Error getting image: {e}")
             return None
