@@ -85,6 +85,7 @@ class PromotionViewSetTestCase(TestCase):
         data = {}
         self.client.post(self.list_url, data=data, format="json")
         response = self.client.get(self.current_url)
+        print(response.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(
             response.data["remaining_time"],
@@ -115,6 +116,7 @@ class PromotionViewSetTestCase(TestCase):
 
     def test_no_current_promotion(self):
         response = self.client.get(self.current_url)
+        print(response.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsNone(response.data)
 

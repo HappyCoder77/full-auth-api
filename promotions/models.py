@@ -131,22 +131,12 @@ class Promotion(models.Model):
         Returns:
             float: The average cost of the editions if there are any, otherwise 0.
         """
-        try:
-            collections = self.collections.all()
-        except models.ObjectDoesNotExist:
-            return 0
 
-        debt = 0
+        collections = self.collections.all()
+        count = collections.count()
+        total_cost = sum(collection.box_cost for collection in collections)
 
-        for collection in collections:
-            debt += collection.box_cost
-
-        if collections.count() > 0:
-            debt = debt / collections.count()
-        else:
-            debt = 0
-
-        return debt
+        return total_cost / count if count > 0 else 0
 
     class Meta:
         verbose_name = "promotion"
