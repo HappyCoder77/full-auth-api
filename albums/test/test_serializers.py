@@ -52,7 +52,7 @@ class AlbumSerializerTest(APITestCase):
 
     def test_serializer_contains_expected_fields(self):
         serializer = AlbumSerializer(instance=self.album)
-        print(serializer.data)
+
         expected_fields = {
             "id",
             "collection",

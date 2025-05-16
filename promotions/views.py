@@ -38,7 +38,7 @@ class PromotionViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(promotion)
             return Response(serializer.data)
 
-        return Response(None)
+        return Response(None, status=status.HTTP_200_OK)
 
     def handle_exception(self, exc):
 
