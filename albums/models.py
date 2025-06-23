@@ -102,7 +102,7 @@ class Album(models.Model):
                     pack__box__edition__collection=self.collection,
                     coordinate__absolute_number__gte=1,
                     on_the_board=True,
-                )
+                ).order_by("coordinate__absolute_number")
             else:
                 return None
 
