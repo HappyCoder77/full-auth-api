@@ -53,10 +53,12 @@ class CoordinateAdmin(admin.ModelAdmin):
 @admin.register(StandardPrize)
 class StandardPrizeAdmin(admin.ModelAdmin):
     list_display = ("collection", "page", "description")
+    list_filter = ("description",)
     ordering = ("collection",)
 
 
 @admin.register(SurprisePrize)
 class SurprisePrizeAdmin(admin.ModelAdmin):
     list_display = ("collection", "number", "description")
+    list_filter = ("description",)
     ordering = ("collection",)

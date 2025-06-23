@@ -112,7 +112,7 @@ class Edition(models.Model):
         total_boxes = boxes.count()
 
         return all(
-            box.packs.count() == self.collection.layout.PACKS_PER_BOX
+            box.packs.count() == self.collection.album_template.layout.PACKS_PER_BOX
             for box in boxes[: total_boxes - 1]
         )
 
