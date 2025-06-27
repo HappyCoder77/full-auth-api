@@ -11,13 +11,12 @@ class ThemeSerializer(ModelSerializer):
 
 
 class CollectionSerializer(ModelSerializer):
-    promotion = PromotionSerializer(read_only=True)
     name = CharField(source="album_template.name", read_only=True)
     image = CharField(source="album_template.image", read_only=True)
 
     class Meta:
         model = Collection
-        fields = ("id", "promotion", "name", "image")
+        fields = ("id", "promotion_id", "name", "image")
 
 
 class CoordinateSerializer(ModelSerializer):

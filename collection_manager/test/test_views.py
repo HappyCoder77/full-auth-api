@@ -41,19 +41,13 @@ class CurrentCollectionListViewTestCase(APITestCase):
         expected_data = [
             {
                 "id": 1,
-                "promotion": {
-                    "remaining_time": "Esta promoción termina hoy a la medianoche.",
-                    "max_debt": Decimal("150.00"),
-                },
+                "promotion_id": 1,
                 "name": "Minecraft",
                 "image": "",
             },
             {
                 "id": 2,
-                "promotion": {
-                    "remaining_time": "Esta promoción termina hoy a la medianoche.",
-                    "max_debt": Decimal("150.00"),
-                },
+                "promotion_id": 1,
                 "name": "Mario",
                 "image": "images/themes/test_image.png",
             },

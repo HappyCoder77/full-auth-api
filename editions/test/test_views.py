@@ -54,10 +54,7 @@ class EditionViewSetTestCase(APITestCase):
                 "id": 1,
                 "collection": {
                     "id": 1,
-                    "promotion": {
-                        "remaining_time": "Esta promoción termina hoy a la medianoche.",
-                        "max_debt": Decimal("150.00"),
-                    },
+                    "promotion_id": 1,
                     "name": "Edition 1",
                     "image": "",
                 },
@@ -67,10 +64,7 @@ class EditionViewSetTestCase(APITestCase):
                 "id": 2,
                 "collection": {
                     "id": 2,
-                    "promotion": {
-                        "remaining_time": "Esta promoción termina hoy a la medianoche.",
-                        "max_debt": Decimal("150.00"),
-                    },
+                    "promotion_id": 1,
                     "name": "Edition 2",
                     "image": "",
                 },
@@ -143,10 +137,7 @@ class EditionViewSetTestCase(APITestCase):
             "id": 1,
             "collection": {
                 "id": 1,
-                "promotion": {
-                    "remaining_time": "Esta promoción termina hoy a la medianoche.",
-                    "max_debt": Decimal("150.00"),
-                },
+                "promotion_id": 1,
                 "name": "Edition 1",
                 "image": "",
             },
@@ -166,10 +157,7 @@ class EditionViewSetTestCase(APITestCase):
             "id": 1,
             "collection": {
                 "id": 1,
-                "promotion": {
-                    "remaining_time": "Esta promoción termina hoy a la medianoche.",
-                    "max_debt": Decimal("150.00"),
-                },
+                "promotion_id": 1,
                 "name": "Edition 1",
                 "image": "",
             },
