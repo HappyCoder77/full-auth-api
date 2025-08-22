@@ -19,6 +19,7 @@ from pathlib import Path
 from django.core.management.utils import get_random_secret_key
 from django.contrib.auth import password_validation
 import dotenv
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -291,11 +292,22 @@ SESSION_COOKIE_SAMESITE = "None"
 CSRF_COOKIE_SAMESITE = "None"
 
 AUTH_COOKIE = "access"
-AUTH_COOKIE_ACCESS_MAX_AGE = 60 * 60 * 24
+AUTH_COOKIE_ACCESS_MAX_AGE = 60 * 16  # 16 minutes
+AUTH_COOKIE_REFRESH_MAX_AGE = 60 * 60 * 24 * 7  # 7 days
 AUTH_COOKIE_SECURE = getenv("AUTH_COOKIE_SECURE", "True").lower() == "true"
 AUTH_COOKIE_HTTP_ONLY = True
 AUTH_COOKIE_PATH = "/"
 AUTH_COOKIE_SAMESITE = "Lax" if DEBUG else "None"
+
+# JWT Settings
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(
+        minutes=15
+    ),  # Access tokens last 15 minutes (more secure)
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),  # Refresh tokens last 7 days
+    "ROTATE_REFRESH_TOKENS": True,  # Generate new refresh token on each refresh
+    "BLACKLIST_AFTER_ROTATION": True,  # Blacklist old refresh tokens
+}
 
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = getenv("GOOGLE_AUTH_KEY")
 SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = getenv("GOOGLE_AUTH_SECRET_KEY")
