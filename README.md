@@ -45,6 +45,10 @@ This project is built with a **security-first and stability-first mindset**. I m
 6. ```bash
    python manage.py test
    ```
+
+## 📖 API Documentation: Interactive Swagger UI available at:
+```/api/schema/swagger-ui/```
+
 Developed by Saul - Software Engineer focused on robust Backend Architectures.
 
 
